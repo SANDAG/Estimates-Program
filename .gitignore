@@ -6,6 +6,12 @@ __pycache__/
 # C extensions
 *.so
 
+# Secrets file
+secrets.yml
+
+# Testing Python files
+test.py
+
 # Distribution / packaging
 .Python
 build/
