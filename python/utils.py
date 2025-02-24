@@ -1,10 +1,18 @@
+import pathlib
 import sqlalchemy as sql
 import yaml
 
 
+#########
+# PATHS #
+#########
+
+# Store project root folder
+ROOT_FOLDER = pathlib.Path(__file__).parent.resolve().parent
+
 # Load secrets YAML file
 try:
-    with open("secrets.yml", "r") as file:
+    with open(ROOT_FOLDER / "secrets.yml", "r") as file:
         secrets = yaml.safe_load(file)
 except IOError:
     raise IOError("secrets.yml does not exist, see README.md")
