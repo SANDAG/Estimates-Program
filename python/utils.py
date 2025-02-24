@@ -1,0 +1,44 @@
+import pathlib
+import sqlalchemy as sql
+import yaml
+
+
+#########
+# PATHS #
+#########
+
+# Store project root folder
+ROOT_FOLDER = pathlib.Path(__file__).parent.resolve().parent
+
+# Load secrets YAML file
+try:
+    with open(ROOT_FOLDER / "secrets.yml", "r") as file:
+        secrets = yaml.safe_load(file)
+except IOError:
+    raise IOError("secrets.yml does not exist, see README.md")
+
+
+####################
+# GLOBAL VARIABLES #
+####################
+
+# Create SQLAlchemy engine(s)
+ESTIMATES_ENGINE = sql.create_engine(
+    "mssql+pyodbc://@"
+    + secrets["sql"]["estimates"]["server"]
+    + "/"
+    + secrets["sql"]["estimates"]["database"]
+    + "?trusted_connection=yes&driver="
+    + "ODBC Driver 17 for SQL Server",
+    fast_executemany=True,
+)
+
+GIS_ENGINE = sql.create_engine(
+    "mssql+pyodbc://@"
+    + secrets["sql"]["gis"]["server"]
+    + "/"
+    + secrets["sql"]["gis"]["database"]
+    + "?trusted_connection=yes&driver="
+    + "ODBC Driver 17 for SQL Server",
+    fast_executemany=True,
+)
