@@ -1,7 +1,7 @@
 import pathlib
 import sqlalchemy as sql
 import yaml
-from python.parsers import parse_config
+from python.parsers import parse_config, parse_run_id
 
 #########
 # PATHS #
@@ -57,3 +57,5 @@ GIS_ENGINE = sql.create_engine(
     + "ODBC Driver 17 for SQL Server",
     fast_executemany=True,
 )
+
+RUN_ID = parse_run_id(config)
