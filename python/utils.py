@@ -1,7 +1,7 @@
 import pathlib
 import sqlalchemy as sql
 import yaml
-
+from python.parsers import parse_config
 
 #########
 # PATHS #
@@ -10,12 +10,27 @@ import yaml
 # Store project root folder
 ROOT_FOLDER = pathlib.Path(__file__).parent.resolve().parent
 
+
+##################
+# CONFIGURATIONS #
+##################
+
 # Load secrets YAML file
 try:
     with open(ROOT_FOLDER / "secrets.yml", "r") as file:
         secrets = yaml.safe_load(file)
 except IOError:
     raise IOError("secrets.yml does not exist, see README.md")
+
+# Load configuration YAML file
+try:
+    with open(ROOT_FOLDER / "config.yml", "r") as file:
+        config = yaml.safe_load(file)
+except IOError:
+    raise IOError("config.yml does not exist, see README.md")
+
+# Parse the configuration YAML file and validate its contents
+parse_config(config)
 
 
 ####################
