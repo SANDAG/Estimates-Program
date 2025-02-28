@@ -1,5 +1,6 @@
 run:
   enabled: true
+  mgra: mgra15
   start_year: 2020
   end_year: 2023
   version: 0.0.0-dev

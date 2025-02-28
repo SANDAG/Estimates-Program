@@ -16,6 +16,8 @@ def parse_config(config: dict) -> None:
 
     # Parse arguments to standard run mode
     elif config["run"]["enabled"]:
+        if config["run"]["mgra"] != "mgra15":
+            raise ValueError("only 'mgra15' supported")
         if not isinstance(config["run"]["start_year"], int):
             raise ValueError("start year must be an integer")
         elif not isinstance(config["run"]["end_year"], int):
@@ -64,16 +66,17 @@ def parse_run_id(config: dict) -> int:
                 sql.text(
                     """
                         INSERT INTO [metadata].[run] (
-                            [run_id], [start_year], [end_year], [user], [date],
-                            [version], [comments], [loaded]
+                            [run_id], [mgra], [start_year], [end_year],
+                            [user], [date], [version], [comments], [loaded]
                         ) VALUES (
-                            :run_id, :start_year, :end_year, USER_NAME(),
+                            :run_id, :mgra, :start_year, :end_year, USER_NAME(),
                             GETDATE(), :version, :comments, 0
                         )
                     """
                 ),
                 {
                     "run_id": run_id,
+                    "mgra": config["run"]["mgra"],
                     "start_year": config["run"]["start_year"],
                     "end_year": config["run"]["end_year"],
                     "version": config["run"]["version"],
@@ -107,3 +110,13 @@ def parse_run_id(config: dict) -> int:
 
     else:
         raise ValueError("Either standard run mode or debug mode must be enabled")
+
+
+def parse_mgra_version(run_id: int) -> str:
+    """Parse the MGRA version from the run identifier."""
+
+    from python.utils import ESTIMATES_ENGINE  # avoid circular import
+
+    with ESTIMATES_ENGINE.connect() as conn:
+        query = sql.text("SELECT [mgra] FROM [metadata].[run] WHERE run_id = :run_id")
+        return conn.execute(query, {"run_id": run_id}).scalar()
