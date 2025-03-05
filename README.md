@@ -9,6 +9,7 @@ Set the configuration file **config.yml** parameters specific to the run in the 
 ```yaml
 run:
   enabled: true  # enable standard run mode
+  mgra: mgra15  # version of MGRA geography to use
   start_year: 2020  # first year to run
   end_year: 2023  # last year to run
   version: 0.0.0-dev  # software version
