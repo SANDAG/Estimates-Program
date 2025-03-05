@@ -11,4 +11,9 @@ run:
 debug:
   enabled: false
   run_id: null
-  year: null
+  startup: []
+  housing_and_households: []
+  population: []
+  population_by_ase: []
+  household_characteristics: []
+  staging: []
