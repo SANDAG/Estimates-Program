@@ -60,5 +60,6 @@ GIS_ENGINE = sql.create_engine(
     fast_executemany=True,
 )
 
+GIS_SERVER = _secrets["sql"]["gis"]["server"]
 RUN_ID = input_parser.parse_run_id(engine=ESTIMATES_ENGINE)
 MGRA_VERSION = input_parser.parse_mgra_version(engine=ESTIMATES_ENGINE)
