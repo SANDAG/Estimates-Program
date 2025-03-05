@@ -23,8 +23,8 @@ CREATE TABLE [inputs].[mgra] (
     [run_id] INT NOT NULL,
     [mgra] INT NOT NULL,
     [2020_census_tract] NVARCHAR(11) NOT NULL,
-    [cities_2022] NVARCHAR(15) NOT NULL,
+    [cities_2020] NVARCHAR(15) NOT NULL,
     [shape] geometry NOT NULL,
-	CONSTRAINT [pk_inputs_mgra] PRIMARY KEY ([run_id], [mgra]),
+    CONSTRAINT [pk_inputs_mgra] PRIMARY KEY ([run_id], [mgra]),
     CONSTRAINT [fk_inputs_mgra_run_id] FOREIGN KEY ([run_id]) REFERENCES [metadata].[run] ([run_id])
 ) WITH (DATA_COMPRESSION = PAGE)

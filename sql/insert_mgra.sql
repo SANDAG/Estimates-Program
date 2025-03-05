@@ -3,7 +3,7 @@ For an input MGRA alias from the [GeoAnalyst].[geography].[geography] table,
 return the MGRA zones, their shapes, and the one-to-many cross references to
 the following geographies and insert these records into [inputs].[mgra]:
 	[2020_census_tract]
-	[cities_2022]
+	[cities_2020]
 */
 
 DECLARE @run_id integer = :run_id;
@@ -37,10 +37,10 @@ with [mgra] AS (
 		[from_geo].[alias] = @mgra
 		AND [to_geo].[alias] = '2020_census_tract'
 ),
-[xref_cities_2022] AS (
+[xref_cities_2020] AS (
 	SELECT
 		[from_zone].[zone] AS [mgra],
-		[to_zone].[name] AS [cities_2022]
+		[to_zone].[name] AS [cities_2020]
 	FROM [GeoAnalyst].[geography].[xref_zone]
 	INNER JOIN [GeoAnalyst].[geography].[xref]
 		ON [xref_zone].[xref_id] = [xref].[xref_id]
@@ -54,17 +54,17 @@ with [mgra] AS (
 		ON [xref_zone].[to_zone_id] = [to_zone].[zone_id]
 	WHERE
 		[from_geo].[alias] = @mgra
-		AND [to_geo].[alias] = 'cities_2022'
+		AND [to_geo].[alias] = 'cities_2020'
 )
 INSERT INTO [inputs].[mgra]
 SELECT
 	@run_id AS [run_id],
 	CONVERT(int, [mgra].[mgra]) AS [mgra],
 	[2020_census_tract],
-	[cities_2022],
+	[cities_2020],
 	[mgra].[shape]
 FROM [mgra]
 INNER JOIN [xref_2020_census_tract]
 	ON [mgra].[mgra] = [xref_2020_census_tract].[mgra]
-INNER JOIN [xref_cities_2022]
-	ON [mgra].[mgra] = [xref_cities_2022].[mgra]
+INNER JOIN [xref_cities_2020]
+	ON [mgra].[mgra] = [xref_cities_2020].[mgra]

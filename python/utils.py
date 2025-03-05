@@ -1,7 +1,7 @@
 import pathlib
 import sqlalchemy as sql
 import yaml
-from python.parsers import parse_config, parse_mgra_version, parse_run_id
+import python.parsers as parsers
 
 #########
 # PATHS #
@@ -29,8 +29,10 @@ try:
 except IOError:
     raise IOError("config.yml does not exist, see README.md")
 
+# Initialize input parser
 # Parse the configuration YAML file and validate its contents
-parse_config(_config)
+input_parser = parsers.InputParser(config=_config)
+input_parser.parse_config()
 
 
 ####################
@@ -58,5 +60,5 @@ GIS_ENGINE = sql.create_engine(
     fast_executemany=True,
 )
 
-RUN_ID = parse_run_id(_config)
-MGRA_VERSION = parse_mgra_version(RUN_ID)
+RUN_ID = input_parser.parse_run_id(engine=ESTIMATES_ENGINE)
+MGRA_VERSION = input_parser.parse_mgra_version(engine=ESTIMATES_ENGINE)
