@@ -8,13 +8,8 @@ class InputParser:
     class also creates the run id and inserts it into the database if
     standard run mode is enabled.
 
-    The way standard run mode works is by overriding debug mode parameters.
-    Specifically, debug mode is enabled, run_id is set to a specific value,
-    module years are set to specific year ranges, and a new row is added to the
-    run metadata table.
-
     Attributes:
-        config (dict): The configuration dictionary to be parsed.
+        _yaml_config (dict): The configuration dictionary to be parsed.
         run_id (int): The run identifier parsed from the configuration.
 
     Methods:
@@ -28,8 +23,9 @@ class InputParser:
 
     def __init__(self, config: dict, engine: sql.Engine) -> None:
         """Initialize the InputParser with a configuration dictionary."""
-        self.config = config
+        self._yaml_config = config
         self.engine = engine
+        self.run_instructions = {}
         self.run_id = None
         self.mgra_version = None
 
@@ -51,9 +47,9 @@ class InputParser:
         self.run_id = self._parse_run_id()
         self.mgra_version = self._parse_mgra_version()
 
-        # As stated in the class signature, we need to override config debug
-        # values if we are trying to run everything
-        if self.config["run"]["enabled"]:
+        # Depending on what run mode we are using, our run instructions are slightly
+        # different
+        if self._yaml_config["run"]["enabled"]:
             for key in [
                 "startup",
                 "housing_and_households",
@@ -62,12 +58,22 @@ class InputParser:
                 "population_by_ase",
                 "staging",
             ]:
-                self.config["debug"][key] = list(
+                self.run_instructions[key] = list(
                     range(
-                        self.config["run"]["start_year"],
-                        self.config["run"]["end_year"] + 1,
+                        self._yaml_config["run"]["start_year"],
+                        self._yaml_config["run"]["end_year"] + 1,
                     )
                 )
+        elif self._yaml_config["debug"]["enabeled"]:
+            for key in [
+                "startup",
+                "housing_and_households",
+                "population",
+                "population_by_ase",
+                "population_by_ase",
+                "staging",
+            ]:
+                self.run_instructions[key] = self._yaml_config["debug"][key]
 
     def _check_run_id(self, engine: sql.Engine, run_id: int) -> None:
         """Check if supplied run id exists in the database."""
@@ -92,25 +98,28 @@ class InputParser:
             ValueError: If any of the configuration values are invalid.
         """
         # Check if both standard run and debug modes are enabled
-        if self.config["run"]["enabled"] & self.config["debug"]["enabled"]:
+        if self._yaml_config["run"]["enabled"] & self._yaml_config["debug"]["enabled"]:
             raise ValueError(
                 "debug mode cannot be enabled along with standard run mode"
             )
 
         # Parse arguments to standard run mode
-        elif self.config["run"]["enabled"]:
-            if self.config["run"]["mgra"] != "mgra15":
+        elif self._yaml_config["run"]["enabled"]:
+            if self._yaml_config["run"]["mgra"] != "mgra15":
                 raise ValueError("only 'mgra15' supported")
-            if not isinstance(self.config["run"]["start_year"], int):
+            if not isinstance(self._yaml_config["run"]["start_year"], int):
                 raise ValueError("start year must be an integer")
-            elif not isinstance(self.config["run"]["end_year"], int):
+            elif not isinstance(self._yaml_config["run"]["end_year"], int):
                 raise ValueError("end year must be an integer")
-            elif self.config["run"]["start_year"] > self.config["run"]["end_year"]:
+            elif (
+                self._yaml_config["run"]["start_year"]
+                > self._yaml_config["run"]["end_year"]
+            ):
                 raise ValueError("start year cannot be greater than end year")
 
         # Parse arguments to debug mode
-        elif self.config["debug"]["enabled"]:
-            if not isinstance(self.config["debug"]["run_id"], int):
+        elif self._yaml_config["debug"]["enabled"]:
+            if not isinstance(self._yaml_config["debug"]["run_id"], int):
                 raise ValueError("run_id must be an integer")
             for key in [
                 "startup",
@@ -120,7 +129,7 @@ class InputParser:
                 "household_characteristics",
                 "staging",
             ]:
-                self._check_if_list_of_ints(self.config["debug"][key], key)
+                self._check_if_list_of_ints(self._yaml_config["debug"][key], key)
 
         else:
             raise ValueError("Either standard run mode or debug mode must be enabled")
@@ -160,7 +169,7 @@ class InputParser:
             ValueError: If any of the configuration values are invalid.
         """
         # Create a new run id if standard run mode is enabled
-        if self.config["run"]["enabled"]:
+        if self._yaml_config["run"]["enabled"]:
             with self.engine.connect() as conn:
                 # Create run id from the most recent run id in the database
                 run_id = conn.execute(
@@ -182,11 +191,11 @@ class InputParser:
                     ),
                     {
                         "run_id": run_id,
-                        "mgra": self.config["run"]["mgra"],
-                        "start_year": self.config["run"]["start_year"],
-                        "end_year": self.config["run"]["end_year"],
-                        "version": self.config["run"]["version"],
-                        "comments": self.config["run"]["comments"],
+                        "mgra": self._yaml_config["run"]["mgra"],
+                        "start_year": self._yaml_config["run"]["start_year"],
+                        "end_year": self._yaml_config["run"]["end_year"],
+                        "version": self._yaml_config["run"]["version"],
+                        "comments": self._yaml_config["run"]["comments"],
                     },
                 )
 
@@ -198,15 +207,15 @@ class InputParser:
                 return run_id
 
         # Use the supplied run id if debug mode is enabled
-        elif self.config["debug"]["enabled"]:
+        elif self._yaml_config["debug"]["enabled"]:
             # Ensure supplied run id exists in the database
             self._check_run_id(
-                engine=self.engine, run_id=self.config["debug"]["run_id"]
+                engine=self.engine, run_id=self._yaml_config["debug"]["run_id"]
             )
 
             # Store the run id in the class instance and return
-            self.run_id = self.config["debug"]["run_id"]
-            return self.config["debug"]["run_id"]
+            self.run_id = self._yaml_config["debug"]["run_id"]
+            return self._yaml_config["debug"]["run_id"]
 
         else:
             raise ValueError("Either standard run mode or debug mode must be enabled")
@@ -214,11 +223,11 @@ class InputParser:
     def _parse_mgra_version(self) -> str:
         """Parse the MGRA version from the configuration file."""
         # Use the supplied mgra version if standard run mode is enabled
-        if self.config["run"]["enabled"]:
-            return self.config["run"]["mgra"]
+        if self._yaml_config["run"]["enabled"]:
+            return self._yaml_config["run"]["mgra"]
 
         # Get mgra version from database if debug mode is enabled
-        elif self.config["debug"]["enabled"]:
+        elif self._yaml_config["debug"]["enabled"]:
             # Ensure run id exists in the database
             self._check_run_id(engine=self.engine, run_id=self.run_id)
 

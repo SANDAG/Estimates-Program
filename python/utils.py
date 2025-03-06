@@ -60,6 +60,6 @@ except IOError:
 input_parser = parsers.InputParser(config=config, engine=ESTIMATES_ENGINE)
 input_parser.parse_config()
 
-CONFIG = input_parser.config
+RUN_INSTRUCTIONS = input_parser.run_instructions
 RUN_ID = input_parser.run_id
 MGRA_VERSION = input_parser.mgra_version

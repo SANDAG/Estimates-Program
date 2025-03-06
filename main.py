@@ -13,34 +13,34 @@ import python.utils as utils
 ################
 
 # Run through each module one by one
-if utils.CONFIG["debug"]["startup"]:
+if utils.RUN_INSTRUCTIONS["startup"]:
     print("Running Startup module...")
-    for year in utils.CONFIG["debug"]["startup"]:
+    for year in utils.RUN_INSTRUCTIONS["startup"]:
         print(f"\t{year}")
         pass
-if utils.CONFIG["debug"]["housing_and_households"]:
+if utils.RUN_INSTRUCTIONS["housing_and_households"]:
     print("Running Housing and Households module...")
-    for year in utils.CONFIG["debug"]["housing_and_households"]:
+    for year in utils.RUN_INSTRUCTIONS["housing_and_households"]:
         print(f"\t{year}")
         pass
-if utils.CONFIG["debug"]["population"]:
+if utils.RUN_INSTRUCTIONS["population"]:
     print("Running Population module...")
-    for year in utils.CONFIG["debug"]["population"]:
+    for year in utils.RUN_INSTRUCTIONS["population"]:
         print(f"\t{year}")
         pass
-if utils.CONFIG["debug"]["population_by_ase"]:
+if utils.RUN_INSTRUCTIONS["population_by_ase"]:
     print("Running Population by Age/Sex/Ethnicity module...")
-    for year in utils.CONFIG["debug"]["population_by_ase"]:
+    for year in utils.RUN_INSTRUCTIONS["population_by_ase"]:
         print(f"\t{year}")
         pass
-if utils.CONFIG["debug"]["household_characteristics"]:
+if utils.RUN_INSTRUCTIONS["household_characteristics"]:
     print("Running Household Characteristics module...")
-    for year in utils.CONFIG["debug"]["household_characteristics"]:
+    for year in utils.RUN_INSTRUCTIONS["household_characteristics"]:
         print(f"\t{year}")
         pass
-if utils.CONFIG["debug"]["staging"]:
+if utils.RUN_INSTRUCTIONS["staging"]:
     print("Running Staging module...")
-    for year in utils.CONFIG["debug"]["staging"]:
+    for year in utils.RUN_INSTRUCTIONS["staging"]:
         print(f"\t{year}")
         pass
 print("Complete")
