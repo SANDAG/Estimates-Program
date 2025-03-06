@@ -48,6 +48,8 @@ CREATE TABLE [#ludu] (
 )
 
 -- Create spatial index for later spatial join
+-- Bounding box coordinates from SANDAG GIS team
+-- Identical to spatial index on LUDU point layers in GIS database
 CREATE SPATIAL INDEX [sidx_tt_ludu] ON [#ludu]
 ([Shape]) USING GEOMETRY_AUTO_GRID 
 WITH (BOUNDING_BOX =(6151635.98006938, 1775442.36347014, 6613401.66775663, 2129306.52024172), CELLS_PER_OBJECT = 8)
