@@ -1,3 +1,5 @@
+"""Housing stock and household estimates module."""
+
 import sqlalchemy as sql
 import python.utils as utils
 
