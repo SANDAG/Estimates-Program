@@ -198,6 +198,44 @@ class InputParser:
                         "'start_year' and 'end_year' must both be not null"
                     )
 
+            # If we are running in debug mode with a new run_id, then ensure that the
+            # dependency chain of modules is correct. If we are in debug mode with an
+            # already existing run_id, then it is assumed that the dependency chain
+            # is already present
+            if self._yaml_config["debug"]["run_id"] is None:
+                if self._yaml_config["debug"]["household_characteristics"]:
+                    for key in [
+                        "startup",
+                        "housing_and_households",
+                        "population",
+                        "population_by_ase",
+                    ]:
+                        if not self._yaml_config["debug"][key]:
+                            raise ValueError(
+                                f"Because debug key 'household_characteristics' is "
+                                f"enabled, debug key '{key}' must also be enabled"
+                            )
+                if self._yaml_config["debug"]["population_by_ase"]:
+                    for key in ["startup", "housing_and_households", "population"]:
+                        if not self._yaml_config["debug"][key]:
+                            raise ValueError(
+                                f"Because debug key 'population_by_ase' is enabled, "
+                                f"debug key '{key}' must also be enabled"
+                            )
+                if self._yaml_config["debug"]["population"]:
+                    for key in ["startup", "housing_and_households"]:
+                        if not self._yaml_config["debug"][key]:
+                            raise ValueError(
+                                f"Because debug key 'population' is enabled, debug key "
+                                f"'{key}' must also be enabled"
+                            )
+                if self._yaml_config["debug"]["housing_and_households"]:
+                    if not self._yaml_config["debug"]["startup"]:
+                        raise ValueError(
+                            "Because debug key 'housing_and_households' is enabled, "
+                            "debug key 'startup' must also be enabled"
+                        )
+
     def _parse_run_id(self) -> int:
         """Parse the run id from the configuration file.
 
