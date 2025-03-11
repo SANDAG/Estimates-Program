@@ -73,31 +73,23 @@ class InputParser:
                 "housing_and_households",
                 "population",
                 "population_by_ase",
-                "population_by_ase",
+                "household_characteristics",
                 "staging",
             ]:
                 self.run_instructions[key] = True
         elif self._yaml_config["debug"]["enabled"]:
-            if self._yaml_config["debug"]["start_year"] is not None:
-                self.run_instructions["years"] = list(
-                    range(
-                        self._yaml_config["debug"]["start_year"],
-                        self._yaml_config["debug"]["end_year"] + 1,
-                    )
+            self.run_instructions["years"] = list(
+                range(
+                    self._debug_start_year,
+                    self._debug_end_year + 1,
                 )
-            else:
-                self.run_instructions["years"] = list(
-                    range(
-                        self._yaml_config["default"]["start_year"],
-                        self._yaml_config["default"]["end_year"] + 1,
-                    )
-                )
+            )
             for key in [
                 "startup",
                 "housing_and_households",
                 "population",
                 "population_by_ase",
-                "population_by_ase",
+                "household_characteristics",
                 "staging",
             ]:
                 self.run_instructions[key] = self._yaml_config["debug"][key]
@@ -222,9 +214,9 @@ class InputParser:
         """
         # Create a new run id if standard run mode is enabled, or if we are running a
         # subset of Estimates via debug mode
-        if (
-            self._yaml_config["run"]["enabled"]
-            or self._yaml_config["debug"]["run_id"] is not None
+        if self._yaml_config["run"]["enabled"] or (
+            self._yaml_config["debug"]["enabled"]
+            and self._yaml_config["debug"]["run_id"] is None
         ):
             with self._engine.connect() as conn:
 
@@ -232,8 +224,8 @@ class InputParser:
                 if self._yaml_config["debug"]["enabled"]:
                     comments = (
                         f"Debug: {str(self._yaml_config['debug'])}"
-                        if self._yaml_config["run"]["comments"] is None
-                        else self._yaml_config["run"]["comments"]
+                        if self._yaml_config["debug"]["comments"] is None
+                        else self._yaml_config["debug"]["comments"]
                     )
                     start_year = (
                         self._yaml_config["default"]["start_year"]
@@ -286,7 +278,7 @@ class InputParser:
                 return run_id
 
         # Use the supplied run id if debug mode is enabled
-        elif self._yaml_config["debug"]["enabled"]:
+        if self._yaml_config["debug"]["enabled"]:
             # Ensure supplied run id exists in the database
             self._check_run_id(
                 engine=self._engine, run_id=self._yaml_config["debug"]["run_id"]

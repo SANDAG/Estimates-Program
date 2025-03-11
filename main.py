@@ -19,22 +19,28 @@ for year in utils.RUN_INSTRUCTIONS["years"]:
     # Go through each module in the correct order for the specififed year
 
     # Startup module
-    print("\tRunning Startup module...")
+    if utils.RUN_INSTRUCTIONS["startup"]:
+        print("\tRunning Startup module...")
 
     # Housing and Households module
-    print("\tRunning Housing and Households module...")
+    if utils.RUN_INSTRUCTIONS["housing_and_households"]:
+        print("\tRunning Housing and Households module...")
 
     # Population module
-    print("\tRunning Population module...")
+    if utils.RUN_INSTRUCTIONS["population"]:
+        print("\tRunning Population module...")
 
     # Population by Age/Sex/Ethnicity module
-    print("\tRunning Population by Age/Sex/Ethnicity module...")
+    if utils.RUN_INSTRUCTIONS["population_by_ase"]:
+        print("\tRunning Population by Age/Sex/Ethnicity module...")
 
     # Household Characteristics module
-    print("\tRunning Household Characteristics module...")
+    if utils.RUN_INSTRUCTIONS["household_characteristics"]:
+        print("\tRunning Household Characteristics module...")
 
     # Staging module
-    print("\tRunning Staging module...")
+    if utils.RUN_INSTRUCTIONS["staging"]:
+        print("\tRunning Staging module...")
 
     # Diagnostic print for this year
     print(f"\tFinished running {year}")
