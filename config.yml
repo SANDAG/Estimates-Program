@@ -1,19 +1,22 @@
-run:
-  enabled: true
+default:
   mgra: mgra15
   start_year: 2020
   end_year: 2023
   version: 0.0.0-dev
-  comments: >-
-    This is an example run using comments
-    that span a multi-line string.
+
+run:
+  enabled: True
+  comments: TODO
 
 debug:
-  enabled: false
+  enabled: False
   run_id: null
-  startup: []
-  housing_and_households: []
-  population: []
-  population_by_ase: []
-  household_characteristics: []
-  staging: []
+  comments: null
+  start_year: null
+  end_year: null
+  startup: False
+  housing_and_households: False
+  population: False
+  population_by_ase: False
+  household_characteristics: False
+  staging: False
