@@ -56,7 +56,7 @@ class InputParser:
             None
         """
         self._validate_config()
-        self.run_id = self._parse_run_id()
+        self._parse_run_id()
         self.mgra_version = self._parse_mgra_version()
 
         # Depending on what run mode we are using, our run instructions are slightly
@@ -94,9 +94,9 @@ class InputParser:
             ]:
                 self.run_instructions[key] = self._yaml_config["debug"][key]
 
-    def _check_run_id(self, engine: sql.Engine, run_id: int) -> None:
+    def _check_run_id(self, run_id: int) -> None:
         """Check if supplied run id exists in the database."""
-        with engine.connect() as conn:
+        with self._engine.connect() as conn:
             # Ensure supplied run id exists in the database
             query = sql.text(
                 """
@@ -236,16 +236,13 @@ class InputParser:
                             "debug key 'startup' must also be enabled"
                         )
 
-    def _parse_run_id(self) -> int:
+    def _parse_run_id(self) -> None:
         """Parse the run id from the configuration file.
 
         This function will create a new run id if standard run mode is enabled.
         The new run id is generated as the maximum run id in the database plus one.
         If debug mode is enabled, the supplied run id is validated against the
         database and returned.
-
-        Args:
-            engine (sql.Engine): The SQLAlchemy engine to connect to the database.
 
         Raises:
             ValueError: If any of the configuration values are invalid.
@@ -313,7 +310,6 @@ class InputParser:
 
                 # Store the run id in the class instance and return
                 self.run_id = run_id
-                return run_id
 
         # Use the supplied run id if debug mode is enabled
         if self._yaml_config["debug"]["enabled"]:
@@ -343,10 +339,6 @@ class InputParser:
 
             # Store the run id in the class instance and return
             self.run_id = self._yaml_config["debug"]["run_id"]
-            return self._yaml_config["debug"]["run_id"]
-
-        else:
-            raise ValueError("Either standard run mode or debug mode must be enabled")
 
     def _parse_mgra_version(self) -> str:
         """Parse the MGRA version from the configuration file."""
