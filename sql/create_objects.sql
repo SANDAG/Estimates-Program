@@ -19,6 +19,28 @@ GO
 CREATE SCHEMA [inputs]
 GO
 
+CREATE TABLE [inputs].[controls_census_tract] (
+    [run_id] INT NOT NULL,
+    [year] INT NOT NULL,
+    [census_tract]  NVARCHAR(11) NOT NULL,
+    [metric] NVARCHAR(100) NOT NULL,
+    [value] FLOAT NOT NULL, 
+    INDEX [ccsi_inputs_controls_census_tract] CLUSTERED COLUMNSTORE,
+    CONSTRAINT [ixuq_inputs_controls_census_tract] UNIQUE ([run_id], [year], [census_tract], [metric]) WITH (DATA_COMPRESSION = PAGE),
+    CONSTRAINT [fk_inputs_controls_census_tract_run_id] FOREIGN KEY ([run_id]) REFERENCES [metadata].[run] ([run_id])
+)
+
+CREATE TABLE [inputs].[controls_city] (
+    [run_id] INT NOT NULL,
+    [year] INT NOT NULL,
+    [city]  NVARCHAR(15) NOT NULL,
+    [metric] NVARCHAR(100) NOT NULL,
+    [value] FLOAT NOT NULL, 
+    INDEX [ccsi_inputs_controls_city] CLUSTERED COLUMNSTORE,
+    CONSTRAINT [ixuq_inputs_controls_city] UNIQUE ([run_id], [year], [city], [metric]) WITH (DATA_COMPRESSION = PAGE),
+    CONSTRAINT [fk_inputs_controls_city_run_id] FOREIGN KEY ([run_id]) REFERENCES [metadata].[run] ([run_id])
+)
+
 CREATE TABLE [inputs].[mgra] (
     [run_id] INT NOT NULL,
     [mgra] INT NOT NULL,
