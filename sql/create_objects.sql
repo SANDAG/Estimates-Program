@@ -107,7 +107,7 @@ CREATE TABLE [outputs].[hs] (
     [year] INT NOT NULL,
     [mgra] INT NOT NULL,
     [structure_type] NVARCHAR(35) NOT NULL,
-    [hs] INT NOT NULL, 
+    [value] INT NOT NULL, 
     INDEX [ccsi_outputs_hs] CLUSTERED COLUMNSTORE,
     CONSTRAINT [ixuq_outputs_hs] UNIQUE ([run_id], [year], [mgra], [structure_type]) WITH (DATA_COMPRESSION = PAGE),
     CONSTRAINT [fk_outputs_hs_run_id] FOREIGN KEY ([run_id]) REFERENCES [metadata].[run] ([run_id]),

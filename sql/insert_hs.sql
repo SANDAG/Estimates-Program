@@ -83,7 +83,7 @@ SELECT
 	@year AS [year],
 	[#tt_shell].[mgra],
 	[#tt_shell].[structure_type],
-	ISNULL(SUM([du]), 0) AS [hs]
+	ISNULL(SUM([du]), 0) AS [value]
 FROM [#tt_shell]
 LEFT OUTER JOIN [hs]
 	ON [#tt_shell].[mgra] = [hs].[mgra]
