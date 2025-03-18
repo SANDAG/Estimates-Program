@@ -66,10 +66,29 @@ EXEC sp_executesql @qry;
 with [hs] AS (
 	SELECT
 		[mgra],
-		CASE WHEN [lu] BETWEEN 1000 AND 1119 THEN 'Single Family - Detached'
-			 WHEN [lu] BETWEEN 1120 AND 1199 THEN 'Single Family - Multiple Unit'
-			 WHEN [lu] BETWEEN 1200 AND 1299 OR [lu] > 1300 THEN 'Multifamily'
-			 WHEN [lu] = 1300 THEN 'Mobile Home'
+		CASE
+			WHEN [lu] BETWEEN 1000 AND 1119
+				OR [lu] BETWEEN 2201 AND 2301
+				OR [lu] BETWEEN 4101 AND 4120
+				OR [lu] BETWEEN 6101 AND 6109
+				OR [lu] BETWEEN 6701 AND 6703
+				OR [lu] BETWEEN 7200 AND 7211
+				OR [lu] BETWEEN 7601 AND 7609
+				OR [lu] BETWEEN 8000 AND 8003
+				THEN 'Single Family - Detached'
+			WHEN [lu] BETWEEN 1120 AND 1199
+				OR [lu] BETWEEN 2000 AND 2105
+				OR [lu] BETWEEN 5000 AND 6003
+				OR [lu] BETWEEN 6501 AND 6509
+				OR [lu] BETWEEN 6805 AND 6809
+				THEN 'Single Family - Multiple Unit'
+			WHEN [lu] BETWEEN 1200 AND 1299
+				OR [lu] BETWEEN 1401 AND 1409
+				OR [lu] BETWEEN 1501 AND 1503 
+				OR [lu] BETWEEN 9700 AND 9709
+				THEN 'Multifamily'
+			WHEN [lu] = 1300 THEN 'Mobile Home'
+	  		ELSE CONVERT(nvarchar, [lu])
 		END AS [structure_type],
 		[du]
 	FROM [inputs].[mgra]
