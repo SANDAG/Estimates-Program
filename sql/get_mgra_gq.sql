@@ -50,7 +50,9 @@ CREATE TABLE [#gq] (
 DECLARE @qry nvarchar(max) = '
 	INSERT INTO [#gq]
 	SELECT * FROM OPENQUERY([' + @gis_server + '],
-	''SELECT [gqMil], [gqCivCol], [gqOther], [Shape] FROM [SPACECORE].[gis].[GROUPQUARTERS] WHERE [effectYear] = ' + CONVERT(nvarchar, @year) + ''')
+	''SELECT [gqMil], [gqCivCol], [gqOther], [Shape]
+	  FROM [SPACECORE].[gis].[GROUPQUARTERS]
+	  WHERE [effectYear] = ' + CONVERT(nvarchar, @year) + ''')
 '
 EXEC sp_executesql @qry;
 
@@ -81,7 +83,13 @@ LEFT OUTER JOIN (
 				 ELSE 0 END
 		) AS [Group Quarters - Disabled Institutional]
 	FROM [inputs].[mgra]
-	LEFT OUTER JOIN [inputs].[special_mgras]
+	LEFT OUTER JOIN (
+		SELECT
+			[mgra15],
+			[facility_type]
+		FROM [inputs].[special_mgras]
+		WHERE @year BETWEEN [start_year] AND [end_year]
+	) AS [special_mgras]
 		ON [mgra].[mgra] = CASE WHEN @mgra_version = 'mgra15' THEN [special_mgras].[mgra15] END
 	INNER JOIN [#gq]
 		ON [mgra].[Shape].STIntersects([#gq].[Shape]) = 1
