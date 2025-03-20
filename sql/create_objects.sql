@@ -90,12 +90,24 @@ GO
 CREATE SCHEMA [outputs]
 GO
 
+CREATE TABLE [outputs].[gq] (
+    [run_id] INT NOT NULL,
+    [year] INT NOT NULL,
+    [mgra] INT NOT NULL,
+    [gq_type] NVARCHAR(45) NOT NULL,
+    [value] INT NOT NULL, 
+    INDEX [ccsi_outputs_gq] CLUSTERED COLUMNSTORE,
+    CONSTRAINT [ixuq_outputs_gq] UNIQUE ([run_id], [year], [mgra], [gq_type]) WITH (DATA_COMPRESSION = PAGE),
+    CONSTRAINT [fk_outputs_gq_run_id] FOREIGN KEY ([run_id]) REFERENCES [metadata].[run] ([run_id]),
+    CONSTRAINT [fk_outputs_gq_mgra] FOREIGN KEY ([run_id], [mgra]) REFERENCES [inputs].[mgra] ([run_id], [mgra])
+)
+
 CREATE TABLE [outputs].[hs] (
     [run_id] INT NOT NULL,
     [year] INT NOT NULL,
     [mgra] INT NOT NULL,
     [structure_type] NVARCHAR(35) NOT NULL,
-    [hs] INT NOT NULL, 
+    [value] INT NOT NULL, 
     INDEX [ccsi_outputs_hs] CLUSTERED COLUMNSTORE,
     CONSTRAINT [ixuq_outputs_hs] UNIQUE ([run_id], [year], [mgra], [structure_type]) WITH (DATA_COMPRESSION = PAGE),
     CONSTRAINT [fk_outputs_hs_run_id] FOREIGN KEY ([run_id]) REFERENCES [metadata].[run] ([run_id]),
