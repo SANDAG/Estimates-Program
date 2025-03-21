@@ -7,7 +7,7 @@ import python.utils as utils
 def insert_hs(year: int) -> None:
     """Insert housing stock by MGRA for a given year."""
     with utils.ESTIMATES_ENGINE.connect() as conn:
-        with open(utils.SQL_FOLDER / "insert_hs.sql") as file:
+        with open(utils.SQL_FOLDER / "hs_hh/insert_hs.sql") as file:
             query = sql.text(file.read())
             conn.execute(
                 query,
