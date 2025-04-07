@@ -9,7 +9,11 @@ Set the configuration file **config.yml** parameters specific to the run in the 
 The default version of the runtime configuration file is copied here, with comments explaining each and every key/value pair
 
 ```yaml
-# The 'run' section contains configuration for running every module of the Estimates
+# Configuration for what parts of the Estimates Program to run. Since this file may be
+# modified from the default settings, you can always restore to default using the copy
+# stored in README.md. For brevity, detailed comments have been removed from this file
+
+# The `run` section contains configuration for running every module of the Estimates
 # Program for a specified set of years
 run:
   
@@ -28,31 +32,41 @@ run:
   # The code version
   version: 0.0.0-dev
   
-  # (Optional) Additional notes on this run
-  comments: null
+  # Additional notes on this run
+  comments: Example comment
 
-# The 'debug' section contains configuration for running a subset of modules of the
-# Estimates Program for a given set of years. For most of these parameters, if they are
-# left as 'null', then the corresponding parameter from the 'run' section will be used
-# instead
+# The `debug` section contains configuration for running a subset of modules of the
+# Estimates Program for a given set of years. All parameters must be provided except for
+# `run_id` and `comments`. If `run_id` is `null`, then a new `run_id` will be
+# automatically created, similar to `run` mode
 debug:
   
   # Whether to use the 'debug' section. Mutually exclusive with 'run' mode
   enabled: False
   
-  # (Optional) If provided, then most parameters will be pulled from the run metadata
-  # table. If not provided, then a new 'run_id' will be automatically created
+  # (Optional) If provided, then most parameters in the 'debug' section will be pulled 
+  # from `[run].[metadata]`. If not provided, then a new 'run_id' will be automatically 
+  # created
   run_id: null
   
-  # (Optional) If provided, then will be used as is. If not provided, then the value
-  # of 'start_year' from the 'run' section will be used
-  start_year: null
+  # (Optional) The first year inclusive to start running from. If provided, then 
+  # `run_id` must be `null`. If not provided, then the `start_year` will be pulled from 
+  # the corresponding row of `[run].[metadata]`
+  start_year: 2020
   
-  # (Optional) If provided, then will be used as is. If not provided, then the value
-  # of 'end_year' from the 'run' section will be used
-  end_year: null
+  # (Optional) The last year inclusive to end running with. If provided, then `run_id` 
+  # must be `null`. If not provided, then `end_year` will be pulled from the 
+  # corresponding row of `[run].[metadata]`
+  end_year: 2023
   
-  # (Optional) Additional notes on this run
+  # (Optional) The code version. If provided, then `run_id` must be `null`. If not 
+  # provided, then `version` will be pulled from the corresponding row of 
+  # `[run].[metadata]`
+  version: 0.0.0-dev
+  
+  # (Optional) Additional notes on this run. If provided, then `run_id` must be `null`. 
+  # If not provided, then `comments` will be pulled from the corresponding row of 
+  # `[run].[metadata]`
   comments: null
   
   # Whether to run the 'startup' module

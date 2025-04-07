@@ -1,72 +1,31 @@
 # Configuration for what parts of the Estimates Program to run. Since this file may be
 # modified from the default settings, you can always restore to default using the copy
-# stored in READMD.md
+# stored in README.md. For brevity, detailed comments have been removed from this file
 
-# The 'run' section contains configuration for running every module of the Estimates
+# The `run` section contains configuration for running every module of the Estimates
 # Program for a specified set of years
 run:
-
-  # Whether to use the 'run' section. Mutually exclusive with 'debug' mode
-  enabled: False
-
-  # The MGRA series to use for this run. Currently only 'mgra15' is valid
+  enabled: True
   mgra: mgra15
-
-  # The first year inclusive to start running from
   start_year: 2020
-
-  # The last year inclusive to end running with
   end_year: 2023
-
-  # The code version
   version: 0.0.0-dev
+  comments: Example comment
 
-  # (Optional) Additional notes on this run
-  comments: null
-
-# The 'debug' section contains configuration for running a subset of modules of the
-# Estimates Program for a given set of years. For most of these parameters, if they are
-# left as 'null', then the corresponding parameter from the 'run' section will be used
-# instead
+# The `debug` section contains configuration for running a subset of modules of the
+# Estimates Program for a given set of years. All parameters must be provided except for
+# `run_id` and `comments`. If `run_id` is `null`, then a new `run_id` will be
+# automatically created, similar to `run` mode
 debug:
-
-  # Whether to use the 'debug' section. Mutually exclusive with 'run' mode
   enabled: False
-
-  # (Optional) If provided, then most parameters will be pulled from the run metadata
-  # table. If not provided, then a new 'run_id' will be automatically created
   run_id: null
-
-  # (Optional) If provided, then will be used as is. If not provided, then the value
-  # of 'start_year' from the 'run' section will be used
-  start_year: null
-
-  # (Optional) If provided, then will be used as is. If not provided, then the value
-  # of 'end_year' from the 'run' section will be used
-  end_year: null
-
-  # (Optional) Additional notes on this run
+  start_year: 2022
+  end_year: 2023
+  version: 0.0.0-dev
   comments: null
-
-  # Whether to run the 'startup' module
   startup: False
-
-  # Whether to run the 'housing_and_households' module. If enabled, then any above
-  # modules must all be enabled due to module dependencies
   housing_and_households: False
-
-  # Whether to run the 'population' module. If enabled, then any above modules must all
-  # be enabled due to module dependencies
   population: False
-
-  # Whether to run the 'population_by_ase' module. If enabled, then any above modules
-  # must all be enabled due to module dependencies
   population_by_ase: False
-
-  # Whether to run the 'household_characteristics' module. If enabled, then any above
-  # modules must all be enabled due to module dependencies
   household_characteristics: False
-
-  # Whether to run the 'staging' module. If enabled, then any above modules must all be
-  # enabled due to module dependencies
   staging: False

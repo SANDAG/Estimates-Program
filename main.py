@@ -43,7 +43,7 @@ for year in utils.RUN_INSTRUCTIONS["years"]:
         print("\tRunning Staging module...")
 
     # Diagnostic print for this year
-    print(f"\tFinished running {year}\n")
+    print(f"Finished running {year}\n")
 
 # Final print for completion
 print("Completed")
