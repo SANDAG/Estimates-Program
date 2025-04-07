@@ -5,7 +5,7 @@ import sqlalchemy as sql
 class InputParser:
     """A class to parse and validate input configurations.
 
-    The final result of created a class instance and running the 'parse_config()'
+    The final result of creating a class instance and running the 'parse_config()'
     function is:
     * (Class variable 'run_instructions') Explicit instructions on which modules to run
         on which years
@@ -127,7 +127,7 @@ class InputParser:
         if not self._config["run"]["enabled"] and not self._config["debug"]["enabled"]:
             raise ValueError("Must run in one of 'debug' and 'run' mode")
 
-        # Check all keys are present and types using Cerberus. For help, see their
+        # Check all keys are present and key types using Cerberus. For help, see their
         # website here: https://docs.python-cerberus.org/usage.html
         min_max_years = [2010, 2024]
         versions = ["0.0.0-dev"]
@@ -148,16 +148,8 @@ class InputParser:
                 "schema": {
                     "enabled": {"type": "boolean"},
                     "run_id": {"type": "integer", "nullable": True},
-                    "start_year": {
-                        "type": "integer",
-                        "min": min_max_years[0],
-                        "nullable": True,
-                    },
-                    "end_year": {
-                        "type": "integer",
-                        "max": min_max_years[1],
-                        "nullable": True,
-                    },
+                    "start_year": {"type": "integer", "min": min_max_years[0]},
+                    "end_year": {"type": "integer", "max": min_max_years[1]},
                     "version": {
                         "type": "string",
                         "allowed": versions,
@@ -177,11 +169,9 @@ class InputParser:
         if not validator.validate(self._config):
             raise ValueError(validator.errors)
 
-        # Check for contradictions in arguments
-
         # Make sure our years are not travelling backwards in time
         for run_type in ["run", "debug"]:
-            if (
+            if self._config[run_type]["enabled"] and (
                 self._config[run_type]["start_year"]
                 > self._config[run_type]["end_year"]
             ):
@@ -189,22 +179,60 @@ class InputParser:
                     f"Key 'start year' cannot be greater than key 'end year' in '{run_type}' settings"
                 )
 
-        # Check that in debug mode, if 'run_id' is provided, that all of 'start_year',
-        # 'end_year', 'version', and 'comments' are null
+        # Check that if we are in debug mode and trying to re-use a 'run_id'...
         if (
             self._config["debug"]["enabled"]
             and self._config["debug"]["run_id"] is not None
         ):
-            for key in ["start_year", "end_year", "version", "comments"]:
+            # That the provided 'run_id' is valid
+            self._check_run_id(self._config["debug"]["run_id"])
+
+            # That 'version', and 'comments' are null
+            for key in ["version", "comments"]:
                 if self._config["debug"][key] is not None:
                     raise ValueError(
                         f"If a debug 'run_id' is provided, then the debug key of "
                         f"'{key}' must be null"
                     )
 
-        # Check that in debug mode, if no 'run_id' is provided, that all of 'start_year',
-        # 'end_year', and 'version' are provided. Note that 'comments' can still be null
+            # That the 'start_year' and 'end_year' values, conform with those already
+            # in [metadata].[run]
+            with self._engine.connect() as conn:
+                existing_start_year = conn.execute(
+                    sql.text(
+                        "SELECT [start_year] FROM [metadata].[run] WHERE run_id = :run_id"
+                    ),
+                    {"run_id": self._config["debug"]["run_id"]},
+                ).scalar()
+            if self._config["debug"]["start_year"] < existing_start_year:
+                raise ValueError(
+                    f"The provided debug 'start_year' of {self._config['debug']['start_year']} "
+                    f"is less than the [metadata].[run] 'start_year' of "
+                    f"{existing_start_year} for 'run_id' {self._config["debug"]["run_id"]}"
+                )
+            else:
+                self._start_year = self._config["debug"]["start_year"]
+
+            with self._engine.connect() as conn:
+                existing_end_year = conn.execute(
+                    sql.text(
+                        "SELECT [end_year] FROM [metadata].[run] WHERE run_id = :run_id"
+                    ),
+                    {"run_id": self._config["debug"]["run_id"]},
+                ).scalar()
+            if self._config["debug"]["end_year"] > existing_end_year:
+                raise ValueError(
+                    f"The provided debug 'end_year' of {self._config['debug']['end_year']} "
+                    f"is greater than the [metadata].[run] 'end_year' of "
+                    f"{existing_end_year} for 'run_id' {self._config["debug"]["run_id"]}"
+                )
+            else:
+                self._end_year = self._config["debug"]["end_year"]
+
+        # Check that in debug mode, if no 'run_id' is provided...
         if self._config["debug"]["enabled"] and self._config["debug"]["run_id"] is None:
+            # That all of 'start_year', 'end_year', and 'version' are provided. Note
+            # that 'comments' can still be null
             for key in ["start_year", "end_year", "version"]:
                 if self._config["debug"][key] is None:
                     raise ValueError(
@@ -212,11 +240,7 @@ class InputParser:
                         f"'{key}' must be provided"
                     )
 
-        # If we are running in debug mode with a new run_id, then ensure that the
-        # dependency chain of modules is correct. If we are in debug mode with an
-        # already existing run_id, then it is assumed that the dependency chain
-        # is already present
-        if self._config["debug"]["enabled"] and self._config["debug"]["run_id"] is None:
+            # That the dependency chain of modules is correct
             if self._config["debug"]["staging"]:
                 for key in [
                     "startup",
@@ -328,34 +352,12 @@ class InputParser:
                 # Return the valid 'run_id'
                 return run_id
 
-        # Use the supplied run id if debug mode is enabled
+        # Use the supplied 'run_id' if debug mode is enabled. Note the existence of the
+        # 'run_id' has already been checked
         if (
             self._config["debug"]["enabled"]
             and self._config["debug"]["run_id"] is not None
         ):
-            # Ensure supplied run id exists in the database
-            self._check_run_id(self._config["debug"]["run_id"])
-
-            # Since the run_id exists, get the start and end year from the run metadata
-            with self._engine.connect() as conn:
-                self._start_year = conn.execute(
-                    sql.text(
-                        "SELECT [start_year] "
-                        "FROM [metadata].[run] "
-                        "WHERE run_id = :run_id"
-                    ),
-                    {"run_id": self._config["debug"]["run_id"]},
-                ).scalar()
-                self._end_year = conn.execute(
-                    sql.text(
-                        "SELECT [end_year] "
-                        "FROM [metadata].[run] "
-                        "WHERE run_id = :run_id"
-                    ),
-                    {"run_id": self._config["debug"]["run_id"]},
-                ).scalar()
-
-            # Since we have verified that this 'run_id' exists, we will use it
             return self._config["debug"]["run_id"]
 
     def _parse_mgra_version(self) -> str:

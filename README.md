@@ -13,7 +13,7 @@ The default version of the runtime configuration file is copied here, with comme
 # modified from the default settings, you can always restore to default using the copy
 # stored in README.md. For brevity, detailed comments have been removed from this file
 
-# The `run` section contains configuration for running every module of the Estimates
+# The 'run' section contains configuration for running every module of the Estimates
 # Program for a specified set of years
 run:
   
@@ -35,38 +35,32 @@ run:
   # Additional notes on this run
   comments: Example comment
 
-# The `debug` section contains configuration for running a subset of modules of the
+# The 'debug' section contains configuration for running a subset of modules of the
 # Estimates Program for a given set of years. All parameters must be provided except for
-# `run_id` and `comments`. If `run_id` is `null`, then a new `run_id` will be
-# automatically created, similar to `run` mode
+# 'run_id', 'version', and 'comments'. If 'run_id' is 'null', then a new 'run_id' will 
+# be automatically created, similar to 'run' mode
 debug:
   
   # Whether to use the 'debug' section. Mutually exclusive with 'run' mode
   enabled: False
   
   # (Optional) If provided, then most parameters in the 'debug' section will be pulled 
-  # from `[run].[metadata]`. If not provided, then a new 'run_id' will be automatically 
+  # from '[run].[metadata]'. If not provided, then a new 'run_id' will be automatically 
   # created
   run_id: null
   
-  # (Optional) The first year inclusive to start running from. If provided, then 
-  # `run_id` must be `null`. If not provided, then the `start_year` will be pulled from 
-  # the corresponding row of `[run].[metadata]`
+  # The first year inclusive and last year inclusive to run. In the case that...
+  # * The value of 'run_id' is 'null', the values will be loaded into [metadata].[run]
+  #   and will be used as is
+  # * The value of 'run_id' is not 'null', the values will be checked against the values
+  #   already in '[run].[metadata]'
   start_year: 2020
-  
-  # (Optional) The last year inclusive to end running with. If provided, then `run_id` 
-  # must be `null`. If not provided, then `end_year` will be pulled from the 
-  # corresponding row of `[run].[metadata]`
   end_year: 2023
   
-  # (Optional) The code version. If provided, then `run_id` must be `null`. If not 
-  # provided, then `version` will be pulled from the corresponding row of 
-  # `[run].[metadata]`
+  # (Optional) The code version. If provided, then 'run_id' must be 'null'
   version: 0.0.0-dev
   
-  # (Optional) Additional notes on this run. If provided, then `run_id` must be `null`. 
-  # If not provided, then `comments` will be pulled from the corresponding row of 
-  # `[run].[metadata]`
+  # (Optional) Additional notes on this run. If provided, then 'run_id' must be 'null'
   comments: null
   
   # Whether to run the 'startup' module
