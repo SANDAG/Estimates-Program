@@ -44,6 +44,9 @@ GIS_ENGINE = sql.create_engine(
     fast_executemany=True,
 )
 
+# Other SQL configuration
+GIS_SERVER = _secrets["sql"]["gis"]["server"]
+
 #########################
 # RUNTIME CONFIGURATION #
 #########################
@@ -60,6 +63,7 @@ except IOError:
 input_parser = parsers.InputParser(config=config, engine=ESTIMATES_ENGINE)
 input_parser.parse_config()
 
+# Get data from the parsed and validated configuration file
 RUN_INSTRUCTIONS = input_parser.run_instructions
 RUN_ID = input_parser.run_id
 MGRA_VERSION = input_parser.mgra_version
