@@ -14,7 +14,7 @@ SELECT
 	[year],
 	[hs].[mgra],
 	[tract],
-    [city],
+	[city],
 	[structure_type],
 	[value]
 FROM [outputs].[hs]

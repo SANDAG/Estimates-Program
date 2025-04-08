@@ -7,7 +7,19 @@ import python.utils as utils
 
 
 def calculate_hh_adjustment(households: int, housing_stock: int) -> int:
-    """Calculate adjustments to make to households."""
+    """Calculate adjustments to make to households.
+
+    Function determines amount of adjustment needed to make to households
+    to ensure that the number of households is not greater than the housing
+    stock and that the number of households is not negative.
+
+    Args:
+        households (int): number of households
+        housing_stock (int): number of housing units (stock)
+
+    Returns:
+        int: adjustment needed to make to households
+    """
     if households > housing_stock:
         return -1 * (households - housing_stock)
     elif households < 0:

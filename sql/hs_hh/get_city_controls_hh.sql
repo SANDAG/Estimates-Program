@@ -28,7 +28,7 @@ with [dof] AS (
 		[vacancy_rate]
 	FROM [socioec_data].[ca_dof].[estimates_e5]
 	WHERE
-		[estimates_id] = 12  -- E-5: Vintage 2024
+		[estimates_id] = 12  -- E-5: Vintage 2024 (2024.5.1)
 		AND [fips] = '06073'  -- San Diego County
 		AND [area_name] NOT IN ('Total Incorporated' , 'Incorporated', 'County Total')
 )

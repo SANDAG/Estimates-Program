@@ -66,7 +66,7 @@ FROM (
 				'Estimate!!Total:!!Mobile home',
 				'Estimate!!Total:!!Boat, RV, van, etc.'
 			) THEN 'Mobile Home'
-			ELSE NULL
+			ELSE NULL  -- NULL values for Margin of Error fields removed in subsequent WHERE clause
 		END AS [structure_type],
 		[value]
 	FROM [acs].[detailed].[values] AS [val]
@@ -128,7 +128,7 @@ FROM (
 					'Estimate!!Total:!!Renter-occupied housing units:!!Boat, RV, van, etc.',
 					'Estimate!!Total:!!Renter-occupied housing units:!!Mobile home') 
 				THEN 'Mobile Home'
-			ELSE NULL
+			ELSE NULL  -- NULL values for Margin of Error fields removed in subsequent WHERE clause
 		END AS [structure_type],
 		[value]
 	FROM [acs].[detailed].[values] AS [val]
