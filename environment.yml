@@ -1,4 +1,4 @@
-?name: estimates_program
+name: estimates_program
 channels:
   - defaults
   - https://repo.anaconda.com/pkgs/main
