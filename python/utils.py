@@ -11,9 +11,10 @@ import python.parsers as parsers
 ROOT_FOLDER = pathlib.Path(__file__).parent.resolve().parent
 SQL_FOLDER = ROOT_FOLDER / "sql"
 
-##################
-# CONFIGURATIONS #
-##################
+
+#####################
+# SQL CONFIGURATION #
+#####################
 
 # Load secrets YAML file
 try:
@@ -21,23 +22,6 @@ try:
         _secrets = yaml.safe_load(file)
 except IOError:
     raise IOError("secrets.yml does not exist, see README.md")
-
-# Load configuration YAML file
-try:
-    with open(ROOT_FOLDER / "config.yml", "r") as file:
-        _config = yaml.safe_load(file)
-except IOError:
-    raise IOError("config.yml does not exist, see README.md")
-
-# Initialize input parser
-# Parse the configuration YAML file and validate its contents
-input_parser = parsers.InputParser(config=_config)
-input_parser.parse_config()
-
-
-####################
-# GLOBAL VARIABLES #
-####################
 
 # Create SQLAlchemy engine(s)
 ESTIMATES_ENGINE = sql.create_engine(
@@ -60,6 +44,26 @@ GIS_ENGINE = sql.create_engine(
     fast_executemany=True,
 )
 
+# Other SQL configuration
 GIS_SERVER = _secrets["sql"]["gis"]["server"]
-RUN_ID = input_parser.parse_run_id(engine=ESTIMATES_ENGINE)
-MGRA_VERSION = input_parser.parse_mgra_version(engine=ESTIMATES_ENGINE)
+
+#########################
+# RUNTIME CONFIGURATION #
+#########################
+
+# Load configuration YAML file
+try:
+    with open(ROOT_FOLDER / "config.yml", "r") as file:
+        config = yaml.safe_load(file)
+except IOError:
+    raise IOError("config.yml does not exist, see README.md")
+
+# Initialize input parser
+# Parse the configuration YAML file and validate its contents
+input_parser = parsers.InputParser(config=config, engine=ESTIMATES_ENGINE)
+input_parser.parse_config()
+
+# Get data from the parsed and validated configuration file
+RUN_INSTRUCTIONS = input_parser.run_instructions
+RUN_ID = input_parser.run_id
+MGRA_VERSION = input_parser.mgra_version

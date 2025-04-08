@@ -1,14 +1,31 @@
+# Configuration for what parts of the Estimates Program to run. Since this file may be
+# modified from the default settings, you can always restore to default using the copy
+# stored in README.md. For brevity, detailed comments have been removed from this file
+
+# The `run` section contains configuration for running every module of the Estimates
+# Program for a specified set of years
 run:
-  enabled: true
+  enabled: True
   mgra: mgra15
   start_year: 2020
   end_year: 2023
   version: 0.0.0-dev
-  comments: >-
-    This is an example run using comments
-    that span a multi-line string.
+  comments: Example comment
 
+# The `debug` section contains configuration for running a subset of modules of the
+# Estimates Program for a given set of years. All parameters must be provided except for
+# `run_id` and `comments`. If `run_id` is `null`, then a new `run_id` will be
+# automatically created, similar to `run` mode
 debug:
-  enabled: false
+  enabled: False
   run_id: null
-  year: null
+  start_year: 2022
+  end_year: 2023
+  version: 0.0.0-dev
+  comments: null
+  startup: False
+  housing_and_households: False
+  population: False
+  population_by_ase: False
+  household_characteristics: False
+  staging: False
