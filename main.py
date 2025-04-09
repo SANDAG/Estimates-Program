@@ -8,6 +8,7 @@
 
 import python.startup as startup
 import python.hs_hh as hs_hh
+import python.pop as pop
 
 import python.utils as utils
 
@@ -36,6 +37,7 @@ for year in utils.RUN_INSTRUCTIONS["years"]:
     # Population module
     if utils.RUN_INSTRUCTIONS["population"]:
         print("\tRunning Population module...")
+        pop.run_pop(year)
 
     # Population by Age/Sex/Ethnicity module
     if utils.RUN_INSTRUCTIONS["population_by_ase"]:
