@@ -8,7 +8,24 @@ import python.utils as utils
 
 
 def run_pop(year: int):
-    """Control function to call the correct functions in the correct order"""
+    """Control function to create population by type data
+
+    TODO: Create household population
+
+    Gets GQ data from SANDAG's GQ point database and controls to DOF E-5 city level
+    group quarters counts. Results are inserted into the production database
+
+    Functionality is split apart for code encapsulation (function inputs not included):
+        _get_inputs() - Get city level group quarter controls (DOF E-5) and GQ point
+            data pre-aggregated into MGRAs
+        _create_outputs() - Control MGRA level GQ data to the city level group quarter
+            controls
+        _insert_outputs() - Store both the city level control data and controlled MGRA
+            level GQ data into the production database
+
+    Args:
+        year (int): estimates year
+    """
     pop_inputs = _get_inputs(year)
     pop_outputs = _create_outputs(year, pop_inputs)
     _insert_outputs(year, pop_outputs)
