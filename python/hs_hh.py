@@ -6,7 +6,7 @@ import sqlalchemy as sql
 import python.utils as utils
 
 
-def generate_hs_hh(year: int) -> None:
+def run_hs_hh(year: int) -> None:
     """Orchestrator function to calculate and insert housing stock and households.
 
     Inserts housing stock by MGRA from SANDAG's LUDU database for a given year

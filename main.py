@@ -7,6 +7,7 @@
 ###########
 
 import python.startup as startup
+import python.hs_hh as hs_hh
 
 import python.utils as utils
 
@@ -14,8 +15,8 @@ import python.utils as utils
 # Control flow #
 ################
 
-# Run the startup module first
-# Startup module
+# Run the Startup module first. Since this module contains only year agnostic data, it
+# is run outside of the main year loop
 if utils.RUN_INSTRUCTIONS["startup"]:
     print("Running Startup module...")
     startup.run_startup()
@@ -30,6 +31,7 @@ for year in utils.RUN_INSTRUCTIONS["years"]:
     # Housing and Households module
     if utils.RUN_INSTRUCTIONS["housing_and_households"]:
         print("\tRunning Housing and Households module...")
+        hs_hh.run_hs_hh(year)
 
     # Population module
     if utils.RUN_INSTRUCTIONS["population"]:
