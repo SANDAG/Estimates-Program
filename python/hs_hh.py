@@ -6,7 +6,7 @@ import sqlalchemy as sql
 import python.utils as utils
 
 
-def calculate_hh_adjustment(households: int, housing_stock: int) -> int:
+def _calculate_hh_adjustment(households: int, housing_stock: int) -> int:
     """Calculate adjustments to make to households.
 
     Function determines amount of adjustment needed to make to households
@@ -28,7 +28,7 @@ def calculate_hh_adjustment(households: int, housing_stock: int) -> int:
         return 0
 
 
-def insert_hs(year: int) -> None:
+def _insert_hs(year: int) -> None:
     """Insert housing stock by MGRA for a given year."""
     with utils.ESTIMATES_ENGINE.connect() as conn:
         with open(utils.SQL_FOLDER / "hs_hh/insert_hs.sql") as file:
@@ -44,18 +44,8 @@ def insert_hs(year: int) -> None:
             conn.commit()
 
 
-def insert_hh(year: int) -> None:
-    """Calculate and insert households by MGRA for a given year.
-
-    This functions takes housing stock by MGRA produced by the insert_hs()
-    function, applies both tract and jurisdiction-level occupancy
-    controls, and then runs an integerization and reallocation procedure to
-    produce total households by MGRA. Results are inserted into the production
-    database.
-
-    Args:
-        year (int): estimates year
-    """
+def _get_hh_inputs(year: int) -> dict[str, pd.DataFrame]:
+    """Get housing stock and occupancy controls."""
     with utils.ESTIMATES_ENGINE.connect() as conn:
         # Get city occupancy controls
         with open(utils.SQL_FOLDER / "hs_hh/get_city_controls_hh.sql") as file:
@@ -91,6 +81,19 @@ def insert_hh(year: int) -> None:
                 },
             )
 
+    return {
+        "city_controls": city_controls,
+        "tract_controls": tract_controls,
+        "hs": hs,
+    }
+
+
+def _create_hh(inputs: dict[str, pd.DataFrame]) -> pd.DataFrame:
+    """Calculate households by MGRA."""
+    city_controls = inputs["city_controls"]
+    tract_controls = inputs["tract_controls"]
+    hs = inputs["hs"]
+
     # Create, control, and integerize total households by MGRA for each city
     result = []
     for city in hs["city"].unique():
@@ -117,7 +120,7 @@ def insert_hh(year: int) -> None:
         # Reallocate households where households > housing stock or < 0
         # Add/remove households tracking total adjustment number
         hh["adjustment"] = hh.apply(
-            lambda x: calculate_hh_adjustment(
+            lambda x: _calculate_hh_adjustment(
                 households=x["value_hh"], housing_stock=x["value_hs"]
             ),
             axis=1,
@@ -163,9 +166,13 @@ def insert_hh(year: int) -> None:
             hh.drop(columns=["city", "value_hs"]).rename(columns={"value_hh": "value"})
         )
 
-    # Insert controls and households results to database
+    return pd.concat(result, ignore_index=True)
+
+
+def _insert_hh(inputs: dict[str, pd.DataFrame], outputs: pd.DataFrame) -> None:
+    """Insert occupancy controls and households results to database."""
     with utils.ESTIMATES_ENGINE.connect() as conn:
-        city_controls.to_sql(
+        inputs["city_controls"].to_sql(
             name="controls_city",
             con=conn,
             schema="inputs",
@@ -173,7 +180,7 @@ def insert_hh(year: int) -> None:
             index=False,
         )
 
-        tract_controls.assign(
+        inputs["tract_controls"].assign(
             metric=lambda x: "Occupancy Rate - " + x["structure_type"]
         ).drop(columns="structure_type").to_sql(
             name="controls_tract",
@@ -183,10 +190,47 @@ def insert_hh(year: int) -> None:
             index=False,
         )
 
-        pd.concat(result, ignore_index=True).to_sql(
+        outputs.to_sql(
             name="hh",
             con=conn,
             schema="outputs",
             if_exists="append",
             index=False,
         )
+
+
+def generate_hs_hh(year: int) -> None:
+    """Orchestrator function to calculate and insert housing stock and households.
+
+    Inserts housing stock by MGRA from SANDAG's LUDU database for a given year
+    into the production database. Then calculates households by MGRA using
+    the housing stock by MGRA, applying both Census tract and jurisdiction-level
+    occupancy controls, and then runs an integerization and reallocation
+    procedure to produce total households by MGRA. Results are inserted into
+    the production database.
+
+    Functionality is segmented into functions for code encapsulation:
+        _insert_hs - Insert housing stock by MGRA for a given year
+        _get_hh_inputs - Get housing stock and occupancy controls
+        _create_hh - Calculate households by MGRA applying occupancy
+            controls, integerization, and reallocation
+        _insert_hh - Insert occupancy controls and households by MGRA to
+            production database
+
+    A single utility function is also defined:
+        _calculate_hh_adjustment - Calculate adjustments to make to households
+
+    Args:
+        year (int): estimates year
+    """
+    # Create and insert housing stock by MGRA to production database
+    _insert_hs(year=year)
+
+    # Get housing stock and occupancy controls
+    hh_inputs = _get_hh_inputs(year=year)
+
+    # Calculate households by MGRA
+    hh = _create_hh(inputs=hh_inputs)
+
+    # Insert occupancy controls and households by MGRA to production database
+    _insert_hh(inputs=hh_inputs, outputs=hh)
