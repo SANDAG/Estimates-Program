@@ -6,6 +6,43 @@ import sqlalchemy as sql
 import python.utils as utils
 
 
+def generate_hs_hh(year: int) -> None:
+    """Orchestrator function to calculate and insert housing stock and households.
+
+    Inserts housing stock by MGRA from SANDAG's LUDU database for a given year
+    into the production database. Then calculates households by MGRA using
+    the housing stock by MGRA, applying both Census tract and jurisdiction-level
+    occupancy controls, and then runs an integerization and reallocation
+    procedure to produce total households by MGRA. Results are inserted into
+    the production database.
+
+    Functionality is segmented into functions for code encapsulation:
+        _insert_hs - Insert housing stock by MGRA for a given year
+        _get_hh_inputs - Get housing stock and occupancy controls
+        _create_hh - Calculate households by MGRA applying occupancy
+            controls, integerization, and reallocation
+        _insert_hh - Insert occupancy controls and households by MGRA to
+            production database
+
+    A single utility function is also defined:
+        _calculate_hh_adjustment - Calculate adjustments to make to households
+
+    Args:
+        year (int): estimates year
+    """
+    # Create and insert housing stock by MGRA to production database
+    _insert_hs(year=year)
+
+    # Get housing stock and occupancy controls
+    hh_inputs = _get_hh_inputs(year=year)
+
+    # Calculate households by MGRA
+    hh = _create_hh(inputs=hh_inputs)
+
+    # Insert occupancy controls and households by MGRA to production database
+    _insert_hh(inputs=hh_inputs, outputs=hh)
+
+
 def _calculate_hh_adjustment(households: int, housing_stock: int) -> int:
     """Calculate adjustments to make to households.
 
@@ -197,40 +234,3 @@ def _insert_hh(inputs: dict[str, pd.DataFrame], outputs: pd.DataFrame) -> None:
             if_exists="append",
             index=False,
         )
-
-
-def generate_hs_hh(year: int) -> None:
-    """Orchestrator function to calculate and insert housing stock and households.
-
-    Inserts housing stock by MGRA from SANDAG's LUDU database for a given year
-    into the production database. Then calculates households by MGRA using
-    the housing stock by MGRA, applying both Census tract and jurisdiction-level
-    occupancy controls, and then runs an integerization and reallocation
-    procedure to produce total households by MGRA. Results are inserted into
-    the production database.
-
-    Functionality is segmented into functions for code encapsulation:
-        _insert_hs - Insert housing stock by MGRA for a given year
-        _get_hh_inputs - Get housing stock and occupancy controls
-        _create_hh - Calculate households by MGRA applying occupancy
-            controls, integerization, and reallocation
-        _insert_hh - Insert occupancy controls and households by MGRA to
-            production database
-
-    A single utility function is also defined:
-        _calculate_hh_adjustment - Calculate adjustments to make to households
-
-    Args:
-        year (int): estimates year
-    """
-    # Create and insert housing stock by MGRA to production database
-    _insert_hs(year=year)
-
-    # Get housing stock and occupancy controls
-    hh_inputs = _get_hh_inputs(year=year)
-
-    # Calculate households by MGRA
-    hh = _create_hh(inputs=hh_inputs)
-
-    # Insert occupancy controls and households by MGRA to production database
-    _insert_hh(inputs=hh_inputs, outputs=hh)
