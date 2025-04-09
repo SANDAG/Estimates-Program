@@ -88,7 +88,7 @@ with [hs] AS (
 				OR [lu] BETWEEN 9700 AND 9709
 				THEN 'Multifamily'
 			WHEN [lu] = 1300 THEN 'Mobile Home'
-	  		ELSE CONVERT(nvarchar, [lu])
+			ELSE CONVERT(nvarchar, [lu])
 		END AS [structure_type],
 		[du]
 	FROM [inputs].[mgra]

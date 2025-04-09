@@ -19,7 +19,7 @@ def insert_gq(year: int) -> None:
     """
     with utils.ESTIMATES_ENGINE.connect() as conn:
         # Get city total group quarters controls
-        with open(utils.SQL_FOLDER / "get_city_controls_gq.sql") as file:
+        with open(utils.SQL_FOLDER / "pop_type/get_city_controls_gq.sql") as file:
             city_controls = pd.read_sql_query(
                 sql=sql.text(file.read()),
                 con=conn,
@@ -30,7 +30,7 @@ def insert_gq(year: int) -> None:
             )
 
         # Get raw group quarters data
-        with open(utils.SQL_FOLDER / "get_mgra_gq.sql") as file:
+        with open(utils.SQL_FOLDER / "pop_type/get_mgra_gq.sql") as file:
             gq = pd.read_sql_query(
                 sql=sql.text(file.read()),
                 con=conn,
