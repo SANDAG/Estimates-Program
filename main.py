@@ -6,21 +6,26 @@
 # Imports #
 ###########
 
+import python.startup as startup
+
 import python.utils as utils
 
 ################
 # Control flow #
 ################
 
+# Run the startup module first
+# Startup module
+if utils.RUN_INSTRUCTIONS["startup"]:
+    print("Running Startup module...")
+    startup.run_startup()
+    print()
+
 # Loop through the years first
 for year in utils.RUN_INSTRUCTIONS["years"]:
     print(f"Running {year}...")
 
-    # Go through each module in the correct order for the specififed year
-
-    # Startup module
-    if utils.RUN_INSTRUCTIONS["startup"]:
-        print("\tRunning Startup module...")
+    # Go through each module in the correct order for the specified year
 
     # Housing and Households module
     if utils.RUN_INSTRUCTIONS["housing_and_households"]:
