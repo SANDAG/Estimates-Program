@@ -8,7 +8,7 @@
 
 import python.startup as startup
 import python.hs_hh as hs_hh
-import python.pop as pop
+import python.pop_type as pop
 
 import python.utils as utils
 
