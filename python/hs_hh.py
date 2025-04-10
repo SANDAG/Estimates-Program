@@ -1,6 +1,6 @@
 # Container for the Housing Stock and Households module. See the Estimates-Program wiki
 # page for more details:
-# https://github.com/SANDAG/Estimates-Program/wiki/Population-by-Type
+# https://github.com/SANDAG/Estimates-Program/wiki/Housing-and-Households
 
 import iteround
 import pandas as pd
