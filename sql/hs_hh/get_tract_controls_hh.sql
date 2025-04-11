@@ -26,7 +26,10 @@ SELECT
 	[structure_type]
 INTO [#tt_shell]
 FROM (
-	SELECT DISTINCT [2020_census_tract] AS [tract]  -- TODO: use CASE statement reverting to [2010_census_tract] for years 2010-2019
+	SELECT DISTINCT
+		CASE WHEN @year BETWEEN 2010 AND 2019 THEN [2010_census_tract]
+		     WHEN @year BETWEEN 2020 AND 2029 THEN [2020_census_tract]
+			 ELSE NULL END AS [tract]
 	FROM [inputs].[mgra]
 	WHERE [run_id] = @run_id
 ) AS [tracts]
