@@ -4,19 +4,13 @@
 import sqlalchemy as sql
 import python.utils as utils
 
+
 def run_startup():
     """Control function to call the correct functions in the correct order"""
-    _get_inputs()
-    _create_outputs()
+    # Startup requires no input data
+    # Startup requires no processing of input data
     _insert_outputs()
 
-def _get_inputs():
-    """Get input data related to the Startup module"""
-    pass
-
-def _create_outputs():
-    """Create output data related to the Startup module"""
-    pass
 
 def _insert_outputs():
     """Insert output data related to the Startup module"""

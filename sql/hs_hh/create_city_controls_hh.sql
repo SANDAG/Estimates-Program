@@ -32,6 +32,9 @@ with [dof] AS (
 		AND [fips] = '06073'  -- San Diego County
 		AND [area_name] NOT IN ('Total Incorporated' , 'Incorporated', 'County Total')
 )
+
+-- Insert the controls into the table
+INSERT INTO [inputs].[controls_city]
 SELECT
 	@run_id AS [run_id],
 	@year AS [year],
