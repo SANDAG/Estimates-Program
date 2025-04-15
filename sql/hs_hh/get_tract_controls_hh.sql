@@ -178,14 +178,11 @@ with [rate_region] AS (
 		[#units].[tract],
 		[#units].[structure_type]
 )
-
--- Insert tract occupancy rates into the inputs table
-INSERT INTO [inputs].[controls_census_tract]
 SELECT
 	@run_id AS [run_id],
     @year AS [year],
 	[#tt_shell].[tract],
-	CONCAT('Occupancy Rate - ', [#tt_shell].[structure_type]) AS [metric],
+	[#tt_shell].[structure_type],
 	CASE WHEN [rate_tract].[occupancy_rate] IS NULL
 			THEN [rate_region].[occupancy_rate]
 		 ELSE [rate_tract].[occupancy_rate]

@@ -32,19 +32,17 @@ def run_hs_hh(year: int) -> None:
     Args:
         year (int): estimates year
     """
-    # get_inputs()
-    # create_outputs()
-    # insert_outputs()
+    # Create and insert housing stock by MGRA to production database
+    _insert_hs(year=year)
 
-    # Housing Stock must be completed before Households can be run
-    # Housing Stock requires no input data
-    # Housing Stock requires no processing of input data
-    _hs_insert_outputs(year=year)
+    # Get housing stock and occupancy controls
+    hh_inputs = _get_hh_inputs(year=year)
 
-    # Now that Housing Stock has been inserted, we can work on Households
-    hh_inputs = _hh_get_inputs(year=year)
-    hh = _hh_create_outputs(inputs=hh_inputs)
-    _hh_insert_outputs(outputs=hh)
+    # Calculate households by MGRA
+    hh = _create_hh(inputs=hh_inputs)
+
+    # Insert occupancy controls and households by MGRA to production database
+    _insert_hh(inputs=hh_inputs, outputs=hh)
 
 
 def _calculate_hh_adjustment(households: int, housing_stock: int) -> int:
@@ -69,7 +67,7 @@ def _calculate_hh_adjustment(households: int, housing_stock: int) -> int:
         return 0
 
 
-def _hs_insert_outputs(year: int) -> None:
+def _insert_hs(year: int) -> None:
     """Insert housing stock by MGRA for a given year."""
     with utils.ESTIMATES_ENGINE.connect() as conn:
         with open(utils.SQL_FOLDER / "hs_hh/create_mgra_hs.sql") as file:
@@ -85,44 +83,30 @@ def _hs_insert_outputs(year: int) -> None:
             conn.commit()
 
 
-def _hh_get_inputs(year: int) -> dict[str, pd.DataFrame]:
+def _get_hh_inputs(year: int) -> dict[str, pd.DataFrame]:
     """Get housing stock and occupancy controls."""
     with utils.ESTIMATES_ENGINE.connect() as conn:
         # Get city occupancy controls
-        with open(utils.SQL_FOLDER / "hs_hh/create_city_controls_hh.sql") as file:
-            query = sql.text(file.read())
-            conn.execute(query, {"run_id": utils.RUN_ID, "year": year})
-            conn.commit()
-        city_controls = pd.read_sql_query(
-            f"SELECT * "
-            f"FROM [inputs].[controls_city] "
-            f"WHERE [run_id] = {utils.RUN_ID} AND [year] = {year}",
-            con=conn,
-        )
-
-        # Get tract occupancy controls. In order to easily join on the housing stock
-        # data, we need to remove the "Occupancy Rate - " part of the [metric] column
-        with open(utils.SQL_FOLDER / "hs_hh/create_tract_controls_hh.sql") as file:
-            query = sql.text(file.read())
-            conn.execute(query, {"run_id": utils.RUN_ID, "year": year})
-            conn.commit()
-        tract_controls = (
-            pd.read_sql_query(
-                f"SELECT * "
-                f"FROM [inputs].[controls_census_tract]"
-                f"WHERE [metric] LIKE 'Occupancy Rate%'"
-                f"    AND [run_id] = {utils.RUN_ID} AND [year] = {year}",
+        with open(utils.SQL_FOLDER / "hs_hh/get_city_controls_hh.sql") as file:
+            city_controls = pd.read_sql_query(
+                sql=sql.text(file.read()),
                 con=conn,
+                params={
+                    "run_id": utils.RUN_ID,
+                    "year": year,
+                },
             )
-            .assign(
-                metric=lambda df: df["metric"]
-                .str.split("-")
-                .str[1:]
-                .str.join("-")
-                .str.strip()
+
+        # Get tract occupancy controls
+        with open(utils.SQL_FOLDER / "hs_hh/get_tract_controls_hh.sql") as file:
+            tract_controls = pd.read_sql_query(
+                sql=sql.text(file.read()),
+                con=conn,
+                params={
+                    "run_id": utils.RUN_ID,
+                    "year": year,
+                },
             )
-            .rename(columns={"metric": "structure_type"})
-        )
 
         # Get housing stock output data
         with open(utils.SQL_FOLDER / "hs_hh/get_mgra_hs.sql") as file:
@@ -143,7 +127,7 @@ def _hh_get_inputs(year: int) -> dict[str, pd.DataFrame]:
     }
 
 
-def _hh_create_outputs(inputs: dict[str, pd.DataFrame]) -> pd.DataFrame:
+def _create_hh(inputs: dict[str, pd.DataFrame]) -> pd.DataFrame:
     """Calculate households by MGRA."""
     city_controls = inputs["city_controls"]
     tract_controls = inputs["tract_controls"]
@@ -157,11 +141,11 @@ def _hh_create_outputs(inputs: dict[str, pd.DataFrame]) -> pd.DataFrame:
             hs[hs["city"] == city]
             .merge(
                 right=tract_controls,
-                on=["run_id", "year", "census_tract", "structure_type"],
+                on=["run_id", "year", "tract", "structure_type"],
                 suffixes=["_hs", "_rate"],
             )
             .assign(value_hh=lambda x: x["value_hs"] * x["value_rate"])
-            .drop(columns=["census_tract", "value_rate"])
+            .drop(columns=["tract", "value_rate"])
         )
 
         # Compute overall occupancy rate and apply city occupancy control
@@ -224,9 +208,26 @@ def _hh_create_outputs(inputs: dict[str, pd.DataFrame]) -> pd.DataFrame:
     return pd.concat(result, ignore_index=True)
 
 
-def _hh_insert_outputs(outputs: pd.DataFrame) -> None:
+def _insert_hh(inputs: dict[str, pd.DataFrame], outputs: pd.DataFrame) -> None:
     """Insert occupancy controls and households results to database."""
     with utils.ESTIMATES_ENGINE.connect() as conn:
+        inputs["city_controls"].to_sql(
+            name="controls_city",
+            con=conn,
+            schema="inputs",
+            if_exists="append",
+            index=False,
+        )
+
+        inputs["tract_controls"].assign(
+            metric=lambda x: "Occupancy Rate - " + x["structure_type"]
+        ).drop(columns="structure_type").to_sql(
+            name="controls_tract",
+            con=conn,
+            schema="inputs",
+            if_exists="append",
+            index=False,
+        )
 
         outputs.to_sql(
             name="hh",
