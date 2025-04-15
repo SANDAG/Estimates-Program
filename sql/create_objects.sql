@@ -43,8 +43,8 @@ CREATE TABLE [inputs].[controls_city] (
 
 CREATE TABLE [inputs].[mgra] (
     [run_id] INT NOT NULL,
-    [mgra] INT NOT NULL,    
-	[2010_census_tract] NVARCHAR(11) NOT NULL,
+    [mgra] INT NOT NULL,
+    [2010_census_tract] NVARCHAR(11) NOT NULL,
     [2020_census_tract] NVARCHAR(11) NOT NULL,
     [cities_2020] NVARCHAR(15) NOT NULL,
     [shape] geometry NOT NULL,
