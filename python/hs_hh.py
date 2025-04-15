@@ -1,4 +1,6 @@
-"""Housing stock and household estimates module."""
+# Container for the Housing Stock and Households module. See the Estimates-Program wiki
+# page for more details:
+# https://github.com/SANDAG/Estimates-Program/wiki/Housing-and-Households
 
 import iteround
 import pandas as pd
@@ -6,7 +8,7 @@ import sqlalchemy as sql
 import python.utils as utils
 
 
-def generate_hs_hh(year: int) -> None:
+def run_hs_hh(year: int) -> None:
     """Orchestrator function to calculate and insert housing stock and households.
 
     Inserts housing stock by MGRA from SANDAG's LUDU database for a given year
@@ -68,7 +70,7 @@ def _calculate_hh_adjustment(households: int, housing_stock: int) -> int:
 def _insert_hs(year: int) -> None:
     """Insert housing stock by MGRA for a given year."""
     with utils.ESTIMATES_ENGINE.connect() as conn:
-        with open(utils.SQL_FOLDER / "hs_hh/insert_hs.sql") as file:
+        with open(utils.SQL_FOLDER / "hs_hh/create_mgra_hs.sql") as file:
             query = sql.text(file.read())
             conn.execute(
                 query,
@@ -134,7 +136,7 @@ def _create_hh(inputs: dict[str, pd.DataFrame]) -> pd.DataFrame:
     # Create, control, and integerize total households by MGRA for each city
     result = []
     for city in hs["city"].unique():
-        # Apply tract-level occcupancy controls by structure type
+        # Apply tract-level occupancy controls by structure type
         hh = (
             hs[hs["city"] == city]
             .merge(

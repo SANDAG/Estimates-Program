@@ -60,6 +60,7 @@ INSERT INTO [inputs].[mgra]
 SELECT
 	@run_id AS [run_id],
 	CONVERT(int, [mgra].[mgra]) AS [mgra],
+	'null' AS [2010_census_tract],
 	[2020_census_tract],
 	[cities_2020],
 	[mgra].[shape]

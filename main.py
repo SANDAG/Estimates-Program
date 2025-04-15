@@ -6,29 +6,38 @@
 # Imports #
 ###########
 
+import python.startup as startup
+import python.hs_hh as hs_hh
+import python.pop_type as pop
+
 import python.utils as utils
 
 ################
 # Control flow #
 ################
 
+# Run the Startup module first. Since this module contains only year agnostic data, it
+# is run outside of the main year loop
+if utils.RUN_INSTRUCTIONS["startup"]:
+    print("Running Startup module...")
+    startup.run_startup()
+    print()
+
 # Loop through the years first
 for year in utils.RUN_INSTRUCTIONS["years"]:
     print(f"Running {year}...")
 
-    # Go through each module in the correct order for the specififed year
-
-    # Startup module
-    if utils.RUN_INSTRUCTIONS["startup"]:
-        print("\tRunning Startup module...")
+    # Go through each module in the correct order for the specified year
 
     # Housing and Households module
     if utils.RUN_INSTRUCTIONS["housing_and_households"]:
         print("\tRunning Housing and Households module...")
+        hs_hh.run_hs_hh(year)
 
     # Population module
     if utils.RUN_INSTRUCTIONS["population"]:
         print("\tRunning Population module...")
+        pop.run_pop(year)
 
     # Population by Age/Sex/Ethnicity module
     if utils.RUN_INSTRUCTIONS["population_by_ase"]:
