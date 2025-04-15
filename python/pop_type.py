@@ -28,7 +28,7 @@ def run_pop(year: int):
     """
     # Start with Group Quarters
     gq_inputs = _get_gq_inputs(year)
-    gq_outputs = _create_gq_outputs(year, gq_inputs)
+    gq_outputs = _create_gq_outputs(gq_inputs)
     _insert_gq_outputs(year, gq_outputs)
 
     # Then do Household Population
@@ -69,9 +69,7 @@ def _get_gq_inputs(year: int) -> dict[str, pd.DataFrame]:
     return gq_inputs
 
 
-def _create_gq_outputs(
-    year: int, gq_inputs: dict[str, pd.DataFrame]
-) -> dict[str, pd.DataFrame]:
+def _create_gq_outputs(gq_inputs: dict[str, pd.DataFrame]) -> dict[str, pd.DataFrame]:
     """Create output data related to the Population by Type module"""
 
     # Control and integerize group quarters data
@@ -126,21 +124,19 @@ def _get_hhp_inputs(year: int) -> dict[str, pd.DataFrame]:
     hhp_inputs = {}
 
     with utils.ESTIMATES_ENGINE.connect() as conn:
-        # Get city total group quarters controls
-        # with open(utils.SQL_FOLDER / "pop_type/get_city_controls_gq.sql") as file:
-        #     hhp_inputs["city_controls"] = pd.read_sql_query(
-        #         sql=sql.text(file.read()),
-        #         con=conn,
-        #         params={
-        #             "run_id": utils.RUN_ID,
-        #             "year": year,
-        #         },
-        #     )
+        # Get city total household population controls
+        with open(utils.SQL_FOLDER / "pop_type/get_city_controls_hhp.sql") as file:
+            hhp_inputs["city_controls"] = pd.read_sql_query(
+                sql=sql.text(file.read()),
+                con=conn,
+                params={
+                    "run_id": utils.RUN_ID,
+                    "year": year,
+                },
+            )
 
         # Get tract level household size controls
-        with open(
-            utils.SQL_FOLDER / "pop_type/get_tract_controls_household_size.sql"
-        ) as file:
+        with open(utils.SQL_FOLDER / "pop_type/get_tract_controls_hhs.sql") as file:
             hhp_inputs["tract_controls"] = pd.read_sql_query(
                 sql=sql.text(file.read()),
                 con=conn,
