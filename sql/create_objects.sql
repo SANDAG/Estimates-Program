@@ -127,3 +127,15 @@ CREATE TABLE [outputs].[hs] (
     CONSTRAINT [fk_outputs_hs_mgra] FOREIGN KEY ([run_id], [mgra]) REFERENCES [inputs].[mgra] ([run_id], [mgra])
 )
 GO
+
+CREATE TABLE [outputs].[hhp] (
+    [run_id] INT NOT NULL,
+    [year] INT NOT NULL,
+    [mgra] INT NOT NULL,
+    [value] INT NOT NULL,
+    INDEX [ccsi_outputs_hh] CLUSTERED COLUMNSTORE,
+    CONSTRAINT [ixuq_outputs_hhp] UNIQUE ([run_id], [year], [mgra]) WITH (DATA_COMPRESSION = PAGE),
+    CONSTRAINT [fk_outputs_hhp_run_id] FOREIGN KEY ([run_id]) REFERENCES [metadata].[run] ([run_id]),
+    CONSTRAINT [fk_outputs_hhp_mgra] FOREIGN KEY ([run_id], [mgra]) REFERENCES [inputs].[mgra] ([run_id], [mgra])
+)
+GO
