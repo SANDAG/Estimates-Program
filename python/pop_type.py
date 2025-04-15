@@ -26,21 +26,25 @@ def run_pop(year: int):
     Args:
         year (int): estimates year
     """
-    pop_inputs = _get_inputs(year)
-    pop_outputs = _create_outputs(year, pop_inputs)
-    _insert_outputs(year, pop_outputs)
+    # Start with Group Quarters
+    gq_inputs = _get_gq_inputs(year)
+    gq_outputs = _create_gq_outputs(year, gq_inputs)
+    _insert_gq_outputs(year, gq_outputs)
+
+    # Then do Household Population
+    hhp_inputs = _get_hhp_inputs(year)
 
 
-def _get_inputs(year: int) -> dict[str, pd.DataFrame]:
+def _get_gq_inputs(year: int) -> dict[str, pd.DataFrame]:
     """Get input data related to the Population by Type module"""
 
     # Store all intput data here
-    pop_inputs = {}
+    gq_inputs = {}
 
     with utils.ESTIMATES_ENGINE.connect() as conn:
         # Get city total group quarters controls
         with open(utils.SQL_FOLDER / "pop_type/get_city_controls_gq.sql") as file:
-            pop_inputs["city_controls"] = pd.read_sql_query(
+            gq_inputs["city_controls"] = pd.read_sql_query(
                 sql=sql.text(file.read()),
                 con=conn,
                 params={
@@ -51,7 +55,7 @@ def _get_inputs(year: int) -> dict[str, pd.DataFrame]:
 
         # Get raw group quarters data
         with open(utils.SQL_FOLDER / "pop_type/get_mgra_gq.sql") as file:
-            pop_inputs["gq"] = pd.read_sql_query(
+            gq_inputs["gq"] = pd.read_sql_query(
                 sql=sql.text(file.read()),
                 con=conn,
                 params={
@@ -62,19 +66,19 @@ def _get_inputs(year: int) -> dict[str, pd.DataFrame]:
                 },
             )
 
-    return pop_inputs
+    return gq_inputs
 
 
-def _create_outputs(
-    year: int, pop_inputs: dict[str, pd.DataFrame]
+def _create_gq_outputs(
+    year: int, gq_inputs: dict[str, pd.DataFrame]
 ) -> dict[str, pd.DataFrame]:
     """Create output data related to the Population by Type module"""
 
     # Control and integerize group quarters data
-    for city in pop_inputs["gq"]["city"].unique():
-        values = pop_inputs["gq"][pop_inputs["gq"]["city"] == city]["value"]
-        control = pop_inputs["city_controls"][
-            pop_inputs["city_controls"]["city"] == city
+    for city in gq_inputs["gq"]["city"].unique():
+        values = gq_inputs["gq"][gq_inputs["gq"]["city"] == city]["value"]
+        control = gq_inputs["city_controls"][
+            gq_inputs["city_controls"]["city"] == city
         ]["value"].values[0]
 
         # Scale values to match control
@@ -86,19 +90,19 @@ def _create_outputs(
             values = 0
 
         # Update values in the DataFrame
-        pop_inputs["gq"].loc[pop_inputs["gq"]["city"] == city, "value"] = values
+        gq_inputs["gq"].loc[gq_inputs["gq"]["city"] == city, "value"] = values
 
-    # The variable is still called pop_inputs but it has been modified into the output
+    # The variable is still called gq_inputs but it has been modified into the output
     # data
-    return pop_inputs
+    return gq_inputs
 
 
-def _insert_outputs(year: int, pop_outputs: dict[str, pd.DataFrame]) -> None:
+def _insert_gq_outputs(year: int, gq_outputs: dict[str, pd.DataFrame]) -> None:
     """Insert output data related to the Population by Type module"""
 
     # Insert controls and group quarters results to database
     with utils.ESTIMATES_ENGINE.connect() as conn:
-        pop_outputs["city_controls"].to_sql(
+        gq_outputs["city_controls"].to_sql(
             name="controls_city",
             con=conn,
             schema="inputs",
@@ -106,10 +110,44 @@ def _insert_outputs(year: int, pop_outputs: dict[str, pd.DataFrame]) -> None:
             index=False,
         )
 
-        pop_outputs["gq"].drop(columns="city").to_sql(
+        gq_outputs["gq"].drop(columns="city").to_sql(
             name="gq",
             con=conn,
             schema="outputs",
             if_exists="append",
             index=False,
         )
+
+
+def _get_hhp_inputs(year: int) -> dict[str, pd.DataFrame]:
+    """Get input data related to the Population by Type module"""
+
+    # Store all intput data here
+    hhp_inputs = {}
+
+    with utils.ESTIMATES_ENGINE.connect() as conn:
+        # Get city total group quarters controls
+        # with open(utils.SQL_FOLDER / "pop_type/get_city_controls_gq.sql") as file:
+        #     hhp_inputs["city_controls"] = pd.read_sql_query(
+        #         sql=sql.text(file.read()),
+        #         con=conn,
+        #         params={
+        #             "run_id": utils.RUN_ID,
+        #             "year": year,
+        #         },
+        #     )
+
+        # Get tract level household size controls
+        with open(
+            utils.SQL_FOLDER / "pop_type/get_tract_controls_household_size.sql"
+        ) as file:
+            hhp_inputs["tract_controls"] = pd.read_sql_query(
+                sql=sql.text(file.read()),
+                con=conn,
+                params={
+                    "run_id": utils.RUN_ID,
+                    "year": year,
+                },
+            )
+
+    return hhp_inputs
