@@ -19,15 +19,15 @@ GO
 CREATE SCHEMA [inputs]
 GO
 
-CREATE TABLE [inputs].[controls_census_tract] (
+CREATE TABLE [inputs].[controls_tract] (
     [run_id] INT NOT NULL,
     [year] INT NOT NULL,
-    [census_tract]  NVARCHAR(11) NOT NULL,
+    [tract]  NVARCHAR(11) NOT NULL,
     [metric] NVARCHAR(100) NOT NULL,
     [value] FLOAT NOT NULL, 
-    INDEX [ccsi_inputs_controls_census_tract] CLUSTERED COLUMNSTORE,
-    CONSTRAINT [ixuq_inputs_controls_census_tract] UNIQUE ([run_id], [year], [census_tract], [metric]) WITH (DATA_COMPRESSION = PAGE),
-    CONSTRAINT [fk_inputs_controls_census_tract_run_id] FOREIGN KEY ([run_id]) REFERENCES [metadata].[run] ([run_id])
+    INDEX [ccsi_inputs_controls_tract] CLUSTERED COLUMNSTORE,
+    CONSTRAINT [ixuq_inputs_controls_tract] UNIQUE ([run_id], [year], [tract], [metric]) WITH (DATA_COMPRESSION = PAGE),
+    CONSTRAINT [fk_inputs_controls_tract_run_id] FOREIGN KEY ([run_id]) REFERENCES [metadata].[run] ([run_id])
 )
 
 CREATE TABLE [inputs].[controls_city] (
@@ -43,7 +43,8 @@ CREATE TABLE [inputs].[controls_city] (
 
 CREATE TABLE [inputs].[mgra] (
     [run_id] INT NOT NULL,
-    [mgra] INT NOT NULL,
+    [mgra] INT NOT NULL,    
+	[2010_census_tract] NVARCHAR(11) NOT NULL,
     [2020_census_tract] NVARCHAR(11) NOT NULL,
     [cities_2020] NVARCHAR(15) NOT NULL,
     [shape] geometry NOT NULL,
