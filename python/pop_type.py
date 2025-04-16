@@ -8,35 +8,42 @@ import python.utils as utils
 
 
 def run_pop(year: int):
-    """Control function to create population by type data
+    """Control function to create population by type (GQ and HHP) data
 
-    Gets GQ data from SANDAG's GQ point database and controls to DOF E-5 city level
-    group quarters counts. Results are inserted into the production database
+    Create MGRA GQ data and store into the production database. Also create MGRA HHP
+    data and store into the production database. See the wiki linked at the top of this
+    file for additional details
 
     Functionality is split apart for code encapsulation (function inputs not included):
-        _get_inputs() - Get city level group quarter controls (DOF E-5) and GQ point
+        _get_gq_inputs() - Get city level group quarter controls (DOF E-5) and GQ point
             data pre-aggregated into MGRAs
-        _create_outputs() - Control MGRA level GQ data to the city level group quarter
-            controls
-        _insert_outputs() - Store both the city level control data and controlled MGRA
-            level GQ data into the production database
+        _create_gq_outputs() - Control MGRA level GQ data to the city level group
+            quarter controls
+        _insert_gq_outputs() - Store both the city level control data and controlled
+            MGRA level GQ data into the production database
+        _get_hhp_inputs() - Get city level household population controls (DOF E-5),
+            MGRA level households, and tract level household size
+        _create_hhp_outputs() - Compute MGRA household population, then control to
+            city level household population
+        _insert_hhp_outputs() - Store certain household population input/output data to
+            the production database
 
     Args:
         year (int): estimates year
     """
     # Start with Group Quarters
     gq_inputs = _get_gq_inputs(year)
-    gq_outputs = _create_gq_outputs(gq_inputs)
-    _insert_gq_outputs(year, gq_outputs)
+    gq = _create_gq_outputs(gq_inputs)
+    _insert_gq_data(year, gq_inputs, gq)
 
     # Then do Household Population
     hhp_inputs = _get_hhp_inputs(year)
     hhp = _create_hhp_outputs(hhp_inputs)
-    _insert_hhp_outputs(year, hhp_inputs, hhp)
+    _insert_hhp_data(year, hhp_inputs, hhp)
 
 
 def _get_gq_inputs(year: int) -> dict[str, pd.DataFrame]:
-    """Get input data related to the Population by Type module"""
+    """Get input data related to MGRA group quarters"""
 
     # Store all intput data here
     gq_inputs = {}
@@ -69,38 +76,46 @@ def _get_gq_inputs(year: int) -> dict[str, pd.DataFrame]:
     return gq_inputs
 
 
-def _create_gq_outputs(gq_inputs: dict[str, pd.DataFrame]) -> dict[str, pd.DataFrame]:
-    """Create output data related to the Population by Type module"""
+def _create_gq_outputs(gq_inputs: dict[str, pd.DataFrame]) -> pd.DataFrame:
+    """Create MGRA group quarters"""
+
+    # Load input data into separate variables for cleaner manipulation
+    city_controls = gq_inputs["city_controls"]
+    gq = gq_inputs["gq"]
+
+    # Store results here
+    results = []
 
     # Control and integerize group quarters data
-    for city in gq_inputs["gq"]["city"].unique():
-        values = gq_inputs["gq"][gq_inputs["gq"]["city"] == city]["value"]
-        control = gq_inputs["city_controls"][
-            gq_inputs["city_controls"]["city"] == city
-        ]["value"].values[0]
+    for city in gq["city"].unique():
+
+        # Copy the necessary input data for this city
+        city_gq = gq[gq["city"] == city].copy(deep=True)
+        city_control = city_controls[city_controls["city"] == city]["value"].values[0]
 
         # Scale values to match control
-        if control > 0:
-            values = control / values.sum() * values
-            values = iteround.saferound(values, places=0)
-            values = [int(f) for f in values]
+        if city_control > 0:
+            multiplier = city_control / city_gq["value"].sum()
+            city_gq["value"] *= multiplier
+            city_gq["value"] = iteround.saferound(city_gq["value"], places=0)
         else:
-            values = 0
+            city_gq["value"] = 0
 
-        # Update values in the DataFrame
-        gq_inputs["gq"].loc[gq_inputs["gq"]["city"] == city, "value"] = values
+        # Store results for this city
+        results.append(city_gq)
 
-    # The variable is still called gq_inputs but it has been modified into the output
-    # data
-    return gq_inputs
+    # Combine the data for each city together
+    return pd.concat(results, ignore_index=True)
 
 
-def _insert_gq_outputs(year: int, gq_outputs: dict[str, pd.DataFrame]) -> None:
-    """Insert output data related to the Population by Type module"""
+def _insert_gq_data(
+    year: int, gq_inputs: dict[str, pd.DataFrame], gq: pd.DataFrame
+) -> None:
+    """Insert both input and output data for MGRA group quarters"""
 
     # Insert controls and group quarters results to database
     with utils.ESTIMATES_ENGINE.connect() as conn:
-        gq_outputs["city_controls"].to_sql(
+        gq_inputs["city_controls"].to_sql(
             name="controls_city",
             con=conn,
             schema="inputs",
@@ -108,7 +123,7 @@ def _insert_gq_outputs(year: int, gq_outputs: dict[str, pd.DataFrame]) -> None:
             index=False,
         )
 
-        gq_outputs["gq"].drop(columns="city").to_sql(
+        gq_inputs["gq"].drop(columns="city").to_sql(
             name="gq",
             con=conn,
             schema="outputs",
@@ -118,7 +133,7 @@ def _insert_gq_outputs(year: int, gq_outputs: dict[str, pd.DataFrame]) -> None:
 
 
 def _get_hhp_inputs(year: int) -> dict[str, pd.DataFrame]:
-    """Get input data related to the Population by Type module"""
+    """Get input data related to MGRA household population"""
 
     # Store all intput data here
     hhp_inputs = {}
@@ -208,7 +223,7 @@ def _create_hhp_outputs(hhp_inputs: dict[str, pd.DataFrame]) -> pd.DataFrame:
             .drop(columns=["tract", "value_hhs"])
         )
 
-        # Compute the difference between our initial estimate of hhp and the control
+        # Compute the difference between our initial estimate of HHP and the control
         # value from DOF
         current_hhp = hhp["value_hhp"].sum()
         control_hhp = city_controls[city_controls["city"] == city]["value"].values[0]
@@ -274,10 +289,10 @@ def _create_hhp_outputs(hhp_inputs: dict[str, pd.DataFrame]) -> pd.DataFrame:
     return pd.concat(results, ignore_index=True)
 
 
-def _insert_hhp_outputs(
+def _insert_hhp_data(
     year: int, hhp_inputs: dict[str, pd.DataFrame], hhp: pd.DataFrame
 ) -> None:
-    """Insert data related to household population"""
+    """Insert intput and output data related to household population"""
 
     # Insert controls and group quarters results to database
     with utils.ESTIMATES_ENGINE.connect() as conn:
