@@ -22,9 +22,9 @@ DECLARE @year integer = :year;
 
 -- Build the expected return table of Tracts
 SELECT
-    CASE
-        WHEN @year BETWEEN 2010 AND 2019 THEN DISTINCT [2010_census_tract]
-        WHEN @year BETWEEN 2020 AND 2029 THEN DISTINCT [2020_census_tract]
+    DISTINCT CASE
+        WHEN @year BETWEEN 2010 AND 2019 THEN [2010_census_tract]
+        WHEN @year BETWEEN 2020 AND 2029 THEN [2020_census_tract]
         ELSE NULL
     END AS [tract]
 INTO [#tt_shell]
