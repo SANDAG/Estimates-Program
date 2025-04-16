@@ -21,7 +21,9 @@ FROM [outputs].[hs]
 LEFT OUTER JOIN (
 	SELECT
 		[mgra],
-		[2020_census_tract] AS [tract],  -- TODO: use CASE statement reverting to [2010_census_tract] for years 2010-2019
+		CASE WHEN @year BETWEEN 2010 AND 2019 THEN [2010_census_tract]
+		     WHEN @year BETWEEN 2020 AND 2029 THEN [2020_census_tract]
+			 ELSE NULL END AS [tract],
         CASE WHEN @mgra_version = 'mgra15' THEN [cities_2020] ELSE NULL END AS [city]
 	FROM [inputs].[mgra]
 	WHERE [run_id] = @run_id
