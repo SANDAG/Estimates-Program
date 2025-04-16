@@ -22,13 +22,16 @@ DECLARE @year integer = :year;
 
 -- Build the expected return table of Tracts
 SELECT
-    -- TODO: use CASE statement reverting to [2010_census_tract] for years 2010-2019
-    DISTINCT [2020_census_tract] AS [tract]
+    CASE
+        WHEN @year BETWEEN 2010 AND 2019 THEN DISTINCT [2010_census_tract]
+        WHEN @year BETWEEN 2020 AND 2029 THEN DISTINCT [2020_census_tract]
+        ELSE NULL
+    END AS [tract]
 INTO [#tt_shell]
 FROM [inputs].[mgra]
 WHERE [run_id] = @run_id;
 
--- Prepare intermediary results from ACS datasets
+-- Prepare intermediary results from ACS datasets --------------------------------------
 -- 5-year ACS Detailed Table B25032 - Tenure by Units in Structure
 SELECT
     [tract],
@@ -79,14 +82,20 @@ FROM (
 ) AS [b09019]
 GROUP BY [tract];
 
--- Create household size
+-- Create household size ---------------------------------------------------------------
 -- Calculate regional household size
 DECLARE @regional_hhs FLOAT = 1.0
     * (SELECT SUM([hhp]) FROM [#household_population])
     / (SELECT SUM([hh]) FROM [#occupied]);
 
 -- Calculate census tract household size
-with [rate_tract] AS (
+SELECT
+    @run_id AS [run_id],
+    @year AS [year],
+    [#tt_shell].[tract],
+    ISNULL([rate_tract].[household_size], @regional_hhs) AS [value]
+FROM [#tt_shell]
+LEFT OUTER JOIN (
     SELECT
         [#occupied].[tract],
         CASE
@@ -96,14 +105,7 @@ with [rate_tract] AS (
     FROM [#occupied]
     LEFT OUTER JOIN [#household_population]
         ON [#occupied].[tract] = [#household_population].[tract]
-)
-SELECT
-    @run_id AS [run_id],
-    @year AS [year],
-    [#tt_shell].[tract],
-    ISNULL([rate_tract].[household_size], @regional_hhs) AS [value]
-FROM [#tt_shell]
-LEFT OUTER JOIN [rate_tract]
+) AS [rate_tract]
     ON [#tt_shell].[tract] = [rate_tract].[tract];
 
 

@@ -10,9 +10,10 @@ import python.utils as utils
 def run_pop(year: int):
     """Control function to create population by type (GQ and HHP) data
 
-    Create MGRA GQ data and store into the production database. Also create MGRA HHP
-    data and store into the production database. See the wiki linked at the top of this
-    file for additional details
+    Get MGRA group quarters input data, create the output data, then load both into the
+    production database. Also get MGRA household population input data, create the
+    output data, then load both into the production database. See the wiki linked at the
+    top of this file for additional details.
 
     Functionality is split apart for code encapsulation (function inputs not included):
         _get_gq_inputs() - Get city level group quarter controls (DOF E-5) and GQ point
@@ -123,7 +124,7 @@ def _insert_gq_data(
             index=False,
         )
 
-        gq_inputs["gq"].drop(columns="city").to_sql(
+        gq.drop(columns="city").to_sql(
             name="gq",
             con=conn,
             schema="outputs",
@@ -163,7 +164,7 @@ def _get_hhp_inputs(year: int) -> dict[str, pd.DataFrame]:
 
         # Get MGRA level households
         with open(utils.SQL_FOLDER / "pop_type/get_mgra_hh.sql") as file:
-            hhp_inputs["mgra_hh"] = pd.read_sql_query(
+            hhp_inputs["hh"] = pd.read_sql_query(
                 sql=sql.text(file.read()),
                 con=conn,
                 params={
@@ -206,7 +207,7 @@ def _create_hhp_outputs(hhp_inputs: dict[str, pd.DataFrame]) -> pd.DataFrame:
     # Load input data into separate variables for cleaner manipulation
     city_controls = hhp_inputs["city_controls"]
     tract_controls = hhp_inputs["tract_controls"]
-    hh = hhp_inputs["mgra_hh"]
+    hh = hhp_inputs["hh"]
 
     # Control the household population in each city to DOF. Store results separately
     # and join together at the end for cleaner code
@@ -233,8 +234,8 @@ def _create_hhp_outputs(hhp_inputs: dict[str, pd.DataFrame]) -> pd.DataFrame:
         # Integerize household population while preserving the total amount
         hhp["value_hhp"] = iteround.saferound(hhp["value_hhp"], places=0)
 
-        # Reallocate household population where it is less than zero or where there is
-        # household population but no households
+        # Reallocate household population which contradicts the number of households.
+        # See the _calculate_hhp_adjustment() function for exact situations
         hhp["adjustment"] = hhp.apply(
             lambda x: _calculate_hhp_adjustment(hhp=x["value_hhp"], hh=x["value_hh"]),
             axis=1,
@@ -249,7 +250,8 @@ def _create_hhp_outputs(hhp_inputs: dict[str, pd.DataFrame]) -> pd.DataFrame:
 
             # If the adjustment amount is positive, that means we need to subtract
             # household population from MGRAs to exactly match control totals. We cannot
-            # decrease household population to be below the number of households
+            # decrease household population to be below the number of households. Note
+            # this also prevents decreasing household population to below zero
             if adjustment > 0:
                 condition = hhp["value_hhp"] > hhp["value_hh"]
                 factor = -1
