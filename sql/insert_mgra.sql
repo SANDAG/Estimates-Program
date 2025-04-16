@@ -37,6 +37,8 @@ with [mgra] AS (
 	WHERE
 		[from_geo].[alias] = @mgra
 		AND [to_geo].[alias] = '2010_census_tract'
+		AND CASE WHEN @mgra = 'mgra15' THEN 25  -- One to one xref between Series 15 MGRA and 2010 census tract
+		    ELSE NULL END = [xref].[xref_id]
 ),
 [xref_2020_census_tract] AS (
 	SELECT
