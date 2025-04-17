@@ -5,7 +5,9 @@
 import iteround
 import pandas as pd
 import sqlalchemy as sql
+
 import python.utils as utils
+import python.tests as tests
 
 
 def run_hs_hh(year: int) -> None:
@@ -96,6 +98,7 @@ def _get_hh_inputs(year: int) -> dict[str, pd.DataFrame]:
                     "year": year,
                 },
             )
+        tests.validate_row_count("City Controls Households", city_controls, ["city"])
 
         # Get tract occupancy controls
         with open(utils.SQL_FOLDER / "hs_hh/get_tract_controls_hh.sql") as file:
@@ -107,6 +110,12 @@ def _get_hh_inputs(year: int) -> dict[str, pd.DataFrame]:
                     "year": year,
                 },
             )
+        tests.validate_row_count(
+            "Tract Controls Occupancy Rate",
+            tract_controls,
+            ["tract", "structure_type"],
+            year,
+        )
 
         # Get housing stock output data
         with open(utils.SQL_FOLDER / "hs_hh/get_mgra_hs.sql") as file:
@@ -119,6 +128,7 @@ def _get_hh_inputs(year: int) -> dict[str, pd.DataFrame]:
                     "mgra_version": utils.MGRA_VERSION,
                 },
             )
+        tests.validate_row_count("MGRA Housing Stock", hs, ["mgra", "structure_type"])
 
     return {
         "city_controls": city_controls,
@@ -229,6 +239,7 @@ def _insert_hh(inputs: dict[str, pd.DataFrame], outputs: pd.DataFrame) -> None:
             index=False,
         )
 
+        tests.validate_row_count("MGRA Households", outputs, ["mgra", "structure_type"])
         outputs.to_sql(
             name="hh",
             con=conn,

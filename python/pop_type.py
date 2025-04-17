@@ -4,7 +4,9 @@
 import iteround
 import pandas as pd
 import sqlalchemy as sql
+
 import python.utils as utils
+import python.tests as tests
 
 
 def run_pop(year: int):
@@ -46,13 +48,10 @@ def run_pop(year: int):
 def _get_gq_inputs(year: int) -> dict[str, pd.DataFrame]:
     """Get input data related to MGRA group quarters"""
 
-    # Store all intput data here
-    gq_inputs = {}
-
     with utils.ESTIMATES_ENGINE.connect() as conn:
         # Get city total group quarters controls
         with open(utils.SQL_FOLDER / "pop_type/get_city_controls_gq.sql") as file:
-            gq_inputs["city_controls"] = pd.read_sql_query(
+            city_controls = pd.read_sql_query(
                 sql=sql.text(file.read()),
                 con=conn,
                 params={
@@ -60,10 +59,11 @@ def _get_gq_inputs(year: int) -> dict[str, pd.DataFrame]:
                     "year": year,
                 },
             )
+        tests.validate_row_count("City Controls GQ", city_controls, ["city"])
 
         # Get raw group quarters data
         with open(utils.SQL_FOLDER / "pop_type/get_mgra_gq.sql") as file:
-            gq_inputs["gq"] = pd.read_sql_query(
+            gq = pd.read_sql_query(
                 sql=sql.text(file.read()),
                 con=conn,
                 params={
@@ -73,8 +73,9 @@ def _get_gq_inputs(year: int) -> dict[str, pd.DataFrame]:
                     "gis_server": utils.GIS_SERVER,
                 },
             )
+        tests.validate_row_count("MGRA GQ raw", gq, ["mgra", "gq_type"])
 
-    return gq_inputs
+    return {"city_controls": city_controls, "gq": gq}
 
 
 def _create_gq_outputs(gq_inputs: dict[str, pd.DataFrame]) -> pd.DataFrame:
@@ -124,6 +125,7 @@ def _insert_gq_data(
             index=False,
         )
 
+        tests.validate_row_count("MGRA GQ controlled", gq, ["mgra", "gq_type"])
         gq.drop(columns="city").to_sql(
             name="gq",
             con=conn,
@@ -136,13 +138,10 @@ def _insert_gq_data(
 def _get_hhp_inputs(year: int) -> dict[str, pd.DataFrame]:
     """Get input data related to MGRA household population"""
 
-    # Store all intput data here
-    hhp_inputs = {}
-
     with utils.ESTIMATES_ENGINE.connect() as conn:
         # Get city total household population controls
         with open(utils.SQL_FOLDER / "pop_type/get_city_controls_hhp.sql") as file:
-            hhp_inputs["city_controls"] = pd.read_sql_query(
+            city_controls = pd.read_sql_query(
                 sql=sql.text(file.read()),
                 con=conn,
                 params={
@@ -150,10 +149,11 @@ def _get_hhp_inputs(year: int) -> dict[str, pd.DataFrame]:
                     "year": year,
                 },
             )
+        tests.validate_row_count("City Controls HHP", city_controls, ["city"])
 
         # Get tract level household size controls
         with open(utils.SQL_FOLDER / "pop_type/get_tract_controls_hhs.sql") as file:
-            hhp_inputs["tract_controls"] = pd.read_sql_query(
+            tract_controls = pd.read_sql_query(
                 sql=sql.text(file.read()),
                 con=conn,
                 params={
@@ -161,10 +161,11 @@ def _get_hhp_inputs(year: int) -> dict[str, pd.DataFrame]:
                     "year": year,
                 },
             )
+        tests.validate_row_count("Tract Controls HHS", tract_controls, ["tract"], year)
 
         # Get MGRA level households
         with open(utils.SQL_FOLDER / "pop_type/get_mgra_hh.sql") as file:
-            hhp_inputs["hh"] = pd.read_sql_query(
+            hh = pd.read_sql_query(
                 sql=sql.text(file.read()),
                 con=conn,
                 params={
@@ -173,8 +174,9 @@ def _get_hhp_inputs(year: int) -> dict[str, pd.DataFrame]:
                     "mgra_version": utils.MGRA_VERSION,
                 },
             )
+        tests.validate_row_count("MGRA HH", hh, ["mgra"])
 
-    return hhp_inputs
+    return {"city_controls": city_controls, "tract_controls": tract_controls, "hh": hh}
 
 
 def _calculate_hhp_adjustment(hhp: int, hh: int) -> int:
@@ -296,7 +298,7 @@ def _insert_hhp_data(
 ) -> None:
     """Insert intput and output data related to household population"""
 
-    # Insert controls and group quarters results to database
+    # Insert input and output data to database
     with utils.ESTIMATES_ENGINE.connect() as conn:
         hhp_inputs["city_controls"].to_sql(
             name="controls_city",
@@ -314,6 +316,7 @@ def _insert_hhp_data(
             index=False,
         )
 
+        tests.validate_row_count("MGRA HHP", hhp, ["mgra"])
         hhp.to_sql(
             name="hhp", con=conn, schema="outputs", if_exists="append", index=False
         )
