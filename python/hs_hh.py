@@ -99,6 +99,7 @@ def _get_hh_inputs(year: int) -> dict[str, pd.DataFrame]:
                 },
             )
         tests.validate_row_count("City Controls Households", city_controls, ["city"])
+        tests.validate_negative_null("City Controls Households", city_controls)
 
         # Get tract occupancy controls
         with open(utils.SQL_FOLDER / "hs_hh/get_tract_controls_hh.sql") as file:
@@ -116,6 +117,7 @@ def _get_hh_inputs(year: int) -> dict[str, pd.DataFrame]:
             ["tract", "structure_type"],
             year,
         )
+        tests.validate_negative_null("Tract Controls Occupancy Rate", tract_controls)
 
         # Get housing stock output data
         with open(utils.SQL_FOLDER / "hs_hh/get_mgra_hs.sql") as file:
@@ -129,6 +131,7 @@ def _get_hh_inputs(year: int) -> dict[str, pd.DataFrame]:
                 },
             )
         tests.validate_row_count("MGRA Housing Stock", hs, ["mgra", "structure_type"])
+        tests.validate_negative_null("MGRA Housing Stock", hs)
 
     return {
         "city_controls": city_controls,
@@ -240,6 +243,7 @@ def _insert_hh(inputs: dict[str, pd.DataFrame], outputs: pd.DataFrame) -> None:
         )
 
         tests.validate_row_count("MGRA Households", outputs, ["mgra", "structure_type"])
+        tests.validate_negative_null("MGRA Households", outputs)
         outputs.to_sql(
             name="hh",
             con=conn,

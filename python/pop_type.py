@@ -60,6 +60,7 @@ def _get_gq_inputs(year: int) -> dict[str, pd.DataFrame]:
                 },
             )
         tests.validate_row_count("City Controls GQ", city_controls, ["city"])
+        tests.validate_negative_null("City Controls GQ", city_controls)
 
         # Get raw group quarters data
         with open(utils.SQL_FOLDER / "pop_type/get_mgra_gq.sql") as file:
@@ -74,6 +75,7 @@ def _get_gq_inputs(year: int) -> dict[str, pd.DataFrame]:
                 },
             )
         tests.validate_row_count("MGRA GQ raw", gq, ["mgra", "gq_type"])
+        tests.validate_negative_null("MGRA GQ raw", gq)
 
     return {"city_controls": city_controls, "gq": gq}
 
@@ -126,6 +128,7 @@ def _insert_gq_data(
         )
 
         tests.validate_row_count("MGRA GQ controlled", gq, ["mgra", "gq_type"])
+        tests.validate_negative_null("MGRA GQ controlled", gq)
         gq.drop(columns="city").to_sql(
             name="gq",
             con=conn,
@@ -150,6 +153,7 @@ def _get_hhp_inputs(year: int) -> dict[str, pd.DataFrame]:
                 },
             )
         tests.validate_row_count("City Controls HHP", city_controls, ["city"])
+        tests.validate_negative_null("City Controls HHP", city_controls)
 
         # Get tract level household size controls
         with open(utils.SQL_FOLDER / "pop_type/get_tract_controls_hhs.sql") as file:
@@ -162,6 +166,7 @@ def _get_hhp_inputs(year: int) -> dict[str, pd.DataFrame]:
                 },
             )
         tests.validate_row_count("Tract Controls HHS", tract_controls, ["tract"], year)
+        tests.validate_negative_null("Tract Controls HHS", tract_controls)
 
         # Get MGRA level households
         with open(utils.SQL_FOLDER / "pop_type/get_mgra_hh.sql") as file:
@@ -175,6 +180,7 @@ def _get_hhp_inputs(year: int) -> dict[str, pd.DataFrame]:
                 },
             )
         tests.validate_row_count("MGRA HH", hh, ["mgra"])
+        tests.validate_negative_null("MGRA HH", hh)
 
     return {"city_controls": city_controls, "tract_controls": tract_controls, "hh": hh}
 
@@ -317,6 +323,7 @@ def _insert_hhp_data(
         )
 
         tests.validate_row_count("MGRA HHP", hhp, ["mgra"])
+        tests.validate_negative_null("MGRA HHP", hhp)
         hhp.to_sql(
             name="hhp", con=conn, schema="outputs", if_exists="append", index=False
         )
