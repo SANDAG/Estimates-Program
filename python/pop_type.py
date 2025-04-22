@@ -37,12 +37,12 @@ def run_pop(year: int):
     # Start with Group Quarters
     gq_inputs = _get_gq_inputs(year)
     gq = _create_gq_outputs(gq_inputs)
-    _insert_gq_data(year, gq_inputs, gq)
+    _insert_gq_data(gq_inputs, gq)
 
     # Then do Household Population
     hhp_inputs = _get_hhp_inputs(year)
     hhp = _create_hhp_outputs(hhp_inputs)
-    _insert_hhp_data(year, hhp_inputs, hhp)
+    _insert_hhp_data(hhp_inputs, hhp)
 
 
 def _get_gq_inputs(year: int) -> dict[str, pd.DataFrame]:
@@ -59,7 +59,7 @@ def _get_gq_inputs(year: int) -> dict[str, pd.DataFrame]:
                     "year": year,
                 },
             )
-        tests.validate_row_count("City Controls GQ", city_controls, ["city"])
+        tests.validate_row_count("City Controls GQ", city_controls, {"city"})
         tests.validate_negative_null("City Controls GQ", city_controls)
 
         # Get raw group quarters data
@@ -74,7 +74,7 @@ def _get_gq_inputs(year: int) -> dict[str, pd.DataFrame]:
                     "gis_server": utils.GIS_SERVER,
                 },
             )
-        tests.validate_row_count("MGRA GQ raw", gq, ["mgra", "gq_type"])
+        tests.validate_row_count("MGRA GQ raw", gq, {"mgra", "gq_type"})
         tests.validate_negative_null("MGRA GQ raw", gq)
 
     return {"city_controls": city_controls, "gq": gq}
@@ -112,9 +112,7 @@ def _create_gq_outputs(gq_inputs: dict[str, pd.DataFrame]) -> pd.DataFrame:
     return pd.concat(results, ignore_index=True)
 
 
-def _insert_gq_data(
-    year: int, gq_inputs: dict[str, pd.DataFrame], gq: pd.DataFrame
-) -> None:
+def _insert_gq_data(gq_inputs: dict[str, pd.DataFrame], gq: pd.DataFrame) -> None:
     """Insert both input and output data for MGRA group quarters"""
 
     # Insert controls and group quarters results to database
@@ -127,7 +125,7 @@ def _insert_gq_data(
             index=False,
         )
 
-        tests.validate_row_count("MGRA GQ controlled", gq, ["mgra", "gq_type"])
+        tests.validate_row_count("MGRA GQ controlled", gq, {"mgra", "gq_type"})
         tests.validate_negative_null("MGRA GQ controlled", gq)
         gq.drop(columns="city").to_sql(
             name="gq",
@@ -152,7 +150,7 @@ def _get_hhp_inputs(year: int) -> dict[str, pd.DataFrame]:
                     "year": year,
                 },
             )
-        tests.validate_row_count("City Controls HHP", city_controls, ["city"])
+        tests.validate_row_count("City Controls HHP", city_controls, {"city"})
         tests.validate_negative_null("City Controls HHP", city_controls)
 
         # Get tract level household size controls
@@ -165,7 +163,7 @@ def _get_hhp_inputs(year: int) -> dict[str, pd.DataFrame]:
                     "year": year,
                 },
             )
-        tests.validate_row_count("Tract Controls HHS", tract_controls, ["tract"], year)
+        tests.validate_row_count("Tract Controls HHS", tract_controls, {"tract"}, year)
         tests.validate_negative_null("Tract Controls HHS", tract_controls)
 
         # Get MGRA level households
@@ -179,7 +177,7 @@ def _get_hhp_inputs(year: int) -> dict[str, pd.DataFrame]:
                     "mgra_version": utils.MGRA_VERSION,
                 },
             )
-        tests.validate_row_count("MGRA HH", hh, ["mgra"])
+        tests.validate_row_count("MGRA HH", hh, {"mgra"})
         tests.validate_negative_null("MGRA HH", hh)
 
     return {"city_controls": city_controls, "tract_controls": tract_controls, "hh": hh}
@@ -299,9 +297,7 @@ def _create_hhp_outputs(hhp_inputs: dict[str, pd.DataFrame]) -> pd.DataFrame:
     return pd.concat(results, ignore_index=True)
 
 
-def _insert_hhp_data(
-    year: int, hhp_inputs: dict[str, pd.DataFrame], hhp: pd.DataFrame
-) -> None:
+def _insert_hhp_data(hhp_inputs: dict[str, pd.DataFrame], hhp: pd.DataFrame) -> None:
     """Insert intput and output data related to household population"""
 
     # Insert input and output data to database
@@ -322,7 +318,7 @@ def _insert_hhp_data(
             index=False,
         )
 
-        tests.validate_row_count("MGRA HHP", hhp, ["mgra"])
+        tests.validate_row_count("MGRA HHP", hhp, {"mgra"})
         tests.validate_negative_null("MGRA HHP", hhp)
         hhp.to_sql(
             name="hhp", con=conn, schema="outputs", if_exists="append", index=False

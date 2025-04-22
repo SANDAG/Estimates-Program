@@ -98,7 +98,7 @@ def _get_hh_inputs(year: int) -> dict[str, pd.DataFrame]:
                     "year": year,
                 },
             )
-        tests.validate_row_count("City Controls Households", city_controls, ["city"])
+        tests.validate_row_count("City Controls Households", city_controls, {"city"})
         tests.validate_negative_null("City Controls Households", city_controls)
 
         # Get tract occupancy controls
@@ -114,7 +114,7 @@ def _get_hh_inputs(year: int) -> dict[str, pd.DataFrame]:
         tests.validate_row_count(
             "Tract Controls Occupancy Rate",
             tract_controls,
-            ["tract", "structure_type"],
+            {"tract", "structure_type"},
             year,
         )
         tests.validate_negative_null("Tract Controls Occupancy Rate", tract_controls)
@@ -130,7 +130,7 @@ def _get_hh_inputs(year: int) -> dict[str, pd.DataFrame]:
                     "mgra_version": utils.MGRA_VERSION,
                 },
             )
-        tests.validate_row_count("MGRA Housing Stock", hs, ["mgra", "structure_type"])
+        tests.validate_row_count("MGRA Housing Stock", hs, {"mgra", "structure_type"})
         tests.validate_negative_null("MGRA Housing Stock", hs)
 
     return {
@@ -190,13 +190,13 @@ def _create_hh(inputs: dict[str, pd.DataFrame]) -> pd.DataFrame:
                 condition = hh["value_hh"] > 0
                 factor = -1
             # If adjustment was negative then add
-            if adjustment < 0:
+            elif adjustment < 0:
                 condition = hh["value_hh"] < hh["value_hs"]
                 factor = 1
             else:
                 continue
 
-            # Adjust possible records prioritizing largest households
+            # Adjust possible records prioritizing the largest households
             records = int(min(len(hh.index), abs(adjustment)))
             if records > 0:
                 indices = (
@@ -242,7 +242,7 @@ def _insert_hh(inputs: dict[str, pd.DataFrame], outputs: pd.DataFrame) -> None:
             index=False,
         )
 
-        tests.validate_row_count("MGRA Households", outputs, ["mgra", "structure_type"])
+        tests.validate_row_count("MGRA Households", outputs, {"mgra", "structure_type"})
         tests.validate_negative_null("MGRA Households", outputs)
         outputs.to_sql(
             name="hh",

@@ -28,7 +28,7 @@ CREATE TABLE [inputs].[controls_tract] (
     INDEX [ccsi_inputs_controls_tract] CLUSTERED COLUMNSTORE,
     CONSTRAINT [ixuq_inputs_controls_tract] UNIQUE ([run_id], [year], [tract], [metric]) WITH (DATA_COMPRESSION = PAGE),
     CONSTRAINT [fk_inputs_controls_tract_run_id] FOREIGN KEY ([run_id]) REFERENCES [metadata].[run] ([run_id]),
-    CONSTRAINT [non_negative_inputs_controls_tract] CHECK ([value] >= 0)
+    CONSTRAINT [chk_non_negative_inputs_controls_tract] CHECK ([value] >= 0)
 )
 
 CREATE TABLE [inputs].[controls_city] (
@@ -40,7 +40,7 @@ CREATE TABLE [inputs].[controls_city] (
     INDEX [ccsi_inputs_controls_city] CLUSTERED COLUMNSTORE,
     CONSTRAINT [ixuq_inputs_controls_city] UNIQUE ([run_id], [year], [city], [metric]) WITH (DATA_COMPRESSION = PAGE),
     CONSTRAINT [fk_inputs_controls_city_run_id] FOREIGN KEY ([run_id]) REFERENCES [metadata].[run] ([run_id]),
-    CONSTRAINT [non_negative_inputs_controls_city] CHECK ([value] >= 0)
+    CONSTRAINT [chk_non_negative_inputs_controls_city] CHECK ([value] >= 0)
 )
 
 CREATE TABLE [inputs].[mgra] (
@@ -104,7 +104,7 @@ CREATE TABLE [outputs].[gq] (
     CONSTRAINT [ixuq_outputs_gq] UNIQUE ([run_id], [year], [mgra], [gq_type]) WITH (DATA_COMPRESSION = PAGE),
     CONSTRAINT [fk_outputs_gq_run_id] FOREIGN KEY ([run_id]) REFERENCES [metadata].[run] ([run_id]),
     CONSTRAINT [fk_outputs_gq_mgra] FOREIGN KEY ([run_id], [mgra]) REFERENCES [inputs].[mgra] ([run_id], [mgra]),
-    CONSTRAINT [non_negative_outputs_gq] CHECK ([value] >= 0)
+    CONSTRAINT [chk_non_negative_outputs_gq] CHECK ([value] >= 0)
 )
 
 CREATE TABLE [outputs].[hh] (
@@ -117,7 +117,7 @@ CREATE TABLE [outputs].[hh] (
     CONSTRAINT [ixuq_outputs_hh] UNIQUE ([run_id], [year], [mgra], [structure_type]) WITH (DATA_COMPRESSION = PAGE),
     CONSTRAINT [fk_outputs_hh_run_id] FOREIGN KEY ([run_id]) REFERENCES [metadata].[run] ([run_id]),
     CONSTRAINT [fk_outputs_hh_mgra] FOREIGN KEY ([run_id], [mgra]) REFERENCES [inputs].[mgra] ([run_id], [mgra]),
-    CONSTRAINT [non_negative_outputs_hh] CHECK ([value] >= 0)
+    CONSTRAINT [chk_non_negative_outputs_hh] CHECK ([value] >= 0)
 )
 
 CREATE TABLE [outputs].[hs] (
@@ -130,7 +130,7 @@ CREATE TABLE [outputs].[hs] (
     CONSTRAINT [ixuq_outputs_hs] UNIQUE ([run_id], [year], [mgra], [structure_type]) WITH (DATA_COMPRESSION = PAGE),
     CONSTRAINT [fk_outputs_hs_run_id] FOREIGN KEY ([run_id]) REFERENCES [metadata].[run] ([run_id]),
     CONSTRAINT [fk_outputs_hs_mgra] FOREIGN KEY ([run_id], [mgra]) REFERENCES [inputs].[mgra] ([run_id], [mgra]),
-    CONSTRAINT [non_negative_outputs_hs] CHECK ([value] >= 0)
+    CONSTRAINT [chk_non_negative_outputs_hs] CHECK ([value] >= 0)
 )
 GO
 
@@ -143,6 +143,6 @@ CREATE TABLE [outputs].[hhp] (
     CONSTRAINT [ixuq_outputs_hhp] UNIQUE ([run_id], [year], [mgra]) WITH (DATA_COMPRESSION = PAGE),
     CONSTRAINT [fk_outputs_hhp_run_id] FOREIGN KEY ([run_id]) REFERENCES [metadata].[run] ([run_id]),
     CONSTRAINT [fk_outputs_hhp_mgra] FOREIGN KEY ([run_id], [mgra]) REFERENCES [inputs].[mgra] ([run_id], [mgra]),
-    CONSTRAINT [non_negative_outputs_hhp] CHECK ([value] >= 0)
+    CONSTRAINT [chk_non_negative_outputs_hhp] CHECK ([value] >= 0)
 )
 GO
