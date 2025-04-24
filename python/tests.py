@@ -4,8 +4,9 @@
 # TODO: Integration with the Python logging library. The idea is that critical errors
 # will both raise an error and be logged, while warnings will only be logged
 
-import textwrap
+import inspect
 import math
+import textwrap
 import pandas as pd
 
 import python.utils as utils
@@ -40,7 +41,112 @@ _DISTINCT_COUNTS = _DISTINCT_COUNTS["constants"] | _DISTINCT_COUNTS[utils.MGRA_V
 #########
 
 
-def validate_row_count(
+def validate_data(table_name: str, data: pd.DataFrame, **kwargs) -> None:
+    """Run the specified tests on the input data
+
+    kwargs provides both the name of the test (the name of the keyword argument) and the
+    parameters which go into the test (the value of the keyword argument). The exact
+    keyword argument names which are allowed are determined by the tests which have been
+    implemented in this file. Unless otherwise noted, the string name of the implemented
+    tests is the part of the function name after '_validate_'. For example, the string
+    name of '_validate_row_count()' is 'row_count'.
+
+    The value of kwargs are the parameters which go into the test, stored in dictionary
+    form. The key of the dictionary should be the name of the parameter, while the value
+    is the parameter itself. Since every single test requires the 'table_name' and
+    'data' parameters, they should not be included in the parameter dictionary. If the
+    test requires no additional parameters, an empty dictionary must be passed
+
+    Since kwargs are passed into individual tests, validation is first done to make
+    sure each test has all required input arguments. Once validation is passed, all
+    requested tests are run
+
+    Args:
+        table_name: A descriptive name of the data being tested. Only used when printing
+            out error messages
+        data: The data to test
+        kwargs: The tests to run. The key is the name of the test and the value is a
+            dictionary, possibly empty, for the parameters which go into the test
+
+    Raises:
+        ValueError: If an error has been encountered relating to the requested test or
+            the input parameters to the requested test
+        ValueError: Any of the errors raised by the individual tests. See each test
+            for additional details
+    """
+    # I'm sure this is somehow possible to do using Python instead of a hard coded list,
+    # but this is just easier
+    all_tests = [_validate_row_count, _validate_negative, _validate_null]
+
+    # For each test, get the actual test name by removing the '_validate_'
+    all_tests = {test.__name__.replace("_validate_", ""): test for test in all_tests}
+
+    # For the input list of tests, check to make sure that the test exists
+    for test_name in kwargs.keys():
+        if test_name not in all_tests.keys():
+            raise ValueError(
+                f"The test '{test_name}' was requested but cannot be found."
+            )
+
+    # For each test, make sure that the correct input values are passed
+    for test_name, test in all_tests.items():
+        if test_name not in kwargs.keys():
+            continue
+
+        # Every test requires the 'table_name' and 'data' parameters
+        kwargs[test_name]["table_name"] = table_name
+        kwargs[test_name]["data"] = data
+
+        # Loop over the parameters for this test
+        test_signature = inspect.signature(test)
+        for parameter_name, parameter_details in test_signature.parameters.items():
+
+            # If the parameter does not have a default value, then it must be in kwargs
+            if parameter_details.default is inspect.Parameter.empty:
+                if parameter_name not in kwargs[test_name].keys():
+                    raise ValueError(
+                        f"The parameter '{parameter_name}' is a required argument for "
+                        f"the test '{test_name}' but it is missing"
+                    )
+
+            # Check the type of the provided argument, assuming it has been provided
+            if parameter_name in kwargs[test_name].keys():
+
+                # Make sure the type of parameter provided to kwargs is correct
+                if parameter_details.annotation == set[str]:
+                    if type(kwargs[test_name][parameter_name]) != set:
+                        raise ValueError(
+                            f"The parameter '{parameter_name}' is supposed to be of "
+                            f"type 'set[str]' but is instead of type "
+                            f"'{type(kwargs[test_name][parameter_name])}'"
+                        )
+                    if not all(
+                        [
+                            type(value) == str
+                            for value in kwargs[test_name][parameter_name]
+                        ]
+                    ):
+                        raise ValueError(
+                            f"The parameter '{parameter_name}' is supposed to be of "
+                            f"type 'set[str]' but contains non-string values"
+                        )
+                else:
+                    if (
+                        type(kwargs[test_name][parameter_name])
+                        != parameter_details.annotation
+                    ):
+                        raise ValueError(
+                            f"The parameter '{parameter_name}' is supposed to be of "
+                            f"type '{parameter_details.annotation}' but is actually of "
+                            f"type {type(kwargs[test_name][parameter_name])}"
+                        )
+
+    # And now we can actually run the tests
+    for test_name, test_parameters in kwargs.items():
+        all_tests[test_name](**test_parameters)
+
+
+def _validate_row_count(
     table_name: str, data: pd.DataFrame, key_columns: set[str], year: int = None
 ) -> None:
     """Verify that the provided data has the correct number of rows
@@ -74,11 +180,11 @@ def validate_row_count(
     for column in key_columns:
         if column not in data.columns:
             raise ValueError(
-                f"'{table_name}' is missing the required key column {column}"
+                f"'{table_name}' is missing the required key column '{column}'"
             )
         if column not in _DISTINCT_COUNTS.keys() and column != "tract":
             raise ValueError(
-                f"'tests.py' is missing data for the key column {column}. Fill in the "
+                f"'tests.py' is missing data for the key column '{column}'. Fill in the "
                 f"corresponding value in the variable '_DISTINCT_COUNTS'"
             )
 
@@ -104,41 +210,8 @@ def validate_row_count(
         )
 
 
-def validate_negative_null(
-    table_name: str,
-    data: pd.DataFrame,
-    negative_ok: list[str] = None,
-    null_ok: list[str] = None,
-) -> None:
-    """Verify that the provided data does not contain negative/null values
-
-    Serves as a wrapper function for the individual checks of '_validate_negative()' and
-    '_validate_null()'. See the individual sub_functions for more details.
-
-    Args:
-        table_name: The name of the table. The only purpose of this is to make error
-            messages more descriptive
-        data: The data to check
-        negative_ok (optional): Columns where negative values are allowed
-        null_ok (optional): Columns where null values are allowed
-
-    Raises:
-        ValueError: When negative values are encountered in columns where they are
-            not allowed.
-    """
-    # Avoid issues with mutable default parameter values
-    if negative_ok is None:
-        negative_ok = []
-    if null_ok is None:
-        null_ok = []
-
-    # Call the individual tests
-    _validate_negative(table_name, data, negative_ok)
-    _validate_null(table_name, data, null_ok)
-
-
 def _validate_negative(
-    table_name: str, data: pd.DataFrame, negative_ok: list[str]
+    table_name: str, data: pd.DataFrame, negative_ok: list[str] = None
 ) -> None:
     """Verify that the provided data does not contain negative values
 
@@ -156,6 +229,10 @@ def _validate_negative(
         ValueError: When negative values are encountered in columns where they are
             not allowed.
     """
+    # Avoid issues with mutable default parameter values
+    if negative_ok is None:
+        negative_ok = []
+
     # Check each column of the input data
     for column in data.columns:
 
@@ -171,7 +248,9 @@ def _validate_negative(
                 raise ValueError(error)
 
 
-def _validate_null(table_name: str, data: pd.DataFrame, null_ok: list[str]) -> None:
+def _validate_null(
+    table_name: str, data: pd.DataFrame, null_ok: list[str] = None
+) -> None:
     """Verify that the provided data does not contain null values
 
     Checks will be performed on all columns unless they are explicitly passed into the
@@ -187,6 +266,10 @@ def _validate_null(table_name: str, data: pd.DataFrame, null_ok: list[str]) -> N
         ValueError: When null values are encountered in columns where they are
             not allowed.
     """
+    # Avoid issues with mutable default parameter values
+    if null_ok is None:
+        null_ok = []
+
     # Check each column of the input data
     for column in data.columns:
 

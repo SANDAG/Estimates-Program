@@ -59,8 +59,13 @@ def _get_gq_inputs(year: int) -> dict[str, pd.DataFrame]:
                     "year": year,
                 },
             )
-        tests.validate_row_count("City Controls GQ", city_controls, {"city"})
-        tests.validate_negative_null("City Controls GQ", city_controls)
+        tests.validate_data(
+            "City Controls GQ",
+            city_controls,
+            row_count={"key_columns": {"city"}},
+            negative={},
+            null={},
+        )
 
         # Get raw group quarters data
         with open(utils.SQL_FOLDER / "pop_type/get_mgra_gq.sql") as file:
@@ -74,8 +79,13 @@ def _get_gq_inputs(year: int) -> dict[str, pd.DataFrame]:
                     "gis_server": utils.GIS_SERVER,
                 },
             )
-        tests.validate_row_count("MGRA GQ raw", gq, {"mgra", "gq_type"})
-        tests.validate_negative_null("MGRA GQ raw", gq)
+        tests.validate_data(
+            "MGRA GQ raw",
+            gq,
+            row_count={"key_columns": {"mgra", "gq_type"}},
+            negative={},
+            null={},
+        )
 
     return {"city_controls": city_controls, "gq": gq}
 
@@ -125,8 +135,13 @@ def _insert_gq_data(gq_inputs: dict[str, pd.DataFrame], gq: pd.DataFrame) -> Non
             index=False,
         )
 
-        tests.validate_row_count("MGRA GQ controlled", gq, {"mgra", "gq_type"})
-        tests.validate_negative_null("MGRA GQ controlled", gq)
+        tests.validate_data(
+            "MGRA GQ controlled",
+            gq,
+            row_count={"key_columns": {"mgra", "gq_type"}},
+            negative={},
+            null={},
+        )
         gq.drop(columns="city").to_sql(
             name="gq",
             con=conn,
@@ -150,8 +165,13 @@ def _get_hhp_inputs(year: int) -> dict[str, pd.DataFrame]:
                     "year": year,
                 },
             )
-        tests.validate_row_count("City Controls HHP", city_controls, {"city"})
-        tests.validate_negative_null("City Controls HHP", city_controls)
+        tests.validate_data(
+            "City Controls HHP",
+            city_controls,
+            row_count={"key_columns": {"city"}},
+            negative={},
+            null={},
+        )
 
         # Get tract level household size controls
         with open(utils.SQL_FOLDER / "pop_type/get_tract_controls_hhs.sql") as file:
@@ -163,8 +183,13 @@ def _get_hhp_inputs(year: int) -> dict[str, pd.DataFrame]:
                     "year": year,
                 },
             )
-        tests.validate_row_count("Tract Controls HHS", tract_controls, {"tract"}, year)
-        tests.validate_negative_null("Tract Controls HHS", tract_controls)
+        tests.validate_data(
+            "Tract Controls HHP",
+            tract_controls,
+            row_count={"key_columns": {"tract"}, "year": year},
+            negative={},
+            null={},
+        )
 
         # Get MGRA level households
         with open(utils.SQL_FOLDER / "pop_type/get_mgra_hh.sql") as file:
@@ -177,8 +202,13 @@ def _get_hhp_inputs(year: int) -> dict[str, pd.DataFrame]:
                     "mgra_version": utils.MGRA_VERSION,
                 },
             )
-        tests.validate_row_count("MGRA HH", hh, {"mgra"})
-        tests.validate_negative_null("MGRA HH", hh)
+        tests.validate_data(
+            "MGRA HH",
+            hh,
+            row_count={"key_columns": {"mgra"}},
+            negative={},
+            null={},
+        )
 
     return {"city_controls": city_controls, "tract_controls": tract_controls, "hh": hh}
 
@@ -318,8 +348,13 @@ def _insert_hhp_data(hhp_inputs: dict[str, pd.DataFrame], hhp: pd.DataFrame) -> 
             index=False,
         )
 
-        tests.validate_row_count("MGRA HHP", hhp, {"mgra"})
-        tests.validate_negative_null("MGRA HHP", hhp)
+        tests.validate_data(
+            "MGRA HHP",
+            hhp,
+            row_count={"key_columns": {"mgra"}},
+            negative={},
+            null={},
+        )
         hhp.to_sql(
             name="hhp", con=conn, schema="outputs", if_exists="append", index=False
         )

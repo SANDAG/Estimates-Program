@@ -98,8 +98,13 @@ def _get_hh_inputs(year: int) -> dict[str, pd.DataFrame]:
                     "year": year,
                 },
             )
-        tests.validate_row_count("City Controls Households", city_controls, {"city"})
-        tests.validate_negative_null("City Controls Households", city_controls)
+        tests.validate_data(
+            "City Controls Households",
+            city_controls,
+            row_count={"key_columns": {"city"}},
+            negative={},
+            null={},
+        )
 
         # Get tract occupancy controls
         with open(utils.SQL_FOLDER / "hs_hh/get_tract_controls_hh.sql") as file:
@@ -111,13 +116,13 @@ def _get_hh_inputs(year: int) -> dict[str, pd.DataFrame]:
                     "year": year,
                 },
             )
-        tests.validate_row_count(
+        tests.validate_data(
             "Tract Controls Occupancy Rate",
             tract_controls,
-            {"tract", "structure_type"},
-            year,
+            row_count={"key_columns": {"tract", "structure_type"}, "year": year},
+            negative={},
+            null={},
         )
-        tests.validate_negative_null("Tract Controls Occupancy Rate", tract_controls)
 
         # Get housing stock output data
         with open(utils.SQL_FOLDER / "hs_hh/get_mgra_hs.sql") as file:
@@ -130,8 +135,13 @@ def _get_hh_inputs(year: int) -> dict[str, pd.DataFrame]:
                     "mgra_version": utils.MGRA_VERSION,
                 },
             )
-        tests.validate_row_count("MGRA Housing Stock", hs, {"mgra", "structure_type"})
-        tests.validate_negative_null("MGRA Housing Stock", hs)
+        tests.validate_data(
+            "MGRA Housing Stock",
+            hs,
+            row_count={"key_columns": {"mgra", "structure_type"}},
+            negative={},
+            null={},
+        )
 
     return {
         "city_controls": city_controls,
@@ -242,8 +252,13 @@ def _insert_hh(inputs: dict[str, pd.DataFrame], outputs: pd.DataFrame) -> None:
             index=False,
         )
 
-        tests.validate_row_count("MGRA Households", outputs, {"mgra", "structure_type"})
-        tests.validate_negative_null("MGRA Households", outputs)
+        tests.validate_data(
+            "MGRA Households",
+            outputs,
+            row_count={"key_columns": {"mgra", "structure_type"}},
+            negative={},
+            null={},
+        )
         outputs.to_sql(
             name="hh",
             con=conn,
