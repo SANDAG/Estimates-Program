@@ -4,8 +4,9 @@ aggregates to the MGRA level by type. Results are returned as a SELECT
 statement for use in a Python utility that generates final results.
 
 Note that the [inputs].[special_mgras] table is used to segment
-"Other Group Quarters" into "Non-Disabled Institutional Group Quarters"
-and "Disabled Institutional Group Quarters".
+non-College and non-Military Group Quarters into 
+"Group Quarters - Institutional Correctional Facilities"
+and "Group Quarters - Other".
 */
 
 
@@ -28,8 +29,8 @@ CROSS JOIN (
 		VALUES
 			('Group Quarters - College'),
 			('Group Quarters - Military'),
-			('Group Quarters - Non-Disabled Institutional'),
-			('Group Quarters - Disabled Institutional')
+			('Group Quarters - Institutional Correctional Facilities'),
+			('Group Quarters - Other')
 	) AS [tt] ([gq_type])
 ) AS [gq_type]
 WHERE [run_id] = @run_id
@@ -72,16 +73,16 @@ LEFT OUTER JOIN (
 		SUM([gqCivCol]) AS [Group Quarters - College],
 		SUM([gqMil]) AS [Group Quarters - Military],
 		SUM(
-			CASE WHEN [special_mgras].[facility_type] = 'Non-Disabled Institutional Group Quarters'
+			CASE WHEN [special_mgras].[facility_type] = 'NGroup Quarters - Institutional Correctional Facilities'
 				 THEN [gqOther]
 				 ELSE 0 END
-		) AS [Group Quarters - Non-Disabled Institutional],
+		) AS [Group Quarters - Institutional Correctional Facilities],
 		SUM(
-			CASE WHEN [special_mgras].[facility_type] != 'Non-Disabled Institutional Group Quarters'
+			CASE WHEN [special_mgras].[facility_type] != 'Group Quarters - Institutional Correctional Facilities'
 					OR [special_mgras].[facility_type] IS NULL
 				 THEN [gqOther]
 				 ELSE 0 END
-		) AS [Group Quarters - Disabled Institutional]
+		) AS [Group Quarters - Other]
 	FROM [inputs].[mgra]
 	LEFT OUTER JOIN (
 		SELECT
@@ -100,8 +101,8 @@ UNPIVOT (
 	[value] FOR [gq_type] IN (
 		[Group Quarters - College],
 		[Group Quarters - Military],
-		[Group Quarters - Non-Disabled Institutional],
-		[Group Quarters - Disabled Institutional]
+		[Group Quarters - Institutional Correctional Facilities],
+		[Group Quarters - Other]
 	)
 ) AS [unpivot]
 	ON [#tt_shell].[mgra] = [unpivot].[mgra]
