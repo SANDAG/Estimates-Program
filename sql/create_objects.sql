@@ -19,6 +19,19 @@ GO
 CREATE SCHEMA [inputs]
 GO
 
+CREATE TABLE [inputs].[controls_ase] (
+    [run_id] INT NOT NULL,
+    [year] INT NOT NULL,
+    [pop_type] NVARCHAR(75) NOT NULL,
+    [age_group] NVARCHAR(15) NOT NULL,
+    [sex] NVARCHAR(6) NOT NULL,
+    [ethnicity] NVARCHAR(50) NOT NULL,
+    [value] INT NOT NULL,
+    INDEX [ccsi_inputs_controls_ase] CLUSTERED COLUMNSTORE,
+    CONSTRAINT [ixuq_inputs_controls_ase] UNIQUE ([run_id], [year], [pop_type], [age_group], [sex], [ethnicity]) WITH (DATA_COMPRESSION = PAGE),
+    CONSTRAINT [fk_inputs_controls_ase_run_id] FOREIGN KEY ([run_id]) REFERENCES [metadata].[run] ([run_id]),
+)
+
 CREATE TABLE [inputs].[controls_tract] (
     [run_id] INT NOT NULL,
     [year] INT NOT NULL,
