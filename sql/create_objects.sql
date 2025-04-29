@@ -30,6 +30,7 @@ CREATE TABLE [inputs].[controls_ase] (
     INDEX [ccsi_inputs_controls_ase] CLUSTERED COLUMNSTORE,
     CONSTRAINT [ixuq_inputs_controls_ase] UNIQUE ([run_id], [year], [pop_type], [age_group], [sex], [ethnicity]) WITH (DATA_COMPRESSION = PAGE),
     CONSTRAINT [fk_inputs_controls_ase_run_id] FOREIGN KEY ([run_id]) REFERENCES [metadata].[run] ([run_id]),
+    CONSTRAINT [chk_non_negative_inputs_controls_ase] CHECK ([value] >= 0)
 )
 
 CREATE TABLE [inputs].[controls_tract] (
@@ -116,7 +117,8 @@ CREATE TABLE [outputs].[ase] (
     INDEX [ccsi_outputs_ase] CLUSTERED COLUMNSTORE,
     CONSTRAINT [ixuq_outputs_ase] UNIQUE ([run_id], [year], [mgra], [pop_type], [age_group], [sex], [ethnicity]) WITH (DATA_COMPRESSION = PAGE),
     CONSTRAINT [fk_outputs_ase_run_id] FOREIGN KEY ([run_id]) REFERENCES [metadata].[run] ([run_id]),
-    CONSTRAINT [fk_outputs_ase_mgra] FOREIGN KEY ([run_id], [mgra]) REFERENCES [inputs].[mgra] ([run_id], [mgra])
+    CONSTRAINT [fk_outputs_ase_mgra] FOREIGN KEY ([run_id], [mgra]) REFERENCES [inputs].[mgra] ([run_id], [mgra]),
+    CONSTRAINT [chk_non_negative_outputs_ase] CHECK ([value] >= 0)
 )
 
 CREATE TABLE [outputs].[gq] (

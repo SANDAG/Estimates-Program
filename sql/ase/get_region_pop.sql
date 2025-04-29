@@ -12,7 +12,7 @@ WHERE
     [run_id] = @run_id
     AND [year] = @year
 GROUP BY [gq_type]
-    UNION
+    UNION ALL
 SELECT
     'Household Population' AS [pop_type],
     SUM([value]) AS [value]
