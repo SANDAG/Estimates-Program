@@ -96,35 +96,24 @@ CROSS JOIN [ethnicity];
 -- Build ACS PUMS query based on year
 DECLARE @pums_qry nvarchar(max) =
     CASE 
-        WHEN @year = 2010 THEN 'SELECT [SCHG], [ESR], NULL AS [DIS], [AGEP], [SEX], [HISP], [RAC1P], NULL AS [RELSHIPP], [RELP], [PWGTP] FROM [acs].[pums].[vi_5y_2006_2010_persons_sd]'
-        WHEN @year = 2011 THEN 'SELECT [SCHG], [ESR], NULL AS [DIS], [AGEP], [SEX], [HISP], [RAC1P], NULL AS [RELSHIPP], [RELP], [PWGTP] FROM [acs].[pums].[vi_5y_2007_2011_persons_sd]'
-        WHEN @year = 2012 THEN 'SELECT [SCHG], [ESR], [DIS], [AGEP], [SEX], [HISP], [RAC1P], NULL AS [RELSHIPP], [RELP], [PWGTP] FROM [acs].[pums].[vi_5y_2008_2012_persons_sd]'
-        WHEN @year = 2013 THEN 'SELECT [SCHG], [ESR], [DIS], [AGEP], [SEX], [HISP], [RAC1P], NULL AS [RELSHIPP], [RELP], [PWGTP] FROM [acs].[pums].[vi_5y_2009_2013_persons_sd]'
-        WHEN @year = 2014 THEN 'SELECT [SCHG], [ESR], [DIS], [AGEP], [SEX], [HISP], [RAC1P], NULL AS [RELSHIPP], [RELP], [PWGTP] FROM [acs].[pums].[vi_5y_2010_2014_persons_sd]'		
-        WHEN @year = 2015 THEN 'SELECT [SCHG], [ESR], [DIS], [AGEP], [SEX], [HISP], [RAC1P], NULL AS [RELSHIPP], [RELP], [PWGTP] FROM [acs].[pums].[vi_5y_2011_2015_persons_sd]'
-        WHEN @year = 2016 THEN 'SELECT [SCHG], [ESR], [DIS], [AGEP], [SEX], [HISP], [RAC1P], NULL AS [RELSHIPP], [RELP], [PWGTP] FROM [acs].[pums].[vi_5y_2012_2016_persons_sd]'
-        WHEN @year = 2017 THEN 'SELECT [SCHG], [ESR], [DIS], [AGEP], [SEX], [HISP], [RAC1P], NULL AS [RELSHIPP], [RELP], [PWGTP] FROM [acs].[pums].[vi_5y_2013_2017_persons_sd]'
-        WHEN @year = 2018 THEN 'SELECT [SCHG], [ESR], [DIS], [AGEP], [SEX], [HISP], [RAC1P], NULL AS [RELSHIPP], [RELP], [PWGTP] FROM [acs].[pums].[vi_5y_2014_2018_persons_sd]'
-        WHEN @year = 2019 THEN 'SELECT [SCHG], [ESR], [DIS], [AGEP], [SEX], [HISP], [RAC1P], [RELSHIPP], NULL AS [RELP], [PWGTP] FROM [acs].[pums].[vi_5y_2015_2019_persons_sd]'
-        WHEN @year = 2020 THEN 'SELECT [SCHG], [ESR], [DIS], [AGEP], [SEX], [HISP], [RAC1P], [RELSHIPP], NULL AS [RELP], [PWGTP] FROM [acs].[pums].[vi_5y_2016_2020_persons_sd]'
-        WHEN @year = 2021 THEN 'SELECT [SCHG], [ESR], [DIS], [AGEP], [SEX], [HISP], [RAC1P], [RELSHIPP], NULL AS [RELP], [PWGTP] FROM [acs].[pums].[vi_5y_2017_2021_persons_sd]'
-        WHEN @year = 2022 THEN 'SELECT [SCHG], [ESR], [DIS], [AGEP], [SEX], [HISP], [RAC1P], [RELSHIPP], NULL AS [RELP], [PWGTP] FROM [acs].[pums].[vi_5y_2018_2022_persons_sd]'
-        WHEN @year = 2023 THEN 'SELECT [SCHG], [ESR], [DIS], [AGEP], [SEX], [HISP], [RAC1P], [RELSHIPP], NULL AS [RELP], [PWGTP] FROM [acs].[pums].[vi_5y_2019_2023_persons_sd]'
+        WHEN @year BETWEEN 2010 AND 2011 THEN 'SELECT [SCHG], [ESR], NULL AS [DIS], [AGEP], [SEX], [HISP], [RAC1P], NULL AS [RELSHIPP], [RELP], [PWGTP] FROM [acs].[pums].[vi_5y_' + CONVERT(nvarchar, @year-4) + '_' + CONVERT(nvarchar, @year) + '_persons_sd]'
+        WHEN @year BETWEEN 2012 AND 2018 THEN 'SELECT [SCHG], [ESR], [DIS], [AGEP], [SEX], [HISP], [RAC1P], NULL AS [RELSHIPP], [RELP], [PWGTP] FROM [acs].[pums].[vi_5y_' + CONVERT(nvarchar, @year-4) + '_' + CONVERT(nvarchar, @year) + '_persons_sd]'
+        WHEN @year BETWEEN 2019 AND 2023 THEN 'SELECT [SCHG], [ESR], [DIS], [AGEP], [SEX], [HISP], [RAC1P], [RELSHIPP], NULL AS [RELP], [PWGTP] FROM [acs].[pums].[vi_5y_' + CONVERT(nvarchar, @year-4) + '_' + CONVERT(nvarchar, @year) + '_persons_sd]'
     ELSE NULL END;
 
 -- Declare temporary table to receive results of ACS PUMS query
 DROP TABLE IF EXISTS [#pums_tbl]
 CREATE TABLE [#pums_tbl] (
-    [SCHG] varchar(2) NULL,
-    [ESR] varchar(1) NULL,
-    [DIS] varchar(1) NULL,
-    [AGEP] int NOT NULL,
-    [SEX] varchar(1) NOT NULL,
-    [HISP] varchar(2) NOT NULL,
-    [RAC1P] varchar(1) NOT NULL,
-    [RELSHIPP] varchar(2) NULL, 
-    [RELP] varchar(2) NULL,  
-    [PWGTP] float NOT NULL
+    [SCHG] VARCHAR(2) NULL,
+    [ESR] VARCHAR(1) NULL,
+    [DIS] VARCHAR(1) NULL,
+    [AGEP] INT NOT NULL,
+    [SEX] VARCHAR(1) NOT NULL,
+    [HISP] VARCHAR(2) NOT NULL,
+    [RAC1P] VARCHAR(1) NOT NULL,
+    [RELSHIPP] VARCHAR(2) NULL, 
+    [RELP] VARCHAR(2) NULL,  
+    [PWGTP] FLOAT NOT NULL
 );
 
 -- Insert ACS PUMS query results into table
