@@ -36,7 +36,8 @@ def run_pop(year: int):
             the production database
 
     A single utility function is also defined:
-        _calculate_hh_adjustment - Calculate adjustments to make to households
+        _calculate_hhp_adjustment - Calculate adjustments to make to household
+            population
 
     Args:
         year (int): estimates year
