@@ -93,7 +93,7 @@ def _create_controls(controls_inputs: dict[str, pd.DataFrame]) -> pd.DataFrame:
     )
 
     # Integerize the group quarters age/sex/ethnicity population by type
-    region_gq_ase = utils._2d_integerize(
+    region_gq_ase = utils.integerize_2d(
         df=gq_pop,
         row_crtls=row_crtls,
         col_crtls=col_crtls,

@@ -1,9 +1,11 @@
 import iteround
-import pandas as pd
 import pathlib
-import sqlalchemy as sql
 import yaml
+import pandas as pd
+import sqlalchemy as sql
+
 import python.parsers as parsers
+
 
 #########
 # PATHS #
@@ -77,7 +79,7 @@ MGRA_VERSION = input_parser.mgra_version
 #####################
 
 
-def _2d_integerize(
+def integerize_2d(
     df: pd.DataFrame, row_crtls: list, col_crtls: list, condition: str = "exact"
 ) -> pd.DataFrame:
     """Integerize values in a DataFrame based on marginal control totals.
