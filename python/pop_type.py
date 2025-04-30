@@ -18,22 +18,25 @@ def run_pop(year: int):
     top of this file for additional details.
 
     Functionality is split apart for code encapsulation (function inputs not included):
-        _get_gq_inputs() - Get city level group quarter controls (DOF E-5) and GQ point
+        _get_gq_inputs - Get city level group quarter controls (DOF E-5) and GQ point
             data pre-aggregated into MGRAs
-        _create_gq_outputs() - Control MGRA level GQ data to the city level group
+        _validate_gq_inputs - Validate the data from the above function
+        _create_gq_outputs - Control MGRA level GQ data to the city level group
             quarter controls
-        _validate_gq_inputs() - Validate the data from the above function
-        _insert_gq() - Store both the city level control data and controlled
+        _validate_gq_outputs - Validate the data from the above function
+        _insert_gq - Store both the city level control data and controlled
             MGRA level GQ data into the production database
-        _validate_gq_outputs() - Validate the data from the above function
-        _get_hhp_inputs() - Get city level household population controls (DOF E-5),
+        _get_hhp_inputs - Get city level household population controls (DOF E-5),
             MGRA level households, and tract level household size
-        _validate_hhp_inputs() - Validate the data from the above function
-        _create_hhp_outputs() - Compute MGRA household population, then control to
+        _validate_hhp_inputs - Validate the data from the above function
+        _create_hhp_outputs - Compute MGRA household population, then control to
             city level household population
-        _validate_hhp_outputs() - Validate the data from the above function
-        _insert_hhp() - Store certain household population input/output data to
+        _validate_hhp_outputs - Validate the data from the above function
+        _insert_hhp - Store certain household population input/output data to
             the production database
+
+    A single utility function is also defined:
+        _calculate_hh_adjustment - Calculate adjustments to make to households
 
     Args:
         year (int): estimates year
