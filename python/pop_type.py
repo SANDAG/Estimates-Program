@@ -4,7 +4,9 @@
 import iteround
 import pandas as pd
 import sqlalchemy as sql
+
 import python.utils as utils
+import python.tests as tests
 
 
 def run_pop(year: int):
@@ -16,37 +18,52 @@ def run_pop(year: int):
     top of this file for additional details.
 
     Functionality is split apart for code encapsulation (function inputs not included):
-        _get_gq_inputs() - Get city level group quarter controls (DOF E-5) and GQ point
+        _get_gq_inputs - Get city level group quarter controls (DOF E-5) and GQ point
             data pre-aggregated into MGRAs
-        _create_gq_outputs() - Control MGRA level GQ data to the city level group
+        _validate_gq_inputs - Validate the data from the above function
+        _create_gq_outputs - Control MGRA level GQ data to the city level group
             quarter controls
-        _insert_gq_outputs() - Store both the city level control data and controlled
+        _validate_gq_outputs - Validate the data from the above function
+        _insert_gq - Store both the city level control data and controlled
             MGRA level GQ data into the production database
-        _get_hhp_inputs() - Get city level household population controls (DOF E-5),
+        _get_hhp_inputs - Get city level household population controls (DOF E-5),
             MGRA level households, and tract level household size
-        _create_hhp_outputs() - Compute MGRA household population, then control to
+        _validate_hhp_inputs - Validate the data from the above function
+        _create_hhp_outputs - Compute MGRA household population, then control to
             city level household population
-        _insert_hhp_outputs() - Store certain household population input/output data to
+        _validate_hhp_outputs - Validate the data from the above function
+        _insert_hhp - Store certain household population input/output data to
             the production database
+
+    A single utility function is also defined:
+        _calculate_hhp_adjustment - Calculate adjustments to make to household
+            population
 
     Args:
         year (int): estimates year
     """
     # Start with Group Quarters
     gq_inputs = _get_gq_inputs(year)
-    gq = _create_gq_outputs(gq_inputs)
-    _insert_gq_data(year, gq_inputs, gq)
+    _validate_gq_inputs(gq_inputs)
+
+    gq_outputs = _create_gq_outputs(gq_inputs)
+    _validate_gq_outputs(gq_outputs)
+
+    _insert_gq(gq_inputs, gq_outputs)
 
     # Then do Household Population
     hhp_inputs = _get_hhp_inputs(year)
-    hhp = _create_hhp_outputs(hhp_inputs)
-    _insert_hhp_data(year, hhp_inputs, hhp)
+    _validate_hhp_inputs(year, hhp_inputs)
+
+    hhp_outputs = _create_hhp_outputs(hhp_inputs)
+    _validate_hhp_outputs(hhp_outputs)
+
+    _insert_hhp(hhp_inputs, hhp_outputs)
 
 
 def _get_gq_inputs(year: int) -> dict[str, pd.DataFrame]:
     """Get input data related to MGRA group quarters"""
-
-    # Store all intput data here
+    # Store results here
     gq_inputs = {}
 
     with utils.ESTIMATES_ENGINE.connect() as conn:
@@ -77,7 +94,25 @@ def _get_gq_inputs(year: int) -> dict[str, pd.DataFrame]:
     return gq_inputs
 
 
-def _create_gq_outputs(gq_inputs: dict[str, pd.DataFrame]) -> pd.DataFrame:
+def _validate_gq_inputs(gq_inputs: dict[str, pd.DataFrame]) -> None:
+    """Validate the GQ input data"""
+    tests.validate_data(
+        "City Controls GQ",
+        gq_inputs["city_controls"],
+        row_count={"key_columns": {"city"}},
+        negative={},
+        null={},
+    )
+    tests.validate_data(
+        "MGRA GQ raw",
+        gq_inputs["gq"],
+        row_count={"key_columns": {"mgra", "gq_type"}},
+        negative={},
+        null={},
+    )
+
+
+def _create_gq_outputs(gq_inputs: dict[str, pd.DataFrame]) -> dict[str, pd.DataFrame]:
     """Create MGRA group quarters"""
 
     # Load input data into separate variables for cleaner manipulation
@@ -106,11 +141,22 @@ def _create_gq_outputs(gq_inputs: dict[str, pd.DataFrame]) -> pd.DataFrame:
         results.append(city_gq)
 
     # Combine the data for each city together
-    return pd.concat(results, ignore_index=True)
+    return {"gq": pd.concat(results, ignore_index=True)}
 
 
-def _insert_gq_data(
-    year: int, gq_inputs: dict[str, pd.DataFrame], gq: pd.DataFrame
+def _validate_gq_outputs(gq_outputs: dict[str, pd.DataFrame]) -> None:
+    """Validate the GQ output data"""
+    tests.validate_data(
+        "MGRA GQ controlled",
+        gq_outputs["gq"],
+        row_count={"key_columns": {"mgra", "gq_type"}},
+        negative={},
+        null={},
+    )
+
+
+def _insert_gq(
+    gq_inputs: dict[str, pd.DataFrame], gq_outputs: dict[str, pd.DataFrame]
 ) -> None:
     """Insert both input and output data for MGRA group quarters"""
 
@@ -123,8 +169,7 @@ def _insert_gq_data(
             if_exists="append",
             index=False,
         )
-
-        gq.drop(columns="city").to_sql(
+        gq_outputs["gq"].drop(columns="city").to_sql(
             name="gq",
             con=conn,
             schema="outputs",
@@ -136,13 +181,10 @@ def _insert_gq_data(
 def _get_hhp_inputs(year: int) -> dict[str, pd.DataFrame]:
     """Get input data related to MGRA household population"""
 
-    # Store all intput data here
-    hhp_inputs = {}
-
     with utils.ESTIMATES_ENGINE.connect() as conn:
         # Get city total household population controls
         with open(utils.SQL_FOLDER / "pop_type/get_city_controls_hhp.sql") as file:
-            hhp_inputs["city_controls"] = pd.read_sql_query(
+            city_controls = pd.read_sql_query(
                 sql=sql.text(file.read()),
                 con=conn,
                 params={
@@ -153,7 +195,7 @@ def _get_hhp_inputs(year: int) -> dict[str, pd.DataFrame]:
 
         # Get tract level household size controls
         with open(utils.SQL_FOLDER / "pop_type/get_tract_controls_hhs.sql") as file:
-            hhp_inputs["tract_controls"] = pd.read_sql_query(
+            tract_controls = pd.read_sql_query(
                 sql=sql.text(file.read()),
                 con=conn,
                 params={
@@ -164,7 +206,7 @@ def _get_hhp_inputs(year: int) -> dict[str, pd.DataFrame]:
 
         # Get MGRA level households
         with open(utils.SQL_FOLDER / "pop_type/get_mgra_hh.sql") as file:
-            hhp_inputs["hh"] = pd.read_sql_query(
+            hh = pd.read_sql_query(
                 sql=sql.text(file.read()),
                 con=conn,
                 params={
@@ -174,7 +216,33 @@ def _get_hhp_inputs(year: int) -> dict[str, pd.DataFrame]:
                 },
             )
 
-    return hhp_inputs
+    return {"city_controls": city_controls, "tract_controls": tract_controls, "hh": hh}
+
+
+def _validate_hhp_inputs(year: int, hhp_inputs: dict[str, pd.DataFrame]) -> None:
+    """Validate the GQ input data"""
+
+    tests.validate_data(
+        "City Controls HHP",
+        hhp_inputs["city_controls"],
+        row_count={"key_columns": {"city"}},
+        negative={},
+        null={},
+    )
+    tests.validate_data(
+        "Tract Controls HHP",
+        hhp_inputs["tract_controls"],
+        row_count={"key_columns": {"tract"}, "year": year},
+        negative={},
+        null={},
+    )
+    tests.validate_data(
+        "MGRA HH",
+        hhp_inputs["hh"],
+        row_count={"key_columns": {"mgra"}},
+        negative={},
+        null={},
+    )
 
 
 def _calculate_hhp_adjustment(hhp: int, hh: int) -> int:
@@ -201,7 +269,7 @@ def _calculate_hhp_adjustment(hhp: int, hh: int) -> int:
         return 0
 
 
-def _create_hhp_outputs(hhp_inputs: dict[str, pd.DataFrame]) -> pd.DataFrame:
+def _create_hhp_outputs(hhp_inputs: dict[str, pd.DataFrame]) -> dict[str, pd.DataFrame]:
     """Calculate MGRA level household population controlled to DOF"""
 
     # Load input data into separate variables for cleaner manipulation
@@ -288,15 +356,26 @@ def _create_hhp_outputs(hhp_inputs: dict[str, pd.DataFrame]) -> pd.DataFrame:
         )
 
     # UNION ALL the results for each city together
-    return pd.concat(results, ignore_index=True)
+    return {"hhp": pd.concat(results, ignore_index=True)}
 
 
-def _insert_hhp_data(
-    year: int, hhp_inputs: dict[str, pd.DataFrame], hhp: pd.DataFrame
+def _validate_hhp_outputs(hhp_outputs: dict[str, pd.DataFrame]) -> None:
+    """Validate the GQ output data"""
+    tests.validate_data(
+        "MGRA HHP",
+        hhp_outputs["hhp"],
+        row_count={"key_columns": {"mgra"}},
+        negative={},
+        null={},
+    )
+
+
+def _insert_hhp(
+    hhp_inputs: dict[str, pd.DataFrame], hhp_outputs: dict[str, pd.DataFrame]
 ) -> None:
     """Insert intput and output data related to household population"""
 
-    # Insert controls and group quarters results to database
+    # Insert input and output data to database
     with utils.ESTIMATES_ENGINE.connect() as conn:
         hhp_inputs["city_controls"].to_sql(
             name="controls_city",
@@ -313,7 +392,6 @@ def _insert_hhp_data(
             if_exists="append",
             index=False,
         )
-
-        hhp.to_sql(
+        hhp_outputs["hhp"].to_sql(
             name="hhp", con=conn, schema="outputs", if_exists="append", index=False
         )
