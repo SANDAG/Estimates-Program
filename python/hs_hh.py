@@ -23,8 +23,11 @@ def run_hs_hh(year: int) -> None:
     Functionality is segmented into functions for code encapsulation:
         _insert_hs - Insert housing stock by MGRA for a given year
         _get_hh_inputs - Get housing stock and occupancy controls
+        _validate_hh_inputs - Validate the households input data from the above function
         _create_hh - Calculate households by MGRA applying occupancy
             controls, integerization, and reallocation
+        _validate_hh_outputs - Validate the households output data from the above
+            function
         _insert_hh - Insert occupancy controls and households by MGRA to
             production database
 
@@ -34,17 +37,17 @@ def run_hs_hh(year: int) -> None:
     Args:
         year (int): estimates year
     """
-    # Create and insert housing stock by MGRA to production database
-    _insert_hs(year=year)
+    # Start with housing stock
+    _insert_hs(year)
 
-    # Get housing stock and occupancy controls
-    hh_inputs = _get_hh_inputs(year=year)
+    # Then do households
+    hh_inputs = _get_hh_inputs(year)
+    _validate_hh_inputs(year, hh_inputs)
 
-    # Calculate households by MGRA
-    hh = _create_hh(inputs=hh_inputs)
+    hh_outputs = _create_hh(hh_inputs)
+    _validate_hh_outputs(hh_outputs)
 
-    # Insert occupancy controls and households by MGRA to production database
-    _insert_hh(inputs=hh_inputs, outputs=hh)
+    _insert_hh(hh_inputs, hh_outputs)
 
 
 def _calculate_hh_adjustment(households: int, housing_stock: int) -> int:
@@ -88,9 +91,12 @@ def _insert_hs(year: int) -> None:
 def _get_hh_inputs(year: int) -> dict[str, pd.DataFrame]:
     """Get housing stock and occupancy controls."""
     with utils.ESTIMATES_ENGINE.connect() as conn:
+        # Store results here
+        hh_inputs = {}
+
         # Get city occupancy controls
         with open(utils.SQL_FOLDER / "hs_hh/get_city_controls_hh.sql") as file:
-            city_controls = pd.read_sql_query(
+            hh_inputs["city_controls"] = pd.read_sql_query(
                 sql=sql.text(file.read()),
                 con=conn,
                 params={
@@ -98,17 +104,10 @@ def _get_hh_inputs(year: int) -> dict[str, pd.DataFrame]:
                     "year": year,
                 },
             )
-        tests.validate_data(
-            "City Controls Households",
-            city_controls,
-            row_count={"key_columns": {"city"}},
-            negative={},
-            null={},
-        )
 
         # Get tract occupancy controls
         with open(utils.SQL_FOLDER / "hs_hh/get_tract_controls_hh.sql") as file:
-            tract_controls = pd.read_sql_query(
+            hh_inputs["tract_controls"] = pd.read_sql_query(
                 sql=sql.text(file.read()),
                 con=conn,
                 params={
@@ -116,17 +115,10 @@ def _get_hh_inputs(year: int) -> dict[str, pd.DataFrame]:
                     "year": year,
                 },
             )
-        tests.validate_data(
-            "Tract Controls Occupancy Rate",
-            tract_controls,
-            row_count={"key_columns": {"tract", "structure_type"}, "year": year},
-            negative={},
-            null={},
-        )
 
         # Get housing stock output data
         with open(utils.SQL_FOLDER / "hs_hh/get_mgra_hs.sql") as file:
-            hs = pd.read_sql_query(
+            hh_inputs["hs"] = pd.read_sql_query(
                 sql=sql.text(file.read()),
                 con=conn,
                 params={
@@ -135,26 +127,40 @@ def _get_hh_inputs(year: int) -> dict[str, pd.DataFrame]:
                     "mgra_version": utils.MGRA_VERSION,
                 },
             )
-        tests.validate_data(
-            "MGRA Housing Stock",
-            hs,
-            row_count={"key_columns": {"mgra", "structure_type"}},
-            negative={},
-            null={},
-        )
 
-    return {
-        "city_controls": city_controls,
-        "tract_controls": tract_controls,
-        "hs": hs,
-    }
+    return hh_inputs
 
 
-def _create_hh(inputs: dict[str, pd.DataFrame]) -> pd.DataFrame:
+def _validate_hh_inputs(year: int, hh_inputs: dict[str, pd.DataFrame]) -> None:
+    """Validate the household input data"""
+    tests.validate_data(
+        "City Controls Households",
+        hh_inputs["city_controls"],
+        row_count={"key_columns": {"city"}},
+        negative={},
+        null={},
+    )
+    tests.validate_data(
+        "Tract Controls Occupancy Rate",
+        hh_inputs["tract_controls"],
+        row_count={"key_columns": {"tract", "structure_type"}, "year": year},
+        negative={},
+        null={},
+    )
+    tests.validate_data(
+        "MGRA Housing Stock",
+        hh_inputs["hs"],
+        row_count={"key_columns": {"mgra", "structure_type"}},
+        negative={},
+        null={},
+    )
+
+
+def _create_hh(hh_inputs: dict[str, pd.DataFrame]) -> dict[str, pd.DataFrame]:
     """Calculate households by MGRA."""
-    city_controls = inputs["city_controls"]
-    tract_controls = inputs["tract_controls"]
-    hs = inputs["hs"]
+    city_controls = hh_inputs["city_controls"]
+    tract_controls = hh_inputs["tract_controls"]
+    hs = hh_inputs["hs"]
 
     # Create, control, and integerize total households by MGRA for each city
     result = []
@@ -228,21 +234,33 @@ def _create_hh(inputs: dict[str, pd.DataFrame]) -> pd.DataFrame:
             hh.drop(columns=["city", "value_hs"]).rename(columns={"value_hh": "value"})
         )
 
-    return pd.concat(result, ignore_index=True)
+    return {"hh": pd.concat(result, ignore_index=True)}
 
 
-def _insert_hh(inputs: dict[str, pd.DataFrame], outputs: pd.DataFrame) -> None:
+def _validate_hh_outputs(hh_outputs: dict[str, pd.DataFrame]) -> None:
+    """Validate the household outputs data"""
+    tests.validate_data(
+        "MGRA Households",
+        hh_outputs["hh"],
+        row_count={"key_columns": {"mgra", "structure_type"}},
+        negative={},
+        null={},
+    )
+
+
+def _insert_hh(
+    hh_inputs: dict[str, pd.DataFrame], hh_outputs: dict[str, pd.DataFrame]
+) -> None:
     """Insert occupancy controls and households results to database."""
     with utils.ESTIMATES_ENGINE.connect() as conn:
-        inputs["city_controls"].to_sql(
+        hh_inputs["city_controls"].to_sql(
             name="controls_city",
             con=conn,
             schema="inputs",
             if_exists="append",
             index=False,
         )
-
-        inputs["tract_controls"].assign(
+        hh_inputs["tract_controls"].assign(
             metric=lambda x: "Occupancy Rate - " + x["structure_type"]
         ).drop(columns="structure_type").to_sql(
             name="controls_tract",
@@ -251,15 +269,7 @@ def _insert_hh(inputs: dict[str, pd.DataFrame], outputs: pd.DataFrame) -> None:
             if_exists="append",
             index=False,
         )
-
-        tests.validate_data(
-            "MGRA Households",
-            outputs,
-            row_count={"key_columns": {"mgra", "structure_type"}},
-            negative={},
-            null={},
-        )
-        outputs.to_sql(
+        hh_outputs["hh"].to_sql(
             name="hh",
             con=conn,
             schema="outputs",
