@@ -192,7 +192,7 @@ def _create_seed(seed_inputs: dict[str, pd.DataFrame]) -> pd.DataFrame:
                 .sum()
             )
 
-            if len(v["labels"]) == 1:
+            if len(metadata["labels"]) == 1:
                 ipf_inputs[table] = frame.to_numpy()
             else:
                 ipf_inputs[table] = np.reshape(
