@@ -1,9 +1,10 @@
+import ipfn
 import iteround
 import numpy as np
 import pandas as pd
 import sqlalchemy as sql
+
 import python.utils as utils
-from ipfn import ipfn as ipfn
 
 
 def _get_controls_inputs(year: int) -> dict[str, pd.DataFrame]:
@@ -199,7 +200,7 @@ def _create_seed(seed_inputs: dict[str, pd.DataFrame]) -> pd.DataFrame:
                 )
 
         # Run IPF
-        ipf = ipfn.ipfn(
+        ipf = ipfn.ipfn.ipfn(
             ipf_inputs["b01001_b_i"],
             aggregates=[ipf_inputs["b01001"], ipf_inputs["b03002"]],
             dimensions=[
