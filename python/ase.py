@@ -185,17 +185,17 @@ def _create_seed(seed_inputs: dict[str, pd.DataFrame]) -> pd.DataFrame:
     for tract in seed_inputs["b01001_b_i"]["tract"].unique():
         # Create inputs to IPF of numpy ndarrays
         ipf_inputs = {}
-        for k, v in dimensions.items():
+        for table, metadata in dimensions.items():
             frame = (
-                seed_inputs[k][seed_inputs[k]["tract"] == tract]
-                .groupby(v["labels"])["value"]
+                seed_inputs[table][seed_inputs[table]["tract"] == tract]
+                .groupby(metadata["labels"])["value"]
                 .sum()
             )
 
             if len(v["labels"]) == 1:
-                ipf_inputs[k] = frame.to_numpy()
+                ipf_inputs[table] = frame.to_numpy()
             else:
-                ipf_inputs[k] = np.reshape(
+                ipf_inputs[table] = np.reshape(
                     frame.to_numpy(), tuple(map(len, frame.index.levels))
                 )
 
