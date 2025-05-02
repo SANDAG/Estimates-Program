@@ -27,7 +27,10 @@ FROM (
             WHEN [variables].[label] LIKE 'Estimate%10 to 14%' THEN '10 to 14'
             WHEN [variables].[label] LIKE 'Estimate%15 to 17%' THEN '15 to 17'
             WHEN [variables].[label] LIKE 'Estimate%18 and 19%' THEN '18 and 19'
-            WHEN [variables].[label] LIKE 'Estimate%20 years%' OR [variables].[label] LIKE 'Estimate%21 years%' OR [variables].[label] LIKE 'Estimate%22 to 24 years%' THEN '20 to 24'
+            WHEN [variables].[label] LIKE 'Estimate%20 years%'
+                OR [variables].[label] LIKE 'Estimate%21 years%'
+                OR [variables].[label] LIKE 'Estimate%22 to 24 years%'
+            THEN '20 to 24'
             WHEN [variables].[label] LIKE 'Estimate%25 to 29%' THEN '25 to 29'
             WHEN [variables].[label] LIKE 'Estimate%30 to 34%' THEN '30 to 34'
             WHEN [variables].[label] LIKE 'Estimate%35 to 39%' THEN '35 to 39'
@@ -37,7 +40,9 @@ FROM (
             WHEN [variables].[label] LIKE 'Estimate%55 to 59%' THEN '55 to 59'
             WHEN [variables].[label] LIKE 'Estimate%60 and 61%' THEN '60 and 61'
             WHEN [variables].[label] LIKE 'Estimate%62 to 64%' THEN '62 to 64'
-            WHEN [variables].[label] LIKE 'Estimate%65 and 66%' OR [variables].[label] LIKE 'Estimate%67 to 69%' THEN '65 to 69'
+            WHEN [variables].[label] LIKE 'Estimate%65 and 66%'
+                OR [variables].[label] LIKE 'Estimate%67 to 69%'
+            THEN '65 to 69'
             WHEN [variables].[label] LIKE 'Estimate%70 to 74%' THEN '70 to 74'
             WHEN [variables].[label] LIKE 'Estimate%75 to 79%' THEN '75 to 79'
             WHEN [variables].[label] LIKE 'Estimate%80 to 84%' THEN '80 to 84'
@@ -61,6 +66,7 @@ FROM (
 WHERE
     [sex] IS NOT NULL 
     AND [age_group] IS NOT NULL
+    AND [tract] != '06073990100'  -- Exclude shoreline/water tract 
 GROUP BY
     [tract],
     [sex],

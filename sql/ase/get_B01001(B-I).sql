@@ -1,6 +1,6 @@
 /*
 Get population by age/sex/ethnicity using B01001(B-I) tables and B01001 table for a given ACS 5-Year survey.
-The B01001(B-I) tables aggregate age categories are naively split using the B01001 table allocations.
+The B01001(B-I) tables aggregate age categories are naively split using the B01001 table allocations at the region level.
 
 The following aggregate age categories are split:
     35 to 44 - Split into 35 to 39, 40 to 44
@@ -27,14 +27,12 @@ DECLARE @year integer = :year;
 DROP TABLE IF EXISTS [#allocation_tbl];
 WITH [b01001] AS (
     SELECT
-        [tract],
         [sex],
         [age_group],
         [split_age_group],
         SUM([value]) AS [value]
     FROM (
         SELECT
-            [tract],
             CASE
                 WHEN [variables].[label] LIKE 'Estimate%Female%' THEN 'Female'
                 WHEN [variables].[label] LIKE 'Estimate%Male%' THEN 'Male'
@@ -48,7 +46,9 @@ WITH [b01001] AS (
                 WHEN [variables].[label] LIKE 'Estimate%55 to 59%' THEN '55 to 59'
                 WHEN [variables].[label] LIKE 'Estimate%60 and 61%' THEN '60 and 61'
                 WHEN [variables].[label] LIKE 'Estimate%62 to 64%' THEN '62 to 64'
-                WHEN [variables].[label] LIKE 'Estimate%65 and 66%' OR [variables].[label] LIKE 'Estimate%67 to 69%' THEN '65 to 69'
+                WHEN [variables].[label] LIKE 'Estimate%65 and 66%'
+                    OR [variables].[label] LIKE 'Estimate%67 to 69%'
+                THEN '65 to 69'
                 WHEN [variables].[label] LIKE 'Estimate%70 to 74%' THEN '70 to 74'
                 WHEN [variables].[label] LIKE 'Estimate%75 to 79%' THEN '75 to 79'
                 WHEN [variables].[label] LIKE 'Estimate%80 to 84%' THEN '80 to 84'
@@ -62,7 +62,9 @@ WITH [b01001] AS (
                 WHEN [variables].[label] LIKE 'Estimate%55 to 59%' THEN '55 to 64'
                 WHEN [variables].[label] LIKE 'Estimate%60 and 61%' THEN '55 to 64'
                 WHEN [variables].[label] LIKE 'Estimate%62 to 64%' THEN '55 to 64'
-                WHEN [variables].[label] LIKE 'Estimate%65 and 66%' OR [variables].[label] LIKE 'Estimate%67 to 69%' THEN '65 to 74'
+                WHEN [variables].[label] LIKE 'Estimate%65 and 66%'
+                    OR [variables].[label] LIKE 'Estimate%67 to 69%'
+                THEN '65 to 74'
                 WHEN [variables].[label] LIKE 'Estimate%70 to 74%' THEN '65 to 74'
                 WHEN [variables].[label] LIKE 'Estimate%75 to 79%' THEN '75 to 84'
                 WHEN [variables].[label] LIKE 'Estimate%80 to 84%' THEN '75 to 84'
@@ -86,20 +88,18 @@ WITH [b01001] AS (
         [sex] IS NOT NULL
         AND [age_group] IS NOT NULL
     GROUP BY
-        [tract],
         [sex],
         [age_group],
         [split_age_group]
 )
 -- Calculate naive split %s of aggregate age categories from B01001 used in the B01001(B-I) tables
 SELECT
-    [tract],
     [sex],
     [age_group],
     [split_age_group],
     CASE
-        WHEN SUM([value]) OVER (PARTITION BY [tract], [sex], [split_age_group]) = 0 THEN 0
-        ELSE [value] / SUM([value]) OVER (PARTITION BY [tract], [sex], [split_age_group])
+        WHEN SUM([value]) OVER (PARTITION BY [sex], [split_age_group]) = 0 THEN 0
+        ELSE [value] / SUM([value]) OVER (PARTITION BY [sex], [split_age_group])
     END AS [pct]
 INTO [#allocation_tbl]
 FROM [b01001];
@@ -180,7 +180,7 @@ WITH [b01001b-i] AS (
 )
 -- Take the B01001(B-I) data and split aggregate age groups using naive %s from B01001
 SELECT
-    [b01001b-i].[tract],
+    [tract],
     [b01001b-i].[sex],
     [b01001b-i].[ethnicity],
     CASE
@@ -193,6 +193,6 @@ SELECT
     END AS [value]
 FROM [b01001b-i]
 LEFT OUTER JOIN [#allocation_tbl]
-    ON [b01001b-i].[tract] = [#allocation_tbl].[tract]
-    AND [b01001b-i].[sex] = [#allocation_tbl].[sex]
+    ON [b01001b-i].[sex] = [#allocation_tbl].[sex]
     AND [b01001b-i].[split_age_group] = [#allocation_tbl].[split_age_group]
+WHERE [tract] != '06073990100'  -- Exclude shoreline/water tract 
