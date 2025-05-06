@@ -1,6 +1,9 @@
 /*
 Pull population by ethnicity using the B03002 table for a given ACS 5-Year survey.
 This data provides Hispanic/Non-Hispanic ethnicity groups for use in age/sex/ethnicity seed generation.
+
+Note: The REPLACE function is used to remove the ':' character from the variable label.
+    This character is used beginning in the 2015-2019 ACS 5-Year but is not present prior.
 */
 
 -- Initialize parameters -----------------------------------------------------
