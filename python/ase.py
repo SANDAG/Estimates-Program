@@ -1,6 +1,9 @@
+import ipfn
 import iteround
+import numpy as np
 import pandas as pd
 import sqlalchemy as sql
+
 import python.utils as utils
 
 
@@ -127,3 +130,95 @@ def _insert_controls(outputs: pd.DataFrame) -> None:
             if_exists="append",
             index=False,
         )
+
+
+def _get_seed_inputs(year: int) -> dict[str, pd.DataFrame]:
+    """Get inputs required to generate census tract age/sex/ethnicity seed data."""
+    with utils.ESTIMATES_ENGINE.connect() as conn:
+        # Get the Age/Sex B010001 table data
+        with open(utils.SQL_FOLDER / "ase/get_B01001.sql") as file:
+            b01001 = pd.read_sql_query(
+                sql=sql.text(file.read()),
+                con=conn,
+                params={
+                    "year": year,
+                },
+            )
+
+        # Get the Ethnicity B03002 table data
+        with open(utils.SQL_FOLDER / "ase/get_B03002.sql") as file:
+            b03002 = pd.read_sql_query(
+                sql=sql.text(file.read()),
+                con=conn,
+                params={
+                    "year": year,
+                },
+            )
+
+        # Get Age/Sex/Ethnicity data from B01001(B-I) table data
+        with open(utils.SQL_FOLDER / "ase/get_B01001(B-I).sql") as file:
+            b01001_b_i = pd.read_sql_query(
+                sql=sql.text(file.read()),
+                con=conn,
+                params={
+                    "year": year,
+                },
+            )
+
+    return {"b01001": b01001, "b03002": b03002, "b01001_b_i": b01001_b_i}
+
+
+def _create_seed(seed_inputs: dict[str, pd.DataFrame]) -> pd.DataFrame:
+    """Create census tract age/sex/ethnicity seed data."""
+    # Create dictionary of DataFrames and their dimensions to be used in IPF
+    dimensions = {
+        "b01001": {"labels": ["age_group", "sex"], "values": [0, 1]},
+        "b03002": {"labels": ["ethnicity"], "values": [2]},
+        "b01001_b_i": {
+            "labels": ["age_group", "sex", "ethnicity"],
+            "values": [0, 1, 2],
+        },
+    }
+
+    output = []
+    # Within each census tract
+    for tract in seed_inputs["b01001_b_i"]["tract"].unique():
+        # Create inputs to IPF of numpy ndarrays
+        ipf_inputs = {}
+        for table, metadata in dimensions.items():
+            frame = (
+                seed_inputs[table][seed_inputs[table]["tract"] == tract]
+                .groupby(metadata["labels"])["value"]
+                .sum()
+            )
+
+            if len(metadata["labels"]) == 1:
+                ipf_inputs[table] = frame.to_numpy()
+            else:
+                ipf_inputs[table] = np.reshape(
+                    frame.to_numpy(), tuple(map(len, frame.index.levels))
+                )
+
+        # Run IPF
+        ipf = ipfn.ipfn.ipfn(
+            ipf_inputs["b01001_b_i"],
+            aggregates=[ipf_inputs["b01001"], ipf_inputs["b03002"]],
+            dimensions=[
+                dimensions["b01001"]["values"],
+                dimensions["b03002"]["values"],
+            ],
+            max_iteration=10000,
+        )
+
+        # Transform result back to DataFrame
+        result = (
+            seed_inputs["b01001_b_i"][dimensions["b01001_b_i"]["labels"]]
+            .drop_duplicates()
+            .sort_values(by=dimensions["b01001_b_i"]["labels"])
+            .assign(tract=tract, value=ipf.iteration().flatten())
+        )
+
+        # Append to output list
+        output.append(result)
+
+    return pd.concat(output, ignore_index=True)
