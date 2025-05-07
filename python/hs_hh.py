@@ -21,14 +21,14 @@ def run_hs_hh(year: int) -> None:
     the production database.
 
     Functionality is segmented into functions for code encapsulation:
-        _insert_hs - Insert housing stock by MGRA for a given year
-        _get_hh_inputs - Get housing stock and occupancy controls
-        _validate_hh_inputs - Validate the households input data from the above function
-        _create_hh - Calculate households by MGRA applying occupancy
-            controls, integerization, and reallocation
-        _validate_hh_outputs - Validate the households output data from the above
+        _get_hs_hh_inputs - Get housing stock and occupancy controls
+        _validate_hs_hh_inputs - Validate the households input data from the above
             function
-        _insert_hh - Insert occupancy controls and households by MGRA to
+        _create_hs_hh - Calculate households by MGRA applying occupancy
+            controls, integerization, and reallocation
+        _validate_hs_hh_outputs - Validate the households output data from the above
+            function
+        _insert_hs_hh - Insert occupancy controls and households by MGRA to
             production database
 
     A single utility function is also defined:
