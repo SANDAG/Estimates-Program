@@ -14,10 +14,12 @@ Notes:
 may contain both institutional and non-institutional group quarters as they
 are solely defined by the [SCHG] and [ESR] fields, respectively.
     (2) The 'Group Quarters - Institutional Correctional Facilities' type
-consists of all non-disabled institutional group quarters.
+consists of all non-disabled institutional group quarters where persons are
+10 years of age or older.
     (3) The 'Group Quarters - Other' type are the leftovers, consisting of all
-disabled institutional group quarters and non-institutional group quarters not
-defined previously as College or Military group quarters.
+disabled institutional group quarters, non-institutional group quarters not
+defined previously as College or Military group quarters, and non-disabled
+institutional group quarters where persons are under 10 years of age.
     (4) The 1997 OMB SP15 race/ethnicity categories are used so the
 'Some Other Race alone' category is removed.
     (5) The [SCHG] field changes values after 2011.
@@ -129,10 +131,10 @@ with [acs_data] AS (
                 OR (@year BETWEEN 2012 AND 2023 AND [SCHG] IN ('15','16'))
             THEN 'Group Quarters - College'
             WHEN [ESR] IN ('4','5') THEN 'Group Quarters - Military'
-            WHEN (@year = 2010 AND [RELP] = '14')
-                OR (@year= 2011 AND [RELP] = '13')
-                OR (@year BETWEEN 2012 AND 2018 AND [RELP] = '16' AND [DIS] = '2')
-                OR (@year BETWEEN 2019 AND 2023 AND [RELSHIPP] = '37' AND [DIS] = '2')
+            WHEN (@year = 2010 AND [RELP] = '14' AND [AGEP] >= 10)
+                OR (@year= 2011 AND [RELP] = '13' AND [AGEP] >= 10)
+                OR (@year BETWEEN 2012 AND 2018 AND [RELP] = '16' AND [DIS] = '2' AND [AGEP] >= 10)
+                OR (@year BETWEEN 2019 AND 2023 AND [RELSHIPP] = '37' AND [DIS] = '2' AND [AGEP] >= 10)
             THEN 'Group Quarters - Institutional Correctional Facilities'
             ELSE 'Group Quarters - Other'
             END AS [gq_type],
