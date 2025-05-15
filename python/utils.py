@@ -1,6 +1,7 @@
 import iteround
 import pathlib
 import yaml
+import warnings
 import pandas as pd
 import sqlalchemy as sql
 
@@ -111,14 +112,57 @@ def integerize_2d(
     elif condition == "less than" and sum(col_crtls) > sum(row_crtls):
         raise ValueError("Marginal controls are inconsistent for 'less than' match.")
 
+    # Intialize list to store column adjustments made
+    adjustments = [0] * df.shape[1]
+
     # Safe round the columns to match the marginal controls
     for i, col in enumerate(df.columns):
-        df[col] = iteround.saferound(df[col], places=0, topline=col_crtls[i])
+
+        # If control is zero set column to zero
+        if col_crtls[i] == 0:
+            df[col] == 0
+
+        # If the column has non-zero positive values
+        elif any(df[col] > 0):
+            # Remove 0s from consideration and use the largest strategy to avoid negative values
+            values = iteround.saferound(
+                df.loc[df[col] > 0, col],
+                places=0,
+                topline=col_crtls[i],
+                strategy="largest",
+            )
+
+            # If any negatives exist
+            if min(values) < 0:
+                # Track column adjustments
+                adjustments[i] -= abs(sum([value for value in values if value < 0]))
+                # Set all negative values to 0
+                values = [value if value > 0 else 0 for value in values]
+
+            # Set the column to the saferounded values
+            df.loc[df[col] > 0, col] = values
+        # If control is non-zero and and column has no non-zero positive values
+        else:
+            # Safe round the values
+            values = iteround.saferound(
+                df[col],
+                places=0,
+                topline=col_crtls[i],
+                strategy="largest",
+            )
+
+            # If any negatives exist
+            if min(values) < 0:
+                # Track column adjustments
+                adjustments[i] -= abs(sum([value for value in values if value < 0]))
+                # Set all negative values to 0
+                values = [value if value > 0 else 0 for value in values]
+
+            # Set the column to the saferounded values
+            df[col] = values
 
     # Calculate deviations from the row marginal controls
-    # Intialize list to store column adjustments made
     row_devs = df.sum(axis=1) - row_crtls
-    adjustments = [0] * df.shape[1]
 
     # Calculate the deviation condition
     if condition == "exact":
@@ -129,13 +173,21 @@ def integerize_2d(
         raise ValueError("Condition must be 'exact' or 'less than'.")
 
     # While there are deviations to adjust
+    relax_skip_condition = False
     while any_deviation or max(map(abs, adjustments)) > 0:
         # For rows with + deviation
         for i, row in enumerate(row_devs):
             if row > 0:
-                # Calculate adjustment as minimum of total possible and smallest non-zero column value
+                # Check for columns with available negative adjustments
+                cols = [j for j, v in enumerate(adjustments) if v < 0]
+
+                # If all values in adjustment columns are 0 allow all columns to be adjusted
+                if len(cols) == 0 or df.iloc[i, cols].max() == 0:
+                    cols = list(range(len(adjustments)))
+
+                # Calculate adjustment as minimum of total possible and smallest positive non-zero column value
                 # Adjust the column value downward and store adjustments made for that column
-                col_idx = df.iloc[i].where(df.iloc[i] > 0).idxmin(skipna=True)
+                col_idx = df.iloc[i, cols].where(df.iloc[i, cols] > 0).idxmin()
                 j = df.columns.get_loc(col_idx)
                 adjustment = min(row, df.iat[i, j])
                 df.iat[i, j] -= adjustment
@@ -143,30 +195,37 @@ def integerize_2d(
 
         # For rows with - deviation
         for i, row in enumerate(row_devs):
-            # Stop if no available column adjustments
+            # Check for columns with available positive adjustments
             if max(adjustments) > 0:
                 if row < 0:
-                    # Restrict to columns with available adjustments
+                    # Restrict to columns with available positive adjustments
                     cols = [j for j, v in enumerate(adjustments) if v > 0]
 
                     # If all values in adjustment columns are 0 skip the row
-                    if df.iloc[i, cols].max() <= 0:
-                        continue
-                    else:
-                        # Find the column with the largest non-zero value and available adjustment
-                        # Calculate adjustment as minimum of total possible row and column adjustments
-                        # Adjust the column value upward and store adjustments made for that column
-                        col_idx = df.iloc[i, cols].idxmax()
-                        j = df.columns.get_loc(col_idx)
-                        adjustment = min(abs(row), adjustments[j])
-                        df.iat[i, j] += adjustment
-                        adjustments[j] -= adjustment
+                    if not relax_skip_condition:
+                        if df.iloc[i, cols].max() == 0:
+                            continue
+
+                    # Find the column with the largest value and available adjustment
+                    # Calculate adjustment as minimum of total possible row and column adjustments
+                    # Adjust the column value upward and store adjustments made for that column
+                    col_idx = df.iloc[i, cols].idxmax()
+                    j = df.columns.get_loc(col_idx)
+                    adjustment = min(abs(row), adjustments[j])
+                    df.iat[i, j] += adjustment
+                    adjustments[j] -= adjustment
             else:
                 break
 
         # If no changes were made avoid infinite loop
         if row_devs.equals(df.sum(axis=1) - row_crtls):
-            raise ValueError("No adjustments made. Check marginal controls.")
+            # The first time no deviations are adjusted relax the skip condition
+            # For rows with - deviations allow positive adjustments to zero-valued columns
+            if relax_skip_condition:
+                raise ValueError("No adjustments made. Check marginal controls.")
+            else:
+                relax_skip_condition = True
+                warnings.warn("Skip condition relaxed for 2d-integerizer.")
         else:
             # Recalulate the row deviations
             row_devs = df.sum(axis=1) - row_crtls
