@@ -73,13 +73,13 @@ LEFT OUTER JOIN (
 		SUM([gqCivCol]) AS [Group Quarters - College],
 		SUM([gqMil]) AS [Group Quarters - Military],
 		SUM(
-			CASE WHEN [special_mgras].[facility_type] = 'NGroup Quarters - Institutional Correctional Facilities'
+			CASE WHEN [special_mgras].[pop_type] = 'Group Quarters - Institutional Correctional Facilities'
 				 THEN [gqOther]
 				 ELSE 0 END
 		) AS [Group Quarters - Institutional Correctional Facilities],
 		SUM(
-			CASE WHEN [special_mgras].[facility_type] != 'Group Quarters - Institutional Correctional Facilities'
-					OR [special_mgras].[facility_type] IS NULL
+			CASE WHEN [special_mgras].[pop_type] != 'Group Quarters - Institutional Correctional Facilities'
+					OR [special_mgras].[pop_type] IS NULL
 				 THEN [gqOther]
 				 ELSE 0 END
 		) AS [Group Quarters - Other]
@@ -87,7 +87,7 @@ LEFT OUTER JOIN (
 	LEFT OUTER JOIN (
 		SELECT
 			[mgra15],
-			[facility_type]
+			[pop_type]
 		FROM [inputs].[special_mgras]
 		WHERE @year BETWEEN [start_year] AND [end_year]
 	) AS [special_mgras]
