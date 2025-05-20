@@ -4,7 +4,7 @@ DECLARE @year integer = :year;
 
 
 -- Get population by type ----------------------------------------------------
-with [population] AS (
+WITH [population] AS (
     SELECT
         [mgra],
         [gq_type] AS [pop_type],
@@ -13,7 +13,9 @@ with [population] AS (
     WHERE
         [run_id] = @run_id
         AND [year] = @year
-        UNION ALL
+
+    UNION ALL
+
     SELECT
         [mgra],
         'Household Population' AS [pop_type],

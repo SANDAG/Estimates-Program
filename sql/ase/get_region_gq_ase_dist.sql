@@ -15,7 +15,10 @@ may contain both institutional and non-institutional group quarters as they
 are solely defined by the [SCHG] and [ESR] fields, respectively.
     (2) The 'Group Quarters - Institutional Correctional Facilities' type
 consists of all non-disabled institutional group quarters where persons are
-10 years of age or older.
+10 years of age or older. There is no formal age limit for incarceration but
+it is rare for juveniles under 10 years of age to be incarcerated. It is
+suspected these individuals are related to some other type of facility when
+they are present in the ACS.
     (3) The 'Group Quarters - Other' type are the leftovers, consisting of all
 disabled institutional group quarters, non-institutional group quarters not
 defined previously as College or Military group quarters, and non-disabled
