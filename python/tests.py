@@ -22,12 +22,13 @@ _DISTINCT_COUNTS = {
     "constants": {
         "gq_type": 4,
         "structure_type": 4,
-    },
-    "mgra15": {
-        "mgra": 24321,
+        "income_category": 10,
         "2010_tract": 627,
         "2020_tract": 736,
         "city": 19,
+    },
+    "mgra15": {
+        "mgra": 24321,
     },
 }
 
