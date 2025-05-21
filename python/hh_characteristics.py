@@ -167,8 +167,3 @@ def _insert_hh_char(
             index=False,
         )
     pass
-
-
-if __name__ == "__main__":
-    utils.RUN_ID = 1
-    run_hh_characteristics(2020)
