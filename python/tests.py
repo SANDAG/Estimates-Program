@@ -20,7 +20,11 @@ import python.utils as utils
 # column
 _DISTINCT_COUNTS = {
     "constants": {
+        "age_group": 20,
+        "ethnicity": 7,
         "gq_type": 4,
+        "pop_type": 5,
+        "sex": 2,
         "structure_type": 4,
     },
     "mgra15": {

@@ -214,36 +214,31 @@ def integerize_2d(
     condition: str = "exact",
 ) -> np.ndarray:
     # Take deep copy of input array to avoid altering original
-    array_2d = np.copy(data)
+    array_2d = data.copy(order="K")
 
     # Ensure input arrays are of correct dimensions
-    assert array_2d.ndim == 2, "input data array must be 2-dimensional"
-    assert row_ctrls.ndim == 1, "row controls must be 1-dimensional"
-    assert col_ctrls.ndim == 1, "column controls must be 1-dimensional"
+    if array_2d.ndim != 2:
+        raise ValueError("Input data array must be 2-dimensional")
+    if row_ctrls.ndim != 1:
+        raise ValueError("Row controls must be 1-dimensional")
+    if col_ctrls.ndim != 1:
+        raise ValueError("Column controls must be 1-dimensional")
 
     # Ensure marginal control dimensions match input data array
-    assert (
-        array_2d.shape[0] == row_ctrls.shape[0]
-    ), "row controls do not match input data array dimensions"
-
-    assert (
-        array_2d.shape[1] == col_ctrls.shape[0]
-    ), "column controls do not match input data array dimensions"
+    if array_2d.shape[0] != row_ctrls.shape[0]:
+        raise ValueError("Row controls do not match input data array dimensions")
+    if array_2d.shape[1] != col_ctrls.shape[0]:
+        raise ValueError("Column controls do not match input data array dimensions")
 
     # Ensure condition parameter is set properly
     if condition == "exact":
-        assert np.sum(row_ctrls) == np.sum(
-            col_ctrls
-        ), "marginal controls inconsistent for 'exact' match"
+        if np.sum(row_ctrls) != np.sum(col_ctrls):
+            raise ValueError("Marginal controls inconsistent for 'exact' match")
     elif condition == "less than":
-        assert np.sum(row_ctrls) >= np.sum(
-            col_ctrls
-        ), "marginal controls inconsistent for 'less than' match"
+        if np.sum(row_ctrls) < np.sum(col_ctrls):
+            raise ValueError("Marginal controls inconsistent for 'less than' match")
     else:
-        assert condition in [
-            "exact",
-            "less than",
-        ], "condition must be one of ['exact', 'less than']"
+        raise ValueError("condition must be one of ['exact', 'less than']")
 
     # Round columns of the input data array to match marginal controls
     for col_idx in range(array_2d.shape[1]):
@@ -252,7 +247,7 @@ def integerize_2d(
     # Calculate deviations from row marginal controls
     deviations = np.sum(array_2d, axis=1) - row_ctrls
 
-    # Intialize tracker of column adjustments made
+    # Initialize tracker of column adjustments made
     adjustments = np.zeros(col_ctrls.shape[0])
 
     # Set deviation condition
@@ -273,7 +268,7 @@ def integerize_2d(
             if deviations[row_idx] > 0:
                 # Check for columns with available negative adjustments
                 cols = list(np.where(adjustments < 0)[0])
-                # If no columns available with negativwe adjustments
+                # If no columns available with negative adjustments
                 # Or all values are 0 allow all columns to be adjusted
                 if len(cols) == 0 or np.max(array_2d[row_idx, cols]) == 0:
                     cols = list(range(adjustments.shape[0]))
@@ -326,7 +321,7 @@ def integerize_2d(
                 relax_skip_condition = True
                 warnings.warn("Skip condition relaxed for 2d-integerizer.")
 
-        # Recalulate the row deviations
+        # Recalculate the row deviations
         deviations = np.sum(array_2d, axis=1) - row_ctrls
 
         # Recalculate the deviation condition
