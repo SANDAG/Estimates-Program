@@ -72,7 +72,7 @@ def run_ase(year: int) -> None:
     ase_inputs = _get_ase_inputs(year)
     _validate_ase_inputs(year, ase_inputs)
 
-    ase_outputs = _create_ase(ase_inputs)
+    ase_outputs = _create_ase(year, ase_inputs)
     _validate_ase_outputs(ase_outputs)
 
     _insert_ase(ase_outputs)
@@ -372,8 +372,6 @@ def _get_ase_inputs(year: int) -> dict[str, pd.DataFrame]:
 
 def _validate_ase_inputs(year: int, ase_inputs: dict[str, pd.DataFrame]) -> None:
     """Validate the age/sex/ethnicity input data"""
-    # Note that the year and controls_ase are not validated here
-    # As one is simply a parameter and the other is validated prior to this
     tests.validate_data(
         "MGRA Population by Type Estimates",
         ase_inputs["mgra_pop_type"],
@@ -392,9 +390,18 @@ def _validate_ase_inputs(year: int, ase_inputs: dict[str, pd.DataFrame]) -> None
         null={},
     )
     tests.validate_data("Special MGRAs", ase_inputs["special_mgras"], negative={})
+    tests.validate_data(
+        "Regional ASE Controls",
+        ase_inputs["controls_ase"],
+        row_count={"key_columns": {"pop_type", "age_group", "sex", "ethnicity"}},
+        negative={},
+        null={},
+    )
 
 
-def _create_ase(ase_inputs: dict[str, pd.DataFrame]) -> dict[str, pd.DataFrame]:
+def _create_ase(
+    year: int, ase_inputs: dict[str, pd.DataFrame]
+) -> dict[str, pd.DataFrame]:
     """Create MGRA age/sex/ethnicity population by type."""
     # Merge the MGRA-level population by type data with the seed data
     # And provide special MGRA information to apply age/sex restrictions
@@ -543,7 +550,7 @@ def _create_ase(ase_inputs: dict[str, pd.DataFrame]) -> dict[str, pd.DataFrame]:
         population["value"] = population["value"].astype(int)
         population["pop_type"] = pop_type
         population["run_id"] = utils.RUN_ID
-        population["year"] = ase_inputs["year"]
+        population["year"] = year
         result[pop_type] = population
 
     # Return integerized results
