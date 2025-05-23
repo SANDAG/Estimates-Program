@@ -1,7 +1,6 @@
 # Container for the Population by Type module. See the Estimates-Program wiki page for
 # more details: https://github.com/SANDAG/Estimates-Program/wiki/Population-by-Type
 
-import iteround
 import pandas as pd
 import sqlalchemy as sql
 
@@ -133,7 +132,7 @@ def _create_gq_outputs(gq_inputs: dict[str, pd.DataFrame]) -> dict[str, pd.DataF
         if city_control > 0:
             multiplier = city_control / city_gq["value"].sum()
             city_gq["value"] *= multiplier
-            city_gq["value"] = iteround.saferound(city_gq["value"], places=0)
+            city_gq["value"] = utils.integerize_1d(city_gq["value"])
         else:
             city_gq["value"] = 0
 
@@ -300,7 +299,7 @@ def _create_hhp_outputs(hhp_inputs: dict[str, pd.DataFrame]) -> dict[str, pd.Dat
         hhp["value_hhp"] *= multiplier
 
         # Integerize household population while preserving the total amount
-        hhp["value_hhp"] = iteround.saferound(hhp["value_hhp"], places=0)
+        hhp["value_hhp"] = utils.integerize_1d(hhp["value_hhp"])
 
         # Reallocate household population which contradicts the number of households.
         # See the _calculate_hhp_adjustment() function for exact situations
@@ -373,7 +372,7 @@ def _validate_hhp_outputs(hhp_outputs: dict[str, pd.DataFrame]) -> None:
 def _insert_hhp(
     hhp_inputs: dict[str, pd.DataFrame], hhp_outputs: dict[str, pd.DataFrame]
 ) -> None:
-    """Insert intput and output data related to household population"""
+    """Insert input and output data related to household population"""
 
     # Insert input and output data to database
     with utils.ESTIMATES_ENGINE.connect() as conn:
