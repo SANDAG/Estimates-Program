@@ -181,7 +181,7 @@ def integerize_1d(
     data = data * control / np.sum(data)
 
     # Round every value up
-    data = np.ceil(data)
+    data = np.ceil(data).astype(int)
 
     # Get difference between control and post-rounding sum.
     # Since data was rounded up, it is guaranteed to be the

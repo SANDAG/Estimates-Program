@@ -16,10 +16,8 @@ Two input parameters are used
 SET NOCOUNT ON;
 
 -- Initialize parameters and return table ----------------------------------------------
---DECLARE @run_id integer = :run_id;
---DECLARE @year integer = :year;
-DECLARE @run_id integer = 1;
-DECLARE @year integer = 2020;
+DECLARE @run_id integer = :run_id;
+DECLARE @year integer = :year;
 
 -- Build the expected return table Tract x Structure Type
 DROP TABLE IF EXISTS [#tt_shell];
@@ -110,9 +108,7 @@ FROM (
         AND [tbls].[year] = @year
         AND [tbls].[product] = '5Y'
 ) AS [b19001]
-WHERE
-    [income_category] IS NOT NULL
-    AND [value] > 0
+WHERE [income_category] IS NOT NULL
 GROUP BY
     [tract],
     [income_category]
@@ -120,7 +116,7 @@ GROUP BY
 -- Create hh income distribution -------------------------------------------------------
 -- Calculate hh income distribution
 DECLARE @total_hh INTEGER = (SELECT SUM([hh]) FROM [#income_category]);
-with [region_income_distribution] AS (
+WITH [region_income_distribution] AS (
         SELECT
             [income_category],
             1.0 * SUM([hh]) / @total_hh AS [hh_dist]
@@ -132,7 +128,10 @@ with [region_income_distribution] AS (
         SELECT
             [#income_category].[tract],
             [income_category],
-            [#income_category].[hh] / [tract_total_hh].[hh] AS [hh_dist]
+            CASE 
+                WHEN [tract_total_hh].[hh] = 0 THEN NULL
+                ELSE [#income_category].[hh] / [tract_total_hh].[hh] 
+            END AS [hh_dist]
         FROM [#income_category]
         LEFT JOIN (
                 SELECT

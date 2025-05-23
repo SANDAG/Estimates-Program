@@ -100,24 +100,21 @@ def _create_hh_char(hh_char_inputs: dict[str, pd.DataFrame]) -> dict[str, pd.Dat
     hh = hh_char_inputs["hh"]
     tract_income_dist = hh_char_inputs["hh_income_tract_controls"]
 
-    # For easy usage in controlling, store the total households in the region
-    region_hh = hh["hh"].sum()
-
-    # The initial decimal estimate of household income is done by simply applying tract
-    # household income distributions to the number of households in each MGRA
-    hh_income = hh.merge(
-        tract_income_dist, on=["run_id", "year", "tract"], how="left"
-    ).assign(hh=lambda df: df["hh"] * df["value"])
-
-    # Control households by income to the regional total households
-    # TODO: Change to use the utils.py function
-    hh_income = hh_income.drop(columns=["tract", "value"]).assign(
-        hh=lambda df: np.ceil(df["hh"])
+    # Combine the total households in each MGRA with the distribution of households by
+    # income
+    hh_income = (
+        hh.merge(tract_income_dist, on=["run_id", "year", "tract"], how="left")
+        .assign(hh=lambda df: df["hh"] * df["value"])
+        .drop(columns=["tract", "value"])
     )
-    diff = int(hh_income["hh"].sum() - region_hh)
-    to_decrease = np.argsort(hh_income["hh"], stable=True)[-diff:]
-    hh_income.loc[to_decrease, "hh"] -= 1
-    hh_income["hh"] = hh_income["hh"].astype(int)
+
+    # Control each MGRA so households by household income exactly matches the total
+    # households
+    integerized_groups = []
+    for _, group in hh_income.groupby("mgra"):
+        group["hh"] = utils.integerize_1d(group["hh"])
+        integerized_groups.append(group)
+    hh_income = pd.concat(integerized_groups)
 
     return {"hh_income": hh_income}
 
@@ -139,12 +136,10 @@ def _insert_hh_char(
 ) -> None:
     """Insert hh characteristics and tract level controls to database"""
     with utils.ESTIMATES_ENGINE.connect() as conn:
-        (
-            hh_char_inputs["hh_income_tract_controls"]
-            .assign(metric=lambda df: "Income Category - " + df["income_category"])
-            .drop(columns=["income_category"])[
-                ["run_id", "year", "tract", "metric", "value"]
-            ]
+        hh_char_inputs["hh_income_tract_controls"][
+            ["run_id", "year", "tract", "income_category", "value"]
+        ].rename(columns={"income_category": "metric"}).assign(
+            metric=lambda df: "Income Category - " + df["metric"]
         ).to_sql(
             schema="inputs",
             name="controls_tract",
@@ -152,13 +147,11 @@ def _insert_hh_char(
             con=conn,
             index=False,
         )
-        (
-            hh_char_outputs["hh_income"]
-            .assign(metric=lambda df: "Income Category - " + df["income_category"])
-            .drop(columns=["income_category"])
-            .rename(columns={"hh": "value"})[
-                ["run_id", "year", "mgra", "metric", "value"]
-            ]
+
+        hh_char_outputs["hh_income"][
+            ["run_id", "year", "mgra", "income_category", "hh"]
+        ].rename(columns={"income_category": "metric", "hh": "value"}).assign(
+            metric=lambda df: "Income Category - " + df["metric"]
         ).to_sql(
             schema="outputs",
             name="hh_characteristics",
@@ -166,4 +159,3 @@ def _insert_hh_char(
             con=conn,
             index=False,
         )
-    pass
