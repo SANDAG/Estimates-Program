@@ -100,4 +100,5 @@ sql:
   gis:
     server: <SqlInstanceName>  # SQL instance containing GIS database
     database: <SqlDatabaseName>  # database within instance containing GIS datasets (GQ/LUDU)
+  staging: <FolderPath>  # unconditional network folder path visible to SQL instance for BULK INSERT
 ```
