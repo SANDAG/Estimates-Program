@@ -3,37 +3,14 @@
 # https://github.com/SANDAG/Estimates-Program/wiki/Population-by-Age-Sex-Ethnicity
 
 import ipfn
-import iteround
 import functools
+
 import numpy as np
 import pandas as pd
+import polars as pl
 import sqlalchemy as sql
 
 import python.utils as utils
-
-
-_AGE_MAPPING = {
-    "Under 5": {"min": 0, "max": 4},
-    "5 to 9": {"min": 5, "max": 9},
-    "10 to 14": {"min": 10, "max": 14},
-    "15 to 17": {"min": 15, "max": 17},
-    "18 and 19": {"min": 18, "max": 19},
-    "20 to 24": {"min": 20, "max": 24},
-    "25 to 29": {"min": 25, "max": 29},
-    "30 to 34": {"min": 30, "max": 34},
-    "35 to 39": {"min": 35, "max": 39},
-    "40 to 44": {"min": 40, "max": 44},
-    "45 to 49": {"min": 45, "max": 49},
-    "50 to 54": {"min": 50, "max": 54},
-    "55 to 59": {"min": 55, "max": 59},
-    "60 and 61": {"min": 60, "max": 61},
-    "62 to 64": {"min": 62, "max": 64},
-    "65 to 69": {"min": 65, "max": 69},
-    "70 to 74": {"min": 70, "max": 74},
-    "75 to 79": {"min": 75, "max": 79},
-    "80 to 84": {"min": 80, "max": 84},
-    "85 and Older": {"min": 85, "max": 100},
-}
 
 
 def run_ase(year: int) -> None:
@@ -89,7 +66,7 @@ def run_ase(year: int) -> None:
     ase_outputs = _create_ase(ase_inputs)
     # TODO: validate outputs
 
-    _insert_ase(year, ase_outputs)
+    _insert_ase(ase_outputs)
 
 
 @functools.lru_cache(maxsize=1)
@@ -145,10 +122,9 @@ def _create_controls(controls_inputs: dict[str, pd.DataFrame]) -> pd.DataFrame:
     region_pop_type = controls_inputs["region_pop_type"]
 
     # Scale the regional age/sex/ethnicity total controls to the regional population
-    region_ase_total["population"] = iteround.saferound(
-        region_ase_total["population"].astype(float),
-        places=0,
-        topline=region_pop_type["value"].sum(),
+    region_ase_total["population"] = utils.integerize_1d(
+        data=region_ase_total["population"].astype(float),
+        control=region_pop_type["value"].sum(),
     )
 
     # Calculate the group quarters age/sex/ethnicity population
@@ -170,30 +146,33 @@ def _create_controls(controls_inputs: dict[str, pd.DataFrame]) -> pd.DataFrame:
     )
 
     # Create row marginal controls for age/sex/ethnicity categories
-    row_crtls = region_ase_total.sort_values(by=["age_group", "sex", "ethnicity"])[
+    row_ctrls = region_ase_total.sort_values(by=["age_group", "sex", "ethnicity"])[
         "population"
-    ].to_list()
+    ].to_numpy()
 
     # Create column marginal controls for group quarters population by type
-    col_crtls = (
+    col_ctrls = (
         region_pop_type[region_pop_type["pop_type"] != "Household Population"]
         .sort_values(by=["pop_type"])["value"]
-        .to_list()
+        .to_numpy()
     )
 
     # Integerize the group quarters age/sex/ethnicity population by type
-    region_gq_ase = utils.integerize_2d(
-        df=gq_pop,
-        row_crtls=row_crtls,
-        col_crtls=col_crtls,
+    integerized_values = utils.integerize_2d(
+        data=gq_pop.to_numpy(),
+        row_ctrls=row_ctrls,
+        col_ctrls=col_ctrls,
         condition="less than",
     )
+
+    # Assign results back to DataFrame
+    gq_pop[list(gq_pop.columns)] = integerized_values
 
     # Calculate the household age/sex/ethnicity population as the remainder
     # Return the regional age/sex/ethnicity controls by population type
     return (
         region_ase_total.merge(
-            right=region_gq_ase.assign(gq=lambda x: x.sum(axis=1)).reset_index(),
+            right=gq_pop.assign(gq=lambda x: x.sum(axis=1)).reset_index(),
             on=["age_group", "sex", "ethnicity"],
         )
         .assign(hhp=lambda x: x["population"] - x["gq"])
@@ -300,8 +279,8 @@ def _create_seed(seed_inputs: dict[str, pd.DataFrame]) -> pd.DataFrame:
         result = (
             seed_inputs["b01001_b_i"][dimensions["b01001_b_i"]["labels"]]
             .drop_duplicates()
-            .sort_values(by=dimensions["b01001_b_i"]["labels"])
-            .assign(tract=tract, value=ipf.iteration().flatten())
+            .sort_values(by=dimensions["b01001_b_i"]["labels"])  # type: ignore
+            .assign(tract=tract, value=ipf.iteration().flatten())  # type: ignore
         )
 
         # Append to output list
@@ -334,12 +313,11 @@ def _get_ase_inputs(year: int) -> dict[str, pd.DataFrame]:
                 },
             )
 
-    controls_ase = _create_controls(
-        _get_controls_inputs(year=year)
-    )  # TODO: fold into inputs provided and remove lru_cache?
+    controls_ase = _create_controls(_get_controls_inputs(year=year))
     seed_tracts = _create_seed(_get_seed_inputs(year=year))
 
     return {
+        "year": year,
         "mgra_pop_type": mgra_pop_type,
         "special_mgras": special_mgras,
         "controls_ase": controls_ase,
@@ -361,7 +339,7 @@ def _create_ase(ase_inputs: dict[str, pd.DataFrame]) -> pd.DataFrame:
             suffixes=("", "_special"),
         )
         .merge(
-            right=pd.DataFrame.from_dict(_AGE_MAPPING, orient="index").reset_index(
+            right=pd.DataFrame.from_dict(utils.AGE_MAPPING, orient="index").reset_index(
                 names="age_group"
             ),
             on="age_group",
@@ -442,16 +420,17 @@ def _create_ase(ase_inputs: dict[str, pd.DataFrame]) -> pd.DataFrame:
     ipf_result = (
         ase_inputs["seed_mgras"][dimensions["seed_mgras"]["labels"]]
         .drop_duplicates()
-        .sort_values(by=dimensions["seed_mgras"]["labels"])
-        .assign(value=ipf.iteration().flatten())
+        .sort_values(by=dimensions["seed_mgras"]["labels"])  # type: ignore
+        .assign(value=ipf.iteration().flatten())  # type: ignore
     )
 
     # Integerize the IPF results
     result = []
     # For each population type
     for pop_type in ipf_result["pop_type"].unique():
-        # Pivot data such that age/sex/ethnicity are columns
-        # And the MGRA population are rows
+        # Pivot data into numpy array
+        # Set age/sex/ethnicity to columns
+        # And MGRA population to rows
         population = (
             ipf_result.query("pop_type == @pop_type")
             .sort_values(by=["age_group", "sex", "ethnicity"])
@@ -464,45 +443,89 @@ def _create_ase(ase_inputs: dict[str, pd.DataFrame]) -> pd.DataFrame:
         )
 
         # Create row marginal controls for MGRA population
-        row_crtls = (
+        row_ctrls = (
             ase_inputs["mgra_pop_type"]
             .query("pop_type == @pop_type")
             .sort_values(by=["mgra"])["value"]
-            .to_list()
+            .to_numpy()
         )
 
         # Create column marginal controls for age/sex/ethnicity
-        col_crtls = (
+        col_ctrls = (
             ase_inputs["controls_ase"]
             .query("pop_type == @pop_type")
             .sort_values(by=["age_group", "sex", "ethnicity"])["value"]
-            .to_list()
+            .to_numpy()
         )
 
         # Integerize the age/sex/ethnicity population
-        population = utils.integerize_2d(
-            df=population,
-            row_crtls=row_crtls,
-            col_crtls=col_crtls,
+        integerized_values = utils.integerize_2d(
+            data=population.to_numpy(),
+            row_ctrls=row_ctrls,
+            col_ctrls=col_ctrls,
             condition="exact",
         )
 
-        # Append to output list in long-format
-        result.append(
-            population.melt(ignore_index=False).reset_index().assign(pop_type=pop_type)
-        )
+        # Assign results back to DataFrame
+        population[list(population.columns)] = integerized_values
+
+        # Append to output list in long-format with correct labels
+        population = population.melt(ignore_index=False).reset_index()
+        population["value"] = population["value"].astype(int)
+        population["pop_type"] = pop_type
+        population["run_id"] = utils.RUN_ID
+        population["year"] = ase_inputs["year"]
+        result.append(population)
 
     # Return integerized results
-    return pd.concat(result, ignore_index=True)
+    return result
 
 
-def _insert_ase(year: int, ase_outputs: pd.DataFrame) -> None:
+def _insert_ase(ase_outputs: list[pd.DataFrame]) -> None:
     """Insert age/sex/ethnicity population by type to database."""
-    with utils.ESTIMATES_ENGINE.connect() as conn:
-        ase_outputs.assign(run_id=utils.RUN_ID, year=year).to_sql(
-            name="ase",
-            con=conn,
-            schema="outputs",
-            if_exists="append",
-            index=False,
+    for output in ase_outputs:
+        # Convert the DataFrame to a Polars DataFrame
+        pl_df = pl.from_pandas(
+            output[
+                [
+                    "run_id",
+                    "year",
+                    "mgra",
+                    "pop_type",
+                    "age_group",
+                    "sex",
+                    "ethnicity",
+                    "value",
+                ]
+            ],
+            include_index=False,
         )
+
+        # Write the DataFrame to a CSV file
+        pl_df.write_csv(
+            utils.BULK_INSERT_STAGING / "temp.txt",
+            include_header=False,
+            separator="|",
+            quote_style="never",
+        )
+
+        # Bulk insert the CSV file into the production database
+        with utils.ESTIMATES_ENGINE.connect() as conn:
+            fp = (utils.BULK_INSERT_STAGING / "temp.txt").as_posix()
+            query = sql.text(
+                f"""
+                    BULK INSERT [outputs].[ase]
+                    FROM '{fp}'
+                    WITH (
+                        TABLOCK,
+                        MAXERRORS=0,
+                        FIELDTERMINATOR = '|',
+                        ROWTERMINATOR = '0x0A'
+                    )
+                """
+            )
+            conn.execute(query)
+            conn.commit()
+
+        # Remove the temporary CSV file
+        (utils.BULK_INSERT_STAGING / "temp.txt").unlink()

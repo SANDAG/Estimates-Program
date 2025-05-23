@@ -1,7 +1,9 @@
-import iteround
+import math
 import pathlib
 import yaml
 import warnings
+
+import numpy as np
 import pandas as pd
 import sqlalchemy as sql
 
@@ -52,6 +54,9 @@ GIS_ENGINE = sql.create_engine(
 # Other SQL configuration
 GIS_SERVER = _secrets["sql"]["gis"]["server"]
 
+# Temporary file staging location for SQL BULK Inserts
+BULK_INSERT_STAGING = pathlib.Path(_secrets["sql"]["staging"])
+
 
 #########################
 # RUNTIME CONFIGURATION #
@@ -74,168 +79,262 @@ RUN_INSTRUCTIONS = input_parser.run_instructions
 RUN_ID = input_parser.run_id
 MGRA_VERSION = input_parser.mgra_version
 
+# Minimum and maximum age values for each age group
+AGE_MAPPING = {
+    "Under 5": {"min": 0, "max": 4},
+    "5 to 9": {"min": 5, "max": 9},
+    "10 to 14": {"min": 10, "max": 14},
+    "15 to 17": {"min": 15, "max": 17},
+    "18 and 19": {"min": 18, "max": 19},
+    "20 to 24": {"min": 20, "max": 24},
+    "25 to 29": {"min": 25, "max": 29},
+    "30 to 34": {"min": 30, "max": 34},
+    "35 to 39": {"min": 35, "max": 39},
+    "40 to 44": {"min": 40, "max": 44},
+    "45 to 49": {"min": 45, "max": 49},
+    "50 to 54": {"min": 50, "max": 54},
+    "55 to 59": {"min": 55, "max": 59},
+    "60 and 61": {"min": 60, "max": 61},
+    "62 to 64": {"min": 62, "max": 64},
+    "65 to 69": {"min": 65, "max": 69},
+    "70 to 74": {"min": 70, "max": 74},
+    "75 to 79": {"min": 75, "max": 79},
+    "80 to 84": {"min": 80, "max": 84},
+    "85 and Older": {"min": 85, "max": 100},
+}
+
 
 #####################
 # UTILITY FUNCTIONS #
 #####################
 
 
-def integerize_2d(
-    df: pd.DataFrame, row_crtls: list, col_crtls: list, condition: str = "exact"
-) -> pd.DataFrame:
-    """Integerize values in a DataFrame based on marginal control totals.
+def integerize_1d(
+    data: np.ndarray | list | pd.Series, control: int | float | None = None
+) -> np.ndarray:
+    """Safe rounding of 1-dimensional array-like structures.
 
-    Default behavior is to match the marginal controls exactly. If the
-    condition is set to "less than", the function will adjust values such that
-    the row values are less than or equal to the row marginal controls. The
-    column values always match the column marginal controls.
+    After some basic input data validation, data is rounded, then rounding error is
+    corrected. If input control is zero, the output is also all zero. If input control
+    is non-zero but all data is zero, values at the front of the array will be increased
+    by one
+
+    Instead of using a basic round, this function instead always rounds up, assuming
+    there is any non-zero decimal part. This ensures that when small values (less than
+    .5) are passed in, we do not round them down to zero. This greatly helps balance
+    and control our tightly restricted data, as simply having values be one instead of
+    zero gives us much more flexibility in manual adjustment.
 
     Args:
-        df (pd.DataFrame): DataFrame containing the values to be integerized.
-        row_crtls (list): Row marginal control totals.
-        col_crtls (list): Column marginal control totals.
-        condition (str): Condition for integerization. Options are 'exact' or
-            'less than'. Default is 'exact'.
+        data: An array-like structure of float or integer values
+        control: Optional control value to scale the input data such that the final sum
+            of the elements exactly the control value. If not value is provided, then
+            the sum of the input data will be preserved
 
     Returns:
-        pd.DataFrame: DataFrame with integerized values.
+        np.ndarray: Integerized data preserving sum or control value
+
+    Raises:
+        TypeError: If any of the input variables don't match the correct type
+        ValueError: If negative values are encountered in the input variables
+        ValueError: If no control value is provided and the input data does not sum to
+            an integer
     """
-    # Ensure the marginal controls match dimensions of the DataFrame
-    if df.shape[0] != len(row_crtls) or df.shape[1] != len(col_crtls):
-        raise ValueError("Marginal controls do not match DataFrame dimensions.")
+    # Check class of input data. If not a np.ndarray, convert to one
+    if not isinstance(data, (np.ndarray, list, pd.Series)):
+        raise TypeError(
+            f"Input data is of type {type(data)} when it should be one of pd.Series, "
+            f"np.ndarray, or list"
+        )
+    if isinstance(data, list):
+        data = np.array(data)
+    elif isinstance(data, pd.Series):
+        data = data.to_numpy()
 
-    # Condition parameter checks
-    if condition not in ["exact", "less than"]:
-        raise ValueError("Condition must be 'exact' or 'less than'.")
-    elif condition == "exact" and sum(row_crtls) != sum(col_crtls):
-        raise ValueError("Marginal controls are inconsistent for 'exact' match.")
-    elif condition == "less than" and sum(col_crtls) > sum(row_crtls):
-        raise ValueError("Marginal controls are inconsistent for 'less than' match.")
+    # Confirm no negative values are passed
+    if np.any(data < 0):
+        raise ValueError("Input variable 'data' contains negative values")
+    if control is not None and control < 0:
+        raise ValueError("Input variable 'control' contains is negative")
 
-    # Intialize list to store column adjustments made
-    adjustments = [0] * df.shape[1]
+    # If no control provided preserve current sum
+    if control is None:
+        control = np.sum(data)
 
-    # Safe round the columns to match the marginal controls
-    for i, col in enumerate(df.columns):
-
-        # If control is zero set column to zero
-        if col_crtls[i] == 0:
-            df[col] == 0
-
-        # If the column has non-zero positive values
-        elif any(df[col] > 0):
-            # Remove 0s from consideration and use the largest strategy to avoid negative values
-            values = iteround.saferound(
-                df.loc[df[col] > 0, col],
-                places=0,
-                topline=col_crtls[i],
-                strategy="largest",
-            )
-
-            # If any negatives exist
-            if min(values) < 0:
-                # Track column adjustments
-                adjustments[i] -= abs(sum([value for value in values if value < 0]))
-                # Set all negative values to 0
-                values = [value if value > 0 else 0 for value in values]
-
-            # Set the column to the saferounded values
-            df.loc[df[col] > 0, col] = values
-        # If control is non-zero and and column has no non-zero positive values
-        else:
-            # Safe round the values
-            values = iteround.saferound(
-                df[col],
-                places=0,
-                topline=col_crtls[i],
-                strategy="largest",
-            )
-
-            # If any negatives exist
-            if min(values) < 0:
-                # Track column adjustments
-                adjustments[i] -= abs(sum([value for value in values if value < 0]))
-                # Set all negative values to 0
-                values = [value if value > 0 else 0 for value in values]
-
-            # Set the column to the saferounded values
-            df[col] = values
-
-    # Calculate deviations from the row marginal controls
-    row_devs = df.sum(axis=1) - row_crtls
-
-    # Calculate the deviation condition
-    if condition == "exact":
-        any_deviation = max(map(abs, row_devs)) > 0
-    elif condition == "less than":
-        any_deviation = max(row_devs) > 0
+    # Ensure control is an integer
+    if not math.isclose(control, round(control)):  # type: ignore
+        raise ValueError(f"Control must be integer: {control}")
     else:
-        raise ValueError("Condition must be 'exact' or 'less than'.")
+        control = int(round(control))  # type: ignore
+
+    # Override if control is zero
+    if control == 0:
+        data.fill(0)
+        return data
+
+    # Override if control is not zero, but all input data is zero
+    if control is not None and control != 0 and np.all(data == 0):
+        np.add.at(data, np.arange(control), 1)
+        return data
+
+    # Scale data to match the control
+    data = data * control / np.sum(data)
+
+    # Round every value up
+    data = np.ceil(data)
+
+    # Get difference between control and post-rounding sum.
+    # Since data was rounded up, it is guaranteed to be the
+    # same or larger than control, making diff non-negative.
+    diff = int(np.sum(data) - control)
+
+    # Adjust values to match difference
+    if diff == 0:
+        return data
+    else:
+        # Find the index values for the n-largest data points
+        # Where n is equal to the difference
+        to_decrease = np.argsort(data, stable=True)[-diff:]
+
+        # Decrease n-largest data points by one to match control
+        np.add.at(data, to_decrease, -1)
+
+        # Double check no negatives are present
+        if np.any(data < 0):
+            raise ValueError("Negative values encountered in integerized data")
+
+        # Return the data
+        return data.astype(int)
+
+
+def integerize_2d(
+    data: np.ndarray,
+    row_ctrls: np.ndarray,
+    col_ctrls: np.ndarray,
+    condition: str = "exact",
+) -> np.ndarray:
+    # Take deep copy of input array to avoid altering original
+    array_2d = np.copy(data)
+
+    # Ensure input arrays are of correct dimensions
+    assert array_2d.ndim == 2, "input data array must be 2-dimensional"
+    assert row_ctrls.ndim == 1, "row controls must be 1-dimensional"
+    assert col_ctrls.ndim == 1, "column controls must be 1-dimensional"
+
+    # Ensure marginal control dimensions match input data array
+    assert (
+        array_2d.shape[0] == row_ctrls.shape[0]
+    ), "row controls do not match input data array dimensions"
+
+    assert (
+        array_2d.shape[1] == col_ctrls.shape[0]
+    ), "column controls do not match input data array dimensions"
+
+    # Ensure condition parameter is set properly
+    if condition == "exact":
+        assert np.sum(row_ctrls) == np.sum(
+            col_ctrls
+        ), "marginal controls inconsistent for 'exact' match"
+    elif condition == "less than":
+        assert np.sum(row_ctrls) >= np.sum(
+            col_ctrls
+        ), "marginal controls inconsistent for 'less than' match"
+    else:
+        assert condition in [
+            "exact",
+            "less than",
+        ], "condition must be one of ['exact', 'less than']"
+
+    # Round columns of the input data array to match marginal controls
+    for col_idx in range(array_2d.shape[1]):
+        array_2d[:, col_idx] = integerize_1d(array_2d[:, col_idx], col_ctrls[col_idx])
+
+    # Calculate deviations from row marginal controls
+    deviations = np.sum(array_2d, axis=1) - row_ctrls
+
+    # Intialize tracker of column adjustments made
+    adjustments = np.zeros(col_ctrls.shape[0])
+
+    # Set deviation condition
+    if condition == "exact":
+        any_deviation = np.max(np.abs(deviations)) > 0
+    elif condition == "less than":
+        any_deviation = np.max(deviations) > 0
+    else:
+        raise ValueError("condition must be one of ['exact', 'less than']")
+
+    # Initialize skip condition relaxation switch
+    relax_skip_condition = False
 
     # While there are deviations to adjust
-    relax_skip_condition = False
-    while any_deviation or max(map(abs, adjustments)) > 0:
+    while any_deviation:
         # For rows with + deviation
-        for i, row in enumerate(row_devs):
-            if row > 0:
+        for row_idx in range(deviations.shape[0]):
+            if deviations[row_idx] > 0:
                 # Check for columns with available negative adjustments
-                cols = [j for j, v in enumerate(adjustments) if v < 0]
+                cols = list(np.where(adjustments < 0)[0])
+                # If no columns available with negativwe adjustments
+                # Or all values are 0 allow all columns to be adjusted
+                if len(cols) == 0 or np.max(array_2d[row_idx, cols]) == 0:
+                    cols = list(range(adjustments.shape[0]))
 
-                # If all values in adjustment columns are 0 allow all columns to be adjusted
-                if len(cols) == 0 or df.iloc[i, cols].max() == 0:
-                    cols = list(range(len(adjustments)))
+                # Calculate minimum of total possible row adjustment
+                # And smallest positive non-zero column value
+                min_value = np.min(array_2d[row_idx, cols][array_2d[row_idx, cols] > 0])
+                col_idx = np.where(array_2d[row_idx] == min_value)[0][0]
+                adjustment = min(deviations[row_idx], array_2d[row_idx, col_idx])
 
-                # Calculate adjustment as minimum of total possible and smallest positive non-zero column value
-                # Adjust the column value downward and store adjustments made for that column
-                col_idx = df.iloc[i, cols].where(df.iloc[i, cols] > 0).idxmin()
-                j = df.columns.get_loc(col_idx)
-                adjustment = min(row, df.iat[i, j])
-                df.iat[i, j] -= adjustment
-                adjustments[j] += adjustment
+                # Adjust value downward and store adjustment made
+                array_2d[row_idx, col_idx] -= adjustment
+                adjustments[col_idx] += adjustment
 
         # For rows with - deviation
-        for i, row in enumerate(row_devs):
+        for row_idx in range(deviations.shape[0]):
             # Check for columns with available positive adjustments
-            if max(adjustments) > 0:
-                if row < 0:
+            if np.max(adjustments) > 0:
+                if deviations[row_idx] < 0:
                     # Restrict to columns with available positive adjustments
-                    cols = [j for j, v in enumerate(adjustments) if v > 0]
+                    cols = list(np.where(adjustments > 0)[0])
 
-                    # If all values in adjustment columns are 0 skip the row
+                    # Depending on skip condition
+                    # Either allow or do not allow zero-values to be adjusted
+                    # Find the largest column with available adjustment
+                    # Calculate minimum of possible row and column adjustments
                     if not relax_skip_condition:
-                        if df.iloc[i, cols].max() == 0:
+                        if np.max(array_2d[row_idx, cols]) == 0:
                             continue
 
-                    # Find the column with the largest value and available adjustment
-                    # Calculate adjustment as minimum of total possible row and column adjustments
-                    # Adjust the column value upward and store adjustments made for that column
-                    col_idx = df.iloc[i, cols].idxmax()
-                    j = df.columns.get_loc(col_idx)
-                    adjustment = min(abs(row), adjustments[j])
-                    df.iat[i, j] += adjustment
-                    adjustments[j] -= adjustment
-            else:
-                break
+                    # Find first eligible column with maximum value
+                    max_value = np.max(array_2d[row_idx, cols])
+                    for col_idx in np.where(array_2d[row_idx] == max_value)[0]:
+                        if col_idx in cols:
+                            break
+
+                    # Adjust value upward and store adjustment made
+                    adjustment = min(np.abs(deviations[row_idx]), adjustments[col_idx])
+                    array_2d[row_idx, col_idx] += adjustment
+                    adjustments[col_idx] -= adjustment
 
         # If no changes were made avoid infinite loop
-        if row_devs.equals(df.sum(axis=1) - row_crtls):
-            # The first time no deviations are adjusted relax the skip condition
-            # For rows with - deviations allow positive adjustments to zero-valued columns
+        if np.array_equal(deviations, np.sum(array_2d, axis=1) - row_ctrls):
+            # First time no deviations are adjusted relax skip condition
+            # For rows with - deviations allow adjustment to zero-valued columns
+            # If condition has already been relaxed raise error
             if relax_skip_condition:
                 raise ValueError("No adjustments made. Check marginal controls.")
             else:
                 relax_skip_condition = True
                 warnings.warn("Skip condition relaxed for 2d-integerizer.")
-        else:
-            # Recalulate the row deviations
-            row_devs = df.sum(axis=1) - row_crtls
+
+        # Recalulate the row deviations
+        deviations = np.sum(array_2d, axis=1) - row_ctrls
 
         # Recalculate the deviation condition
         if condition == "exact":
-            any_deviation = max(map(abs, row_devs)) > 0
+            any_deviation = np.max(np.abs(deviations)) > 0
         elif condition == "less than":
-            any_deviation = max(row_devs) > 0
+            any_deviation = np.max(deviations) > 0
         else:
-            raise ValueError("Condition must be 'exact' or 'less than'.")
+            raise ValueError("condition must be one of ['exact', 'less than']")
 
-    return df
+    return array_2d
