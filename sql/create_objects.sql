@@ -74,7 +74,7 @@ CREATE TABLE [inputs].[special_mgras] (
     [mgra15] INT NOT NULL,
     [start_year] INT NOT NULL,
     [end_year] INT NOT NULL,
-    [facility_type] nvarchar(75) NOT NULL,
+    [pop_type] nvarchar(75) NOT NULL,
     [sex] NVARCHAR(6) NULL,
     [min_age] INT NULL,
     [max_age] INT NULL,
