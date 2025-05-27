@@ -150,6 +150,19 @@ CREATE TABLE [outputs].[hh] (
     CONSTRAINT [chk_non_negative_outputs_hh] CHECK ([value] >= 0)
 )
 
+CREATE TABLE [outputs].[hh_characteristics] (
+    [run_id] INT NOT NULL,
+    [year] INT NOT NULL,
+    [mgra] INT NOT NULL,
+    [metric] NVARCHAR(100) NOT NULL,
+    [value] INT NOT NULL, 
+    INDEX [ccsi_outputs_hh_characteristics] CLUSTERED COLUMNSTORE,
+    CONSTRAINT [ixuq_outputs_hh_characteristics] UNIQUE ([run_id], [year], [mgra], [metric]) WITH (DATA_COMPRESSION = PAGE),
+    CONSTRAINT [fk_outputs_hh_characteristics_run_id] FOREIGN KEY ([run_id]) REFERENCES [metadata].[run] ([run_id]),
+    CONSTRAINT [fk_outputs_hh_characteristics_mgra] FOREIGN KEY ([run_id], [mgra]) REFERENCES [inputs].[mgra] ([run_id], [mgra]),
+    CONSTRAINT [chk_non_negative_outputs_hh_characteristics] CHECK ([value] >= 0)
+)
+
 CREATE TABLE [outputs].[hs] (
     [run_id] INT NOT NULL,
     [year] INT NOT NULL,

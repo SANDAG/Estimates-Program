@@ -1,6 +1,9 @@
 /*
 This query gets MGRA level households which have already been created by the Housing and
 Households module
+
+This SQL script is used in both the Population module and the Household Characteristics
+module.
 */
 
 
