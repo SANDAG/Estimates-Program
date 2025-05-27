@@ -2,7 +2,6 @@
 # page for more details:
 # https://github.com/SANDAG/Estimates-Program/wiki/Housing-and-Households
 
-import iteround
 import pandas as pd
 import sqlalchemy as sql
 
@@ -167,7 +166,8 @@ def _create_hs_hh(hs_hh_inputs: dict[str, pd.DataFrame]) -> dict[str, pd.DataFra
         hh["value_hh"] *= city_rate / obs_rate
 
         # Integerize households preserving total
-        hh["value_hh"] = iteround.saferound(hh["value_hh"], places=0)
+        hh["value_hh"] *= round(hh["value_hh"].sum()) / hh["value_hh"].sum()
+        hh["value_hh"] = utils.integerize_1d(hh["value_hh"])
 
         # Reallocate households where households > housing stock or < 0
         # Add/remove households tracking total adjustment number
