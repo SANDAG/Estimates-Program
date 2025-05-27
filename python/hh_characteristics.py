@@ -21,15 +21,12 @@ def run_hh_characteristics(year: int) -> None:
     which are created by the HS/HH module.
 
     Functionality is segmented into functions for code encapsulation:
-        _get_hh_characteristics_inputs - Get MGRA households (which are used for both
+        _get_hh_char_inputs - Get MGRA households (which are used for both
             characteristics) and ACS tract rates
-        _validate_hh_characteristics_inputs - Validate the hh characteristics input
-            data
-        _create_hh_characteristics - Calculate the hh characteristics listed above
-        _validate_hh_characteristics_outputs - Validate the hh characteristics output
-            data
-        _insert_hh_characteristics - Insert hh characteristics and tract level controls
-            to database
+        _validate_hh_char_inputs - Validate the hh characteristics input data
+        _create_hh_char - Calculate the hh characteristics listed above
+        _validate_hh_char_outputs - Validate the hh characteristics output data
+        _insert_hh_char - Insert hh characteristics and tract level controls to database
 
     Args:
         year (int): estimates year

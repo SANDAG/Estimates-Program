@@ -61,52 +61,55 @@ INTO [#income_category]
 FROM (
     SELECT
         [tract],
+        -- REPLACE is used here since between 2018 and 2019, the [label] format changed slightly.
+        -- In 2018, there was no ':', but starting in 2019, a ':' was added. We remove the ':' so 
+        -- that all string matching is done to the same string
         CASE
-            WHEN [label] IN (
-                'Estimate!!Total:!!Less than $10,000',
-                'Estimate!!Total:!!$10,000 to $14,999')
+            WHEN REPLACE([label], ':', '') IN (
+                'Estimate!!Total!!Less than $10,000',
+                'Estimate!!Total!!$10,000 to $14,999')
                 THEN 'Less than $15,000'
-            WHEN [label] IN (
-                'Estimate!!Total:!!$15,000 to $19,999',
-                'Estimate!!Total:!!$20,000 to $24,999',
-                'Estimate!!Total:!!$25,000 to $29,999')
+            WHEN REPLACE([label], ':', '') IN (
+                'Estimate!!Total!!$15,000 to $19,999',
+                'Estimate!!Total!!$20,000 to $24,999',
+                'Estimate!!Total!!$25,000 to $29,999')
                 THEN '$15,000 to $29,999'
-            WHEN [label] IN (
-                'Estimate!!Total:!!$30,000 to $34,999',
-                'Estimate!!Total:!!$35,000 to $39,999',
-                'Estimate!!Total:!!$40,000 to $44,999')
+            WHEN REPLACE([label], ':', '') IN (
+                'Estimate!!Total!!$30,000 to $34,999',
+                'Estimate!!Total!!$35,000 to $39,999',
+                'Estimate!!Total!!$40,000 to $44,999')
                 THEN '$30,000 to $44,999'
-            WHEN [label] IN (
-                'Estimate!!Total:!!$45,000 to $49,999',
-                'Estimate!!Total:!!$50,000 to $59,999')
+            WHEN REPLACE([label], ':', '') IN (
+                'Estimate!!Total!!$45,000 to $49,999',
+                'Estimate!!Total!!$50,000 to $59,999')
                 THEN '$45,000 to $59,999'
-            WHEN [label] = 'Estimate!!Total:!!$60,000 to $74,999'
+            WHEN REPLACE([label], ':', '') = 'Estimate!!Total!!$60,000 to $74,999'
                 THEN '$60,000 to $74,999'
-            WHEN [label] = 'Estimate!!Total:!!$75,000 to $99,999'
+            WHEN REPLACE([label], ':', '') = 'Estimate!!Total!!$75,000 to $99,999'
                 THEN '$75,000 to $99,999'
-            WHEN [label] = 'Estimate!!Total:!!$100,000 to $124,999'
+            WHEN REPLACE([label], ':', '') = 'Estimate!!Total!!$100,000 to $124,999'
                 THEN '$100,000 to $124,999'
-            WHEN [label] = 'Estimate!!Total:!!$125,000 to $149,999'
+            WHEN REPLACE([label], ':', '') = 'Estimate!!Total!!$125,000 to $149,999'
                 THEN '$125,000 to $149,999'
-            WHEN [label] = 'Estimate!!Total:!!$150,000 to $199,999'
+            WHEN REPLACE([label], ':', '') = 'Estimate!!Total!!$150,000 to $199,999'
                 THEN '$150,000 to $199,999'
-            WHEN [label] = 'Estimate!!Total:!!$200,000 or more'
+            WHEN REPLACE([label], ':', '') = 'Estimate!!Total!!$200,000 or more'
                 THEN '$200,000 or more'
             ELSE NULL  -- NULL values for Margin of Error fields removed in subsequent WHERE clause
         END AS [income_category],
         [value]
-    FROM [acs].[detailed].[values] AS [val]
-    LEFT JOIN [acs].[detailed].[geography] AS [geo]
-        ON [val].[geography_id] = [geo].[geography_id]
-    LEFT JOIN [acs].[detailed].[variables] AS [vari]
-        ON [val].[variable] = [vari].[variable]
-        AND [val].[table_id] = [vari].[table_id]
-    LEFT JOIN [acs].[detailed].[tables] AS [tbls]
-        ON [val].[table_id] = [tbls].[table_id]
+    FROM [acs].[detailed].[values]
+    LEFT JOIN [acs].[detailed].[geography]
+        ON [values].[geography_id] = [geography].[geography_id]
+    LEFT JOIN [acs].[detailed].[variables]
+        ON [values].[variable] = [variables].[variable]
+        AND [values].[table_id] = [variables].[table_id]
+    LEFT JOIN [acs].[detailed].[tables]
+        ON [values].[table_id] = [tables].[table_id]
     WHERE
-        [tbls].[name] = 'B19001'
-        AND [tbls].[year] = @year
-        AND [tbls].[product] = '5Y'
+        [tables].[name] = 'B19001'
+        AND [tables].[year] = @year
+        AND [tables].[product] = '5Y'
 ) AS [b19001]
 WHERE [income_category] IS NOT NULL
 GROUP BY
