@@ -13,7 +13,7 @@ with [dof] AS (
 		[vacancy_rate]
 	FROM [socioec_data].[ca_dof].[estimates_e8]
 	WHERE
-		[estimates_id] = 15  -- E-8: November 2023
+		[estimates_id] = 24  -- E-8: January 2025
 		AND [fips] = '06073'  -- San Diego County
 		AND [year] != 2020  -- Use the E-5 Estimates for 2020+
 		AND [area_name] NOT IN ('Total Incorporated' , 'Incorporated', 'County Total')
@@ -23,12 +23,15 @@ with [dof] AS (
 	-- E-5 Estimates - 2020+
 	SELECT
 		[year],
-		CASE WHEN [area_name] = 'Balance of County' THEN 'Unincorporated'
-			 ELSE [area_name]  END AS [city],
+		CASE
+            WHEN [area_name] = 'Balance of County' THEN 'Unincorporated'
+            WHEN [area_name] = 'National City' THEN 'National City'
+			ELSE REPLACE([area_name], ' City', '')
+        END AS [city],
 		[vacancy_rate]
 	FROM [socioec_data].[ca_dof].[estimates_e5]
 	WHERE
-		[estimates_id] = 12  -- E-5: Vintage 2024 (2024.5.1)
+		[estimates_id] = 25  -- E-5: Vintage 2025 (2025.5.1)
 		AND [fips] = '06073'  -- San Diego County
 		AND [area_name] NOT IN ('Total Incorporated' , 'Incorporated', 'County Total')
 )
