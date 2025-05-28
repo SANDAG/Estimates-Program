@@ -109,6 +109,20 @@ def _validate_hh_char_inputs(
         negative={},
         null={},
     )
+    tests.validate_data(
+        "Tract households by household size distribution",
+        hh_char_inputs["hhs_tract_controls"],
+        row_count={"key_columns": {"tract", "household_size"}, "year": year},
+        negative={},
+        null={},
+    )
+    tests.validate_data(
+        "MGRA households by household size controls",
+        hh_char_inputs["hhs_mgra_controls"],
+        row_count={"key_columns": {"mgra"}},
+        negative={},
+        null={},
+    )
 
 
 def _create_hh_char(hh_char_inputs: dict[str, pd.DataFrame]) -> dict[str, pd.DataFrame]:

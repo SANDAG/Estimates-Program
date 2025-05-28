@@ -27,6 +27,7 @@ _DISTINCT_COUNTS = {
         "sex": 2,
         "structure_type": 4,
         "income_category": 10,
+        "household_size": 7,
         "2010_tract": 627,
         "2020_tract": 736,
         "city": 19,
