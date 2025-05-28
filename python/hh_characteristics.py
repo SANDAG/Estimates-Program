@@ -39,7 +39,6 @@ def run_hh_characteristics(year: int) -> None:
 
     _insert_hh_char(hh_char_inputs, hh_char_outputs)
 
-
 def _get_hh_char_inputs(year: int) -> dict[str, pd.DataFrame]:
     """Get households and various tract level datas"""
     with utils.ESTIMATES_ENGINE.connect() as conn:
@@ -64,6 +63,26 @@ def _get_hh_char_inputs(year: int) -> dict[str, pd.DataFrame]:
             utils.SQL_FOLDER / "hh_characteristics" / "get_tract_controls_hh_income.sql"
         ) as file:
             hh_char_inputs["hh_income_tract_controls"] = pd.read_sql_query(
+                sql=sql.text(file.read()),
+                con=conn,
+                params={"run_id": utils.RUN_ID, "year": year},
+            )
+
+        # Tract level households by household size distributions
+        with open(
+            utils.SQL_FOLDER / "hh_characteristics" / "get_tract_controls_hh_by_size.sql"
+        ) as file:
+            hh_char_inputs["hhs_tract_controls"] = pd.read_sql_query(
+                sql=sql.text(file.read()),
+                con=conn,
+                params={"run_id": utils.RUN_ID, "year": year},
+            )
+
+        # MGRA level household size controls
+        with open(
+            utils.SQL_FOLDER / "hh_characteristics" / "get_mgra_controls_hh_by_size.sql"
+        ) as file:
+            hh_char_inputs["hhs_mgra_controls"] = pd.read_sql_query(
                 sql=sql.text(file.read()),
                 con=conn,
                 params={"run_id": utils.RUN_ID, "year": year},
@@ -156,3 +175,7 @@ def _insert_hh_char(
             con=conn,
             index=False,
         )
+
+if __name__ == "__main__":
+    utils.RUN_ID = 134
+    run_hh_characteristics(2020)
