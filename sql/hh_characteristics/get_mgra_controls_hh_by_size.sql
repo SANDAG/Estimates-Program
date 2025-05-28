@@ -13,7 +13,7 @@ Two input parameters are used
 
 SET NOCOUNT ON;
 
--- Initialize parameters and return table
+-- Initialize parameters
 DECLARE @run_id integer = :run_id;
 DECLARE @year integer = :year;
 
@@ -37,26 +37,13 @@ WITH [hhp_total] AS (
         GROUP BY [mgra]
     )
 
--- Combine the two variables with a tract xref for easy joining later on in Python
+-- Combine the two variables
 SELECT
     @run_id AS [run_id],
     @year AS [year],
     [hhp_total].[mgra],
-    [tract],
     [hhp_total],
     [hhp_over_18]
 FROM [hhp_total]
 LEFT JOIN [hhp_over_18]
     ON [hhp_total].[mgra] = [hhp_over_18].[mgra]
-LEFT JOIN (
-        SELECT
-            [mgra],
-            CASE
-                WHEN @year BETWEEN 2010 AND 2019 THEN [2010_census_tract]
-                WHEN @year BETWEEN 2020 AND 2029 THEN [2020_census_tract]
-                ELSE NULL
-            END AS [tract]
-        FROM [inputs].[mgra]
-        WHERE [run_id] = @run_id
-    ) AS [tracts]
-        ON [hhp_total].[mgra] = [tracts].[mgra]
