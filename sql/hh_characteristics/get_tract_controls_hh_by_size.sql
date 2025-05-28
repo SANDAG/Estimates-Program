@@ -16,10 +16,8 @@ Two input parameters are used
 SET NOCOUNT ON;
 
 -- Initialize parameters and return table ----------------------------------------------
---DECLARE @run_id integer = :run_id;
---DECLARE @year integer = :year;
-DECLARE @run_id integer = 1;
-DECLARE @year integer = 2020;
+DECLARE @run_id integer = :run_id;
+DECLARE @year integer = :year;
 
 -- Build the expected return table Tract x Structure Type
 DROP TABLE IF EXISTS [#tt_shell];
