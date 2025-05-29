@@ -75,9 +75,9 @@ def _get_hh_char_inputs(year: int) -> dict[str, pd.DataFrame]:
             / "hh_characteristics"
             / "get_tract_controls_hh_by_size.sql"
         ) as file:
-            hh_char_inputs["hhs_tract_controls"] = pd.read_sql_query(
+            hh_char_inputs["hhs_tract_controls"] = utils.read_sql_query_acs(
                 sql=sql.text(file.read()),
-                con=conn,
+                con=con,
                 params={"run_id": utils.RUN_ID, "year": year},
             )
 
@@ -87,7 +87,7 @@ def _get_hh_char_inputs(year: int) -> dict[str, pd.DataFrame]:
         ) as file:
             hh_char_inputs["hhs_mgra_controls"] = pd.read_sql_query(
                 sql=sql.text(file.read()),
-                con=conn,
+                con=con,
                 params={"run_id": utils.RUN_ID, "year": year},
             )
 
