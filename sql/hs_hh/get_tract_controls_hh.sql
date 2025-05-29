@@ -19,22 +19,25 @@ SET NOCOUNT ON;
 -- Initialize parameters -----------------------------------------------------
 DECLARE @run_id integer = :run_id;
 DECLARE @year integer = :year;
-DECLARE @msg nvarchar(45) = 'ACS 5-Year Table does not exist';
 
 
--- Send error message if no data exists --------------------------------------
-IF NOT EXISTS (
-    SELECT TOP (1) *
+-- Send message if not all tables exist --------------------------------------
+DECLARE @rows integer = (
+    SELECT COUNT([table_id]) AS [rows]
     FROM [acs].[detailed].[tables]
     WHERE 
         [name] IN ('B25024', 'B25032')
 	    AND [year] = @year
 	    AND [product] = '5Y'
-)
-SELECT @msg AS [msg]
+);
+
+IF @rows = 0
+    SELECT 'ACS 5-Year Table does not exist' AS [msg]
+ELSE IF @rows != 2
+    SELECT 'Incorrect number of ACS 5-Year Tables exist' AS [msg]
 ELSE
 BEGIN
-    -- Build the expected return table Tract x Structure Type
+    -- Build the expected return table Tract x Structure Type ----------------
     SELECT 
         [tract],
         [structure_type]
