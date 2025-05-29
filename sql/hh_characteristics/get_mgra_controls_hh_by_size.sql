@@ -33,6 +33,7 @@ WITH [hhp_total] AS (
         FROM [outputs].[ase]
         WHERE [run_id] = @run_id
             AND [year] = @year
+            AND [pop_type] = 'Household Population'
             AND [age_group] NOT IN ('Under 5', '5 to 9', '10 to 14', '15 to 17')
         GROUP BY [mgra]
     )
