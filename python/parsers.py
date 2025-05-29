@@ -101,7 +101,7 @@ class InputParser:
 
     def _check_run_id(self, run_id: int) -> None:
         """Check if supplied run id exists in the database."""
-        with self._engine.connect() as conn:
+        with self._engine.connect() as con:
             # Ensure supplied run id exists in the database
             query = sql.text(
                 """
@@ -111,7 +111,7 @@ class InputParser:
                 """
             )
 
-            exists = conn.execute(query, {"run_id": run_id}).scalar()
+            exists = con.execute(query, {"run_id": run_id}).scalar()
             if exists == 0:
                 raise ValueError("run_id does not exist in the database")
 
@@ -197,8 +197,8 @@ class InputParser:
 
             # That the 'start_year' and 'end_year' values, conform with those already
             # in [metadata].[run]
-            with self._engine.connect() as conn:
-                existing_start_year = conn.execute(
+            with self._engine.connect() as con:
+                existing_start_year = con.execute(
                     sql.text(
                         "SELECT [start_year] FROM [metadata].[run] WHERE run_id = :run_id"
                     ),
@@ -213,8 +213,8 @@ class InputParser:
             else:
                 self._start_year = self._config["debug"]["start_year"]
 
-            with self._engine.connect() as conn:
-                existing_end_year = conn.execute(
+            with self._engine.connect() as con:
+                existing_end_year = con.execute(
                     sql.text(
                         "SELECT [end_year] FROM [metadata].[run] WHERE run_id = :run_id"
                     ),
@@ -306,7 +306,7 @@ class InputParser:
         if self._config["run"]["enabled"] or (
             self._config["debug"]["enabled"] and self._config["debug"]["run_id"] is None
         ):
-            with self._engine.connect() as conn:
+            with self._engine.connect() as con:
 
                 # Override default arguments if debug mode is enabled
                 if self._config["debug"]["enabled"]:
@@ -319,12 +319,12 @@ class InputParser:
                     self._end_year = self._config["run"]["end_year"]
 
                 # Create run id from the most recent run id in the database
-                run_id = conn.execute(
+                run_id = con.execute(
                     sql.text("SELECT ISNULL(MAX(run_id),0)+1 FROM [metadata].[run]")
                 ).scalar()
 
                 # Insert new run id into the database
-                conn.execute(
+                con.execute(
                     sql.text(
                         """
                             INSERT INTO [metadata].[run] (
@@ -347,7 +347,7 @@ class InputParser:
                 )
 
                 # Commit the transaction
-                conn.commit()
+                con.commit()
 
                 # Return the valid 'run_id'
                 return run_id
@@ -371,8 +371,8 @@ class InputParser:
             # Ensure run id exists in the database
             self._check_run_id(run_id=self.run_id)
 
-            with self._engine.connect() as conn:
+            with self._engine.connect() as con:
                 query = sql.text(
                     "SELECT [mgra] FROM [metadata].[run] WHERE run_id = :run_id"
                 )
-                return conn.execute(query, {"run_id": self.run_id}).scalar()
+                return con.execute(query, {"run_id": self.run_id}).scalar()

@@ -333,3 +333,47 @@ def integerize_2d(
             raise ValueError("condition must be one of ['exact', 'less than']")
 
     return array_2d
+
+
+def read_sql_query_acs(**kwargs: dict) -> pd.DataFrame:
+    """Read SQL query allowing for dynamic year adjustment.
+
+    This function executes a SQL query using pandas read_sql_query allowing
+    for dynamic adjustment of the 'year' parameter in the query. If the query
+    returns a message indicating that the ACS 5-Year Table does not exist for
+    a given year, it will automatically decrement the year by one and re-run
+    the query. Note this function is specific to ACS 5-Year Tables and
+    requires the SQL query file to return a DataFrame with a single column
+    called 'msg' with the text 'ACS 5-Year Table does not exist' when no data
+    is found for the specified year.
+
+    Args:
+        kwargs (dict): Keyword arguments for pd.read_sql_query
+
+    Returns:
+        pd.DataFrame: Result of the SQL query
+    """
+    df = pd.read_sql_query(**kwargs)
+
+    # Check if returned DataFrame contains SQL message
+    if df.columns.tolist() == ["msg"]:
+        msg = df["msg"].values[0]
+        if msg == "ACS 5-Year Table does not exist" and "year" in kwargs["params"]:
+            # If the table does not exist run query for prior year
+            kwargs["params"]["year"] -= 1
+
+            warnings.warn(
+                "Re-running SQL query with 'year' set to: "
+                + str(kwargs["params"]["year"])
+            )
+
+            df = pd.read_sql_query(**kwargs)
+
+            # If the year column exists, set it to the original year
+            if "year" in df.columns:
+                df["year"] = kwargs["params"]["year"] + 1
+        else:
+            # Raise error if the message is not expected
+            raise ValueError(f"SQL query returned a message: {msg}.")
+
+    return df

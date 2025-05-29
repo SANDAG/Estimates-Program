@@ -65,12 +65,12 @@ def _get_gq_inputs(year: int) -> dict[str, pd.DataFrame]:
     # Store results here
     gq_inputs = {}
 
-    with utils.ESTIMATES_ENGINE.connect() as conn:
+    with utils.ESTIMATES_ENGINE.connect() as con:
         # Get city total group quarters controls
         with open(utils.SQL_FOLDER / "pop_type/get_city_controls_gq.sql") as file:
             gq_inputs["city_controls"] = pd.read_sql_query(
                 sql=sql.text(file.read()),
-                con=conn,
+                con=con,
                 params={
                     "run_id": utils.RUN_ID,
                     "year": year,
@@ -81,7 +81,7 @@ def _get_gq_inputs(year: int) -> dict[str, pd.DataFrame]:
         with open(utils.SQL_FOLDER / "pop_type/get_mgra_gq.sql") as file:
             gq_inputs["gq"] = pd.read_sql_query(
                 sql=sql.text(file.read()),
-                con=conn,
+                con=con,
                 params={
                     "run_id": utils.RUN_ID,
                     "year": year,
@@ -160,17 +160,17 @@ def _insert_gq(
     """Insert both input and output data for MGRA group quarters"""
 
     # Insert controls and group quarters results to database
-    with utils.ESTIMATES_ENGINE.connect() as conn:
+    with utils.ESTIMATES_ENGINE.connect() as con:
         gq_inputs["city_controls"].to_sql(
             name="controls_city",
-            con=conn,
+            con=con,
             schema="inputs",
             if_exists="append",
             index=False,
         )
         gq_outputs["gq"].drop(columns="city").to_sql(
             name="gq",
-            con=conn,
+            con=con,
             schema="outputs",
             if_exists="append",
             index=False,
@@ -180,12 +180,12 @@ def _insert_gq(
 def _get_hhp_inputs(year: int) -> dict[str, pd.DataFrame]:
     """Get input data related to MGRA household population"""
 
-    with utils.ESTIMATES_ENGINE.connect() as conn:
+    with utils.ESTIMATES_ENGINE.connect() as con:
         # Get city total household population controls
         with open(utils.SQL_FOLDER / "pop_type/get_city_controls_hhp.sql") as file:
             city_controls = pd.read_sql_query(
                 sql=sql.text(file.read()),
-                con=conn,
+                con=con,
                 params={
                     "run_id": utils.RUN_ID,
                     "year": year,
@@ -194,9 +194,9 @@ def _get_hhp_inputs(year: int) -> dict[str, pd.DataFrame]:
 
         # Get tract level household size controls
         with open(utils.SQL_FOLDER / "pop_type/get_tract_controls_hhs.sql") as file:
-            tract_controls = pd.read_sql_query(
+            tract_controls = utils.read_sql_query_acs(
                 sql=sql.text(file.read()),
-                con=conn,
+                con=con,
                 params={
                     "run_id": utils.RUN_ID,
                     "year": year,
@@ -207,7 +207,7 @@ def _get_hhp_inputs(year: int) -> dict[str, pd.DataFrame]:
         with open(utils.SQL_FOLDER / "pop_type/get_mgra_hh.sql") as file:
             hh = pd.read_sql_query(
                 sql=sql.text(file.read()),
-                con=conn,
+                con=con,
                 params={
                     "run_id": utils.RUN_ID,
                     "year": year,
@@ -375,10 +375,10 @@ def _insert_hhp(
     """Insert input and output data related to household population"""
 
     # Insert input and output data to database
-    with utils.ESTIMATES_ENGINE.connect() as conn:
+    with utils.ESTIMATES_ENGINE.connect() as con:
         hhp_inputs["city_controls"].to_sql(
             name="controls_city",
-            con=conn,
+            con=con,
             schema="inputs",
             if_exists="append",
             index=False,
@@ -386,11 +386,11 @@ def _insert_hhp(
 
         hhp_inputs["tract_controls"].assign(metric="Household Size").to_sql(
             name="controls_tract",
-            con=conn,
+            con=con,
             schema="inputs",
             if_exists="append",
             index=False,
         )
         hhp_outputs["hhp"].to_sql(
-            name="hhp", con=conn, schema="outputs", if_exists="append", index=False
+            name="hhp", con=con, schema="outputs", if_exists="append", index=False
         )

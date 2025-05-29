@@ -16,8 +16,8 @@ def _insert_outputs():
     """Insert output data related to the Startup module"""
 
     # Insert the MGRA geography
-    with utils.ESTIMATES_ENGINE.connect() as conn:
+    with utils.ESTIMATES_ENGINE.connect() as con:
         with open(utils.SQL_FOLDER / "insert_mgra.sql") as file:
             query = sql.text(file.read())
-            conn.execute(query, {"run_id": utils.RUN_ID, "mgra": utils.MGRA_VERSION})
-            conn.commit()
+            con.execute(query, {"run_id": utils.RUN_ID, "mgra": utils.MGRA_VERSION})
+            con.commit()

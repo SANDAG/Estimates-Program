@@ -72,7 +72,7 @@ def _calculate_hh_adjustment(households: int, housing_stock: int) -> int:
 
 def _get_hs_hh_inputs(year: int) -> dict[str, pd.DataFrame]:
     """Get housing stock and occupancy controls."""
-    with utils.ESTIMATES_ENGINE.connect() as conn:
+    with utils.ESTIMATES_ENGINE.connect() as con:
         # Store results here
         hs_hh_inputs = {}
 
@@ -80,7 +80,7 @@ def _get_hs_hh_inputs(year: int) -> dict[str, pd.DataFrame]:
         with open(utils.SQL_FOLDER / "hs_hh/get_mgra_hs.sql") as file:
             hs_hh_inputs["hs"] = pd.read_sql_query(
                 sql=sql.text(file.read()),
-                con=conn,
+                con=con,
                 params={
                     "run_id": utils.RUN_ID,
                     "year": year,
@@ -93,7 +93,7 @@ def _get_hs_hh_inputs(year: int) -> dict[str, pd.DataFrame]:
         with open(utils.SQL_FOLDER / "hs_hh/get_city_controls_hh.sql") as file:
             hs_hh_inputs["city_controls"] = pd.read_sql_query(
                 sql=sql.text(file.read()),
-                con=conn,
+                con=con,
                 params={
                     "run_id": utils.RUN_ID,
                     "year": year,
@@ -102,9 +102,9 @@ def _get_hs_hh_inputs(year: int) -> dict[str, pd.DataFrame]:
 
         # Get tract occupancy controls
         with open(utils.SQL_FOLDER / "hs_hh/get_tract_controls_hh.sql") as file:
-            hs_hh_inputs["tract_controls"] = pd.read_sql_query(
+            hs_hh_inputs["tract_controls"] = utils.read_sql_query_acs(
                 sql=sql.text(file.read()),
-                con=conn,
+                con=con,
                 params={
                     "run_id": utils.RUN_ID,
                     "year": year,
@@ -236,17 +236,17 @@ def _insert_hs_hh(
     hs_hh_inputs: dict[str, pd.DataFrame], hs_hh_outputs: dict[str, pd.DataFrame]
 ) -> None:
     """Insert occupancy controls and households results to database."""
-    with utils.ESTIMATES_ENGINE.connect() as conn:
+    with utils.ESTIMATES_ENGINE.connect() as con:
         hs_hh_inputs["hs"].drop(columns=["tract", "city"]).to_sql(
             name="hs",
-            con=conn,
+            con=con,
             schema="outputs",
             if_exists="append",
             index=False,
         )
         hs_hh_inputs["city_controls"].to_sql(
             name="controls_city",
-            con=conn,
+            con=con,
             schema="inputs",
             if_exists="append",
             index=False,
@@ -255,14 +255,14 @@ def _insert_hs_hh(
             metric=lambda x: "Occupancy Rate - " + x["structure_type"]
         ).drop(columns="structure_type").to_sql(
             name="controls_tract",
-            con=conn,
+            con=con,
             schema="inputs",
             if_exists="append",
             index=False,
         )
         hs_hh_outputs["hh"].to_sql(
             name="hh",
-            con=conn,
+            con=con,
             schema="outputs",
             if_exists="append",
             index=False,
