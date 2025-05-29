@@ -16,190 +16,205 @@ Two input parameters are used
 
 
 SET NOCOUNT ON;
--- Initialize parameters and return table ------------------------------------
+-- Initialize parameters -----------------------------------------------------
 DECLARE @run_id integer = :run_id;
 DECLARE @year integer = :year;
-
--- Build the expected return table Tract x Structure Type
-SELECT 
-	[tract],
-	[structure_type]
-INTO [#tt_shell]
-FROM (
-	SELECT DISTINCT
-		CASE WHEN @year BETWEEN 2010 AND 2019 THEN [2010_census_tract]
-		     WHEN @year BETWEEN 2020 AND 2029 THEN [2020_census_tract]
-			 ELSE NULL END AS [tract]
-	FROM [inputs].[mgra]
-	WHERE [run_id] = @run_id
-) AS [tracts]
-CROSS JOIN (
-	SELECT [structure_type] FROM (
-		VALUES
-			('Single Family - Detached'),
-			('Single Family - Multiple Unit'),
-			('Multifamily'),
-			('Mobile Home')
-	) AS [tt] ([structure_type])
-) AS [structure_type];
+DECLARE @msg nvarchar(45) = 'ACS 5-Year Table does not exist';
 
 
--- Prepare intermediary results from ACS datasets ----------------------------
--- 5-year ACS Detailed Table B25024 - Units in Structure
-SELECT
-	[tract],
-	[structure_type],
-	SUM([value]) AS [hs]
-INTO [#units]
-FROM (
-	SELECT
-		[tract],
-		CASE
-			WHEN [label] = 'Estimate!!Total:!!1, detached' THEN 'Single Family - Detached'
-			WHEN [label] = 'Estimate!!Total:!!1, attached' THEN 'Single Family - Multiple Unit'
-			WHEN [label] IN (
-				'Estimate!!Total:!!2',
-				'Estimate!!Total:!!3 or 4',
-				'Estimate!!Total:!!5 to 9',
-				'Estimate!!Total:!!10 to 19',
-				'Estimate!!Total:!!20 to 49',
-				'Estimate!!Total:!!50 or more'
-			)  THEN 'Multifamily'
-			WHEN [label] IN (
-				'Estimate!!Total:!!Mobile home',
-				'Estimate!!Total:!!Boat, RV, van, etc.'
-			) THEN 'Mobile Home'
-			ELSE NULL  -- NULL values for Margin of Error fields removed in subsequent WHERE clause
-		END AS [structure_type],
-		[value]
-	FROM [acs].[detailed].[values] AS [val]
-	LEFT JOIN [acs].[detailed].[geography] AS [geo]
-		ON [val].[geography_id] = [geo].[geography_id]
-	LEFT JOIN [acs].[detailed].[variables] AS [vari]
-		ON [val].[variable] = [vari].[variable]
-		AND [val].[table_id] = [vari].[table_id]
-	LEFT JOIN [acs].[detailed].[tables] AS [tbls]
-		ON [val].[table_id] = [tbls].[table_id]
-	WHERE 
-		[tbls].[name] = 'B25024'
-		AND [tbls].[year] = @year
-		AND [tbls].[product] = '5Y'
-) AS [b25024]
-WHERE
-	[structure_type] IS NOT NULL
-	AND [value] > 0
-GROUP BY
-	[tract],
-	[structure_type]
-
-
--- 5-year ACS Detailed Table B25032 - Tenure by Units in Structure
-SELECT
-	[tract],
-	[structure_type],
-	SUM([value]) AS [hh]
-INTO [#occupied]
-FROM (
-	SELECT
-		[tract],
-		CASE
-			WHEN [label] IN (
-					'Estimate!!Total:!!Owner-occupied housing units:!!1, detached',
-					'Estimate!!Total:!!Renter-occupied housing units:!!1, detached') 
-				THEN 'Single Family - Detached'
-			WHEN [label] IN (
-					'Estimate!!Total:!!Owner-occupied housing units:!!1, attached', 
-					'Estimate!!Total:!!Renter-occupied housing units:!!1, attached')
-				THEN 'Single Family - Multiple Unit'
-			WHEN [label] IN (
-					'Estimate!!Total:!!Owner-occupied housing units:!!2',
-					'Estimate!!Total:!!Renter-occupied housing units:!!2',
-					'Estimate!!Total:!!Owner-occupied housing units:!!3 or 4',
-					'Estimate!!Total:!!Renter-occupied housing units:!!3 or 4',
-					'Estimate!!Total:!!Owner-occupied housing units:!!5 to 9',
-					'Estimate!!Total:!!Renter-occupied housing units:!!5 to 9',
-					'Estimate!!Total:!!Owner-occupied housing units:!!10 to 19',
-					'Estimate!!Total:!!Renter-occupied housing units:!!10 to 19',
-					'Estimate!!Total:!!Owner-occupied housing units:!!20 to 49',
-					'Estimate!!Total:!!Renter-occupied housing units:!!20 to 49',
-					'Estimate!!Total:!!Owner-occupied housing units:!!50 or more',
-					'Estimate!!Total:!!Renter-occupied housing units:!!50 or more')
-				THEN 'Multifamily'
-			WHEN [label] IN (
-					'Estimate!!Total:!!Owner-occupied housing units:!!Boat, RV, van, etc.', 
-					'Estimate!!Total:!!Owner-occupied housing units:!!Mobile home',
-					'Estimate!!Total:!!Renter-occupied housing units:!!Boat, RV, van, etc.',
-					'Estimate!!Total:!!Renter-occupied housing units:!!Mobile home') 
-				THEN 'Mobile Home'
-			ELSE NULL  -- NULL values for Margin of Error fields removed in subsequent WHERE clause
-		END AS [structure_type],
-		[value]
-	FROM [acs].[detailed].[values] AS [val]
-	LEFT JOIN [acs].[detailed].[geography] AS [geo]
-		ON [val].[geography_id] = [geo].[geography_id]
-	LEFT JOIN [acs].[detailed].[variables] AS [vari]
-		ON [val].[variable] = [vari].[variable]
-		AND [val].[table_id] = [vari].[table_id]
-	LEFT JOIN [acs].[detailed].[tables] AS [tbls]
-		ON [val].[table_id] = [tbls].[table_id]
-	WHERE 
-		[tbls].[name] = 'B25032'
-		AND [tbls].[year] = @year
-		AND [tbls].[product] = '5Y'
-) AS [b25032]
-WHERE
-	[structure_type] IS NOT NULL
-GROUP BY
-	[tract],
-	[structure_type];
-
-
--- Create occupancy rates by structure type ----------------------------------
--- Calculate regional occupancy rates by structure type
-with [rate_region] AS (
-	SELECT
-		[#units].[structure_type],
-		1.0 * SUM([hh]) / SUM([hs]) AS [occupancy_rate]
-	FROM [#units]
-	LEFT OUTER JOIN [#occupied]
-		ON [#units].[tract] = [#occupied].[tract]
-		AND [#units].[structure_type] = [#occupied].[structure_type]
-	GROUP BY
-		[#units].[structure_type]
-),
--- Calculate census tract occupancy rates by structure type
-[rate_tract] AS (
-	SELECT
-		[#units].[tract],
-		[#units].[structure_type],
-		1.0 * SUM([hh]) / SUM([hs]) AS [occupancy_rate]
-	FROM [#units]
-	LEFT OUTER JOIN [#occupied]
-		ON [#units].[tract] = [#occupied].[tract]
-		AND [#units].[structure_type] = [#occupied].[structure_type]
-	GROUP BY
-		[#units].[tract],
-		[#units].[structure_type]
+-- Send error message if no data exists --------------------------------------
+IF NOT EXISTS (
+    SELECT TOP (1) *
+    FROM [acs].[detailed].[tables]
+    WHERE 
+        [name] IN ('B25024', 'B25032')
+	    AND [year] = @year
+	    AND [product] = '5Y'
 )
-SELECT
-	@run_id AS [run_id],
-    @year AS [year],
-	[#tt_shell].[tract],
-	[#tt_shell].[structure_type],
-	CASE WHEN [rate_tract].[occupancy_rate] IS NULL
-			THEN [rate_region].[occupancy_rate]
-		 ELSE [rate_tract].[occupancy_rate]
-	END AS [value]
-FROM [#tt_shell]
-LEFT OUTER JOIN [rate_region]
-	ON [#tt_shell].[structure_type] = [rate_region].[structure_type]
-LEFT OUTER JOIN [rate_tract]
-	ON [#tt_shell].[tract] = [rate_tract].[tract]
-	AND [#tt_shell].[structure_type] = [rate_tract].[structure_type]
+SELECT @msg AS [msg]
+ELSE
+BEGIN
+    -- Build the expected return table Tract x Structure Type
+    SELECT 
+        [tract],
+        [structure_type]
+    INTO [#tt_shell]
+    FROM (
+        SELECT DISTINCT
+            CASE WHEN @year BETWEEN 2010 AND 2019 THEN [2010_census_tract]
+                WHEN @year BETWEEN 2020 AND 2029 THEN [2020_census_tract]
+                ELSE NULL END AS [tract]
+        FROM [inputs].[mgra]
+        WHERE [run_id] = @run_id
+    ) AS [tracts]
+    CROSS JOIN (
+        SELECT [structure_type] FROM (
+            VALUES
+                ('Single Family - Detached'),
+                ('Single Family - Multiple Unit'),
+                ('Multifamily'),
+                ('Mobile Home')
+        ) AS [tt] ([structure_type])
+    ) AS [structure_type];
 
 
--- Clean up ------------------------------------------------------------------
--- Drop the temporary tables
-DROP TABLE [#tt_shell]
-DROP TABLE [#units]
-DROP TABLE [#occupied]
+    -- Prepare intermediary results from ACS datasets ------------------------
+    -- 5-year ACS Detailed Table B25024 - Units in Structure
+    SELECT
+        [tract],
+        [structure_type],
+        SUM([value]) AS [hs]
+    INTO [#units]
+    FROM (
+        SELECT
+            [tract],
+            CASE
+                WHEN [label] = 'Estimate!!Total:!!1, detached' THEN 'Single Family - Detached'
+                WHEN [label] = 'Estimate!!Total:!!1, attached' THEN 'Single Family - Multiple Unit'
+                WHEN [label] IN (
+                    'Estimate!!Total:!!2',
+                    'Estimate!!Total:!!3 or 4',
+                    'Estimate!!Total:!!5 to 9',
+                    'Estimate!!Total:!!10 to 19',
+                    'Estimate!!Total:!!20 to 49',
+                    'Estimate!!Total:!!50 or more'
+                )  THEN 'Multifamily'
+                WHEN [label] IN (
+                    'Estimate!!Total:!!Mobile home',
+                    'Estimate!!Total:!!Boat, RV, van, etc.'
+                ) THEN 'Mobile Home'
+                ELSE NULL  -- NULL values for Margin of Error fields removed in subsequent WHERE clause
+            END AS [structure_type],
+            [value]
+        FROM [acs].[detailed].[values] AS [val]
+        LEFT JOIN [acs].[detailed].[geography] AS [geo]
+            ON [val].[geography_id] = [geo].[geography_id]
+        LEFT JOIN [acs].[detailed].[variables] AS [vari]
+            ON [val].[variable] = [vari].[variable]
+            AND [val].[table_id] = [vari].[table_id]
+        LEFT JOIN [acs].[detailed].[tables] AS [tbls]
+            ON [val].[table_id] = [tbls].[table_id]
+        WHERE 
+            [tbls].[name] = 'B25024'
+            AND [tbls].[year] = @year
+            AND [tbls].[product] = '5Y'
+    ) AS [b25024]
+    WHERE
+        [structure_type] IS NOT NULL
+        AND [value] > 0
+    GROUP BY
+        [tract],
+        [structure_type]
+
+
+    -- 5-year ACS Detailed Table B25032 - Tenure by Units in Structure
+    SELECT
+        [tract],
+        [structure_type],
+        SUM([value]) AS [hh]
+    INTO [#occupied]
+    FROM (
+        SELECT
+            [tract],
+            CASE
+                WHEN [label] IN (
+                        'Estimate!!Total:!!Owner-occupied housing units:!!1, detached',
+                        'Estimate!!Total:!!Renter-occupied housing units:!!1, detached') 
+                    THEN 'Single Family - Detached'
+                WHEN [label] IN (
+                        'Estimate!!Total:!!Owner-occupied housing units:!!1, attached', 
+                        'Estimate!!Total:!!Renter-occupied housing units:!!1, attached')
+                    THEN 'Single Family - Multiple Unit'
+                WHEN [label] IN (
+                        'Estimate!!Total:!!Owner-occupied housing units:!!2',
+                        'Estimate!!Total:!!Renter-occupied housing units:!!2',
+                        'Estimate!!Total:!!Owner-occupied housing units:!!3 or 4',
+                        'Estimate!!Total:!!Renter-occupied housing units:!!3 or 4',
+                        'Estimate!!Total:!!Owner-occupied housing units:!!5 to 9',
+                        'Estimate!!Total:!!Renter-occupied housing units:!!5 to 9',
+                        'Estimate!!Total:!!Owner-occupied housing units:!!10 to 19',
+                        'Estimate!!Total:!!Renter-occupied housing units:!!10 to 19',
+                        'Estimate!!Total:!!Owner-occupied housing units:!!20 to 49',
+                        'Estimate!!Total:!!Renter-occupied housing units:!!20 to 49',
+                        'Estimate!!Total:!!Owner-occupied housing units:!!50 or more',
+                        'Estimate!!Total:!!Renter-occupied housing units:!!50 or more')
+                    THEN 'Multifamily'
+                WHEN [label] IN (
+                        'Estimate!!Total:!!Owner-occupied housing units:!!Boat, RV, van, etc.', 
+                        'Estimate!!Total:!!Owner-occupied housing units:!!Mobile home',
+                        'Estimate!!Total:!!Renter-occupied housing units:!!Boat, RV, van, etc.',
+                        'Estimate!!Total:!!Renter-occupied housing units:!!Mobile home') 
+                    THEN 'Mobile Home'
+                ELSE NULL  -- NULL values for Margin of Error fields removed in subsequent WHERE clause
+            END AS [structure_type],
+            [value]
+        FROM [acs].[detailed].[values] AS [val]
+        LEFT JOIN [acs].[detailed].[geography] AS [geo]
+            ON [val].[geography_id] = [geo].[geography_id]
+        LEFT JOIN [acs].[detailed].[variables] AS [vari]
+            ON [val].[variable] = [vari].[variable]
+            AND [val].[table_id] = [vari].[table_id]
+        LEFT JOIN [acs].[detailed].[tables] AS [tbls]
+            ON [val].[table_id] = [tbls].[table_id]
+        WHERE 
+            [tbls].[name] = 'B25032'
+            AND [tbls].[year] = @year
+            AND [tbls].[product] = '5Y'
+    ) AS [b25032]
+    WHERE
+        [structure_type] IS NOT NULL
+    GROUP BY
+        [tract],
+        [structure_type];
+
+
+    -- Create occupancy rates by structure type ------------------------------
+    -- Calculate regional occupancy rates by structure type
+    with [rate_region] AS (
+        SELECT
+            [#units].[structure_type],
+            1.0 * SUM([hh]) / SUM([hs]) AS [occupancy_rate]
+        FROM [#units]
+        LEFT OUTER JOIN [#occupied]
+            ON [#units].[tract] = [#occupied].[tract]
+            AND [#units].[structure_type] = [#occupied].[structure_type]
+        GROUP BY
+            [#units].[structure_type]
+    ),
+    -- Calculate census tract occupancy rates by structure type
+    [rate_tract] AS (
+        SELECT
+            [#units].[tract],
+            [#units].[structure_type],
+            1.0 * SUM([hh]) / SUM([hs]) AS [occupancy_rate]
+        FROM [#units]
+        LEFT OUTER JOIN [#occupied]
+            ON [#units].[tract] = [#occupied].[tract]
+            AND [#units].[structure_type] = [#occupied].[structure_type]
+        GROUP BY
+            [#units].[tract],
+            [#units].[structure_type]
+    )
+    SELECT
+        @run_id AS [run_id],
+        @year AS [year],
+        [#tt_shell].[tract],
+        [#tt_shell].[structure_type],
+        CASE WHEN [rate_tract].[occupancy_rate] IS NULL
+                THEN [rate_region].[occupancy_rate]
+            ELSE [rate_tract].[occupancy_rate]
+        END AS [value]
+    FROM [#tt_shell]
+    LEFT OUTER JOIN [rate_region]
+        ON [#tt_shell].[structure_type] = [rate_region].[structure_type]
+    LEFT OUTER JOIN [rate_tract]
+        ON [#tt_shell].[tract] = [rate_tract].[tract]
+        AND [#tt_shell].[structure_type] = [rate_tract].[structure_type]
+
+
+    -- Clean up --------------------------------------------------------------
+    -- Drop the temporary tables
+    DROP TABLE [#tt_shell]
+    DROP TABLE [#units]
+    DROP TABLE [#occupied]
+END

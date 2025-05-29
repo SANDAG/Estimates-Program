@@ -81,12 +81,12 @@ def run_ase(year: int) -> None:
 @functools.lru_cache(maxsize=1)
 def _get_controls_inputs(year: int) -> dict[str, pd.DataFrame]:
     """Get inputs required to calculate regional age/sex/ethnicity controls."""
-    with utils.ESTIMATES_ENGINE.connect() as conn:
+    with utils.ESTIMATES_ENGINE.connect() as con:
         # Get regional age/sex/ethnicity controls for total population
         with open(utils.SQL_FOLDER / "ase/get_region_ase_total.sql") as file:
             region_ase_total = pd.read_sql_query(
                 sql=sql.text(file.read()),
-                con=conn,
+                con=con,
                 params={
                     "run_id": utils.RUN_ID,
                     "year": year,
@@ -95,9 +95,9 @@ def _get_controls_inputs(year: int) -> dict[str, pd.DataFrame]:
 
         # Get regional age/sex/ethnicity group quarters distributions
         with open(utils.SQL_FOLDER / "ase/get_region_gq_ase_dist.sql") as file:
-            region_gq_ase_dist = pd.read_sql_query(
+            region_gq_ase_dist = utils.read_sql_query_acs(
                 sql=sql.text(file.read()),
-                con=conn,
+                con=con,
                 params={
                     "run_id": utils.RUN_ID,
                     "year": year,
@@ -108,7 +108,7 @@ def _get_controls_inputs(year: int) -> dict[str, pd.DataFrame]:
         with open(utils.SQL_FOLDER / "ase/get_region_pop_type.sql") as file:
             region_pop_type = pd.read_sql_query(
                 sql=sql.text(file.read()),
-                con=conn,
+                con=con,
                 params={
                     "run_id": utils.RUN_ID,
                     "year": year,
@@ -232,10 +232,10 @@ def _validate_controls_outputs(controls_outputs: pd.DataFrame) -> None:
 
 def _insert_controls(controls_outputs: pd.DataFrame) -> None:
     """Insert regional age/sex/ethnicity controls to database."""
-    with utils.ESTIMATES_ENGINE.connect() as conn:
+    with utils.ESTIMATES_ENGINE.connect() as con:
         controls_outputs.to_sql(
             name="controls_ase",
-            con=conn,
+            con=con,
             schema="inputs",
             if_exists="append",
             index=False,
@@ -244,12 +244,12 @@ def _insert_controls(controls_outputs: pd.DataFrame) -> None:
 
 def _get_seed_inputs(year: int) -> dict[str, pd.DataFrame]:
     """Get inputs required to generate census tract age/sex/ethnicity seed data."""
-    with utils.ESTIMATES_ENGINE.connect() as conn:
+    with utils.ESTIMATES_ENGINE.connect() as con:
         # Get the Age/Sex B010001 table data
         with open(utils.SQL_FOLDER / "ase/get_B01001.sql") as file:
-            b01001 = pd.read_sql_query(
+            b01001 = utils.read_sql_query_acs(
                 sql=sql.text(file.read()),
-                con=conn,
+                con=con,
                 params={
                     "year": year,
                 },
@@ -257,9 +257,9 @@ def _get_seed_inputs(year: int) -> dict[str, pd.DataFrame]:
 
         # Get the Ethnicity B03002 table data
         with open(utils.SQL_FOLDER / "ase/get_B03002.sql") as file:
-            b03002 = pd.read_sql_query(
+            b03002 = utils.read_sql_query_acs(
                 sql=sql.text(file.read()),
-                con=conn,
+                con=con,
                 params={
                     "year": year,
                 },
@@ -267,9 +267,9 @@ def _get_seed_inputs(year: int) -> dict[str, pd.DataFrame]:
 
         # Get Age/Sex/Ethnicity data from B01001(B-I) table data
         with open(utils.SQL_FOLDER / "ase/get_B01001(B-I).sql") as file:
-            b01001_b_i = pd.read_sql_query(
+            b01001_b_i = utils.read_sql_query_acs(
                 sql=sql.text(file.read()),
-                con=conn,
+                con=con,
                 params={
                     "year": year,
                 },
@@ -335,12 +335,12 @@ def _create_seed(seed_inputs: dict[str, pd.DataFrame]) -> pd.DataFrame:
 
 
 def _get_ase_inputs(year: int) -> dict[str, pd.DataFrame]:
-    with utils.ESTIMATES_ENGINE.connect() as conn:
+    with utils.ESTIMATES_ENGINE.connect() as con:
         # Get the MGRA-level population by type data
         with open(utils.SQL_FOLDER / "ase/get_mgra_pop_type.sql") as file:
             mgra_pop_type = pd.read_sql_query(
                 sql=sql.text(file.read()),
-                con=conn,
+                con=con,
                 params={
                     "run_id": utils.RUN_ID,
                     "year": year,
@@ -351,7 +351,7 @@ def _get_ase_inputs(year: int) -> dict[str, pd.DataFrame]:
         with open(utils.SQL_FOLDER / "ase/get_special_mgras.sql") as file:
             special_mgras = pd.read_sql_query(
                 sql=sql.text(file.read()),
-                con=conn,
+                con=con,
                 params={
                     "year": year,
                     "mgra_version": utils.MGRA_VERSION,
@@ -599,7 +599,7 @@ def _insert_ase(ase_outputs: dict[str, pd.DataFrame]) -> None:
         )
 
         # Bulk insert the CSV file into the production database
-        with utils.ESTIMATES_ENGINE.connect() as conn:
+        with utils.ESTIMATES_ENGINE.connect() as con:
             fp = (utils.BULK_INSERT_STAGING / (pop_type + ".txt")).as_posix()
             query = sql.text(
                 f"""
@@ -613,8 +613,8 @@ def _insert_ase(ase_outputs: dict[str, pd.DataFrame]) -> None:
                     )
                 """
             )
-            conn.execute(query)
-            conn.commit()
+            con.execute(query)
+            con.commit()
 
         # Remove the temporary CSV file
         (utils.BULK_INSERT_STAGING / (pop_type + ".txt")).unlink()
