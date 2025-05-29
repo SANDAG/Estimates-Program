@@ -5,7 +5,6 @@ the choice of LUDU layer is determined by the input @year parameter.
 */
 
 SET NOCOUNT ON;
-
 -- Initialize parameters and return table ------------------------------------
 DECLARE @run_id integer = :run_id;
 DECLARE @year integer = :year;

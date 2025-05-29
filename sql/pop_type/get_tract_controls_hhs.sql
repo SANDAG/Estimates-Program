@@ -16,101 +16,119 @@ Two input parameters are used
 
 
 SET NOCOUNT ON;
--- Initialize parameters and return table ------------------------------------
+-- Initialize parameters -----------------------------------------------------
 DECLARE @run_id integer = :run_id;
 DECLARE @year integer = :year;
 
--- Build the expected return table of Tracts
-SELECT
-    DISTINCT CASE
-        WHEN @year BETWEEN 2010 AND 2019 THEN [2010_census_tract]
-        WHEN @year BETWEEN 2020 AND 2029 THEN [2020_census_tract]
-        ELSE NULL
-    END AS [tract]
-INTO [#tt_shell]
-FROM [inputs].[mgra]
-WHERE [run_id] = @run_id;
 
--- Prepare intermediary results from ACS datasets --------------------------------------
--- 5-year ACS Detailed Table B25032 - Tenure by Units in Structure
-SELECT
-    [tract],
-    SUM([value]) AS [hh]
-INTO [#occupied]
-FROM (
-    SELECT
-        [tract],
-        [value]
-    FROM [acs].[detailed].[values] AS [val]
-    LEFT JOIN [acs].[detailed].[geography] AS [geo]
-        ON [val].[geography_id] = [geo].[geography_id]
-    LEFT JOIN [acs].[detailed].[variables] AS [vari]
-        ON [val].[variable] = [vari].[variable]
-        AND [val].[table_id] = [vari].[table_id]
-    LEFT JOIN [acs].[detailed].[tables] AS [tbls]
-        ON [val].[table_id] = [tbls].[table_id]
+-- Send message if not all tables exist --------------------------------------
+DECLARE @rows integer = (
+    SELECT COUNT([table_id]) AS [rows]
+    FROM [acs].[detailed].[tables]
     WHERE 
-        [tbls].[name] = 'B25032'
-        AND [tbls].[year] = @year
-        AND [tbls].[product] = '5Y'
-        AND [label] = 'Estimate!!Total:'
-) AS [b25032]
-GROUP BY [tract];
+        [name] IN ('B25032', 'B09019')
+	    AND [year] = @year
+	    AND [product] = '5Y'
+)
 
--- 5-year ACS Detailed Table B09019 - Household Type (Including Living Alone) by Relationship
-SELECT
-    [tract],
-    SUM([value]) AS [hhp]
-INTO [#household_population]
-FROM (
+IF @rows = 0
+    SELECT 'ACS 5-Year Table does not exist' AS [msg]
+ELSE IF @rows != 2
+    SELECT 'Incorrect number of ACS 5-Year Tables exist' AS [msg]
+ELSE
+BEGIN
+    -- Build the expected return table of Tracts -----------------------------
+    SELECT
+        DISTINCT CASE
+            WHEN @year BETWEEN 2010 AND 2019 THEN [2010_census_tract]
+            WHEN @year BETWEEN 2020 AND 2029 THEN [2020_census_tract]
+            ELSE NULL
+        END AS [tract]
+    INTO [#tt_shell]
+    FROM [inputs].[mgra]
+    WHERE [run_id] = @run_id;
+
+    -- Prepare intermediary results from ACS datasets ------------------------
+    -- 5-year ACS Detailed Table B25032 - Tenure by Units in Structure
     SELECT
         [tract],
-        [value]
-    FROM [acs].[detailed].[values] AS [val]
-    LEFT JOIN [acs].[detailed].[geography] AS [geo]
-        ON [val].[geography_id] = [geo].[geography_id]
-    LEFT JOIN [acs].[detailed].[variables] AS [vari]
-        ON [val].[variable] = [vari].[variable]
-        AND [val].[table_id] = [vari].[table_id]
-    LEFT JOIN [acs].[detailed].[tables] AS [tbls]
-        ON [val].[table_id] = [tbls].[table_id]
-    WHERE
-        [tbls].[name] = 'B09019'
-        AND [tbls].[year] = @year
-        AND [tbls].[product] = '5Y'
-        AND [label] = 'Estimate!!Total:!!In households:'
-) AS [b09019]
-GROUP BY [tract];
+        SUM([value]) AS [hh]
+    INTO [#occupied]
+    FROM (
+        SELECT
+            [tract],
+            [value]
+        FROM [acs].[detailed].[values] AS [val]
+        LEFT JOIN [acs].[detailed].[geography] AS [geo]
+            ON [val].[geography_id] = [geo].[geography_id]
+        LEFT JOIN [acs].[detailed].[variables] AS [vari]
+            ON [val].[variable] = [vari].[variable]
+            AND [val].[table_id] = [vari].[table_id]
+        LEFT JOIN [acs].[detailed].[tables] AS [tbls]
+            ON [val].[table_id] = [tbls].[table_id]
+        WHERE 
+            [tbls].[name] = 'B25032'
+            AND [tbls].[year] = @year
+            AND [tbls].[product] = '5Y'
+            AND [label] = 'Estimate!!Total:'
+    ) AS [b25032]
+    GROUP BY [tract];
 
--- Create household size ---------------------------------------------------------------
--- Calculate regional household size
-DECLARE @regional_hhs FLOAT = 1.0
-    * (SELECT SUM([hhp]) FROM [#household_population])
-    / (SELECT SUM([hh]) FROM [#occupied]);
-
--- Calculate census tract household size
-SELECT
-    @run_id AS [run_id],
-    @year AS [year],
-    [#tt_shell].[tract],
-    ISNULL([rate_tract].[household_size], @regional_hhs) AS [value]
-FROM [#tt_shell]
-LEFT OUTER JOIN (
+    -- 5-year ACS Detailed Table B09019 - Household Type (Including Living Alone) by Relationship
     SELECT
-        [#occupied].[tract],
-        CASE
-            WHEN [hh] = 0 THEN NULL
-            ELSE 1.0 * [hhp] / [hh]
-        END AS [household_size]
-    FROM [#occupied]
-    LEFT OUTER JOIN [#household_population]
-        ON [#occupied].[tract] = [#household_population].[tract]
-) AS [rate_tract]
-    ON [#tt_shell].[tract] = [rate_tract].[tract];
+        [tract],
+        SUM([value]) AS [hhp]
+    INTO [#household_population]
+    FROM (
+        SELECT
+            [tract],
+            [value]
+        FROM [acs].[detailed].[values] AS [val]
+        LEFT JOIN [acs].[detailed].[geography] AS [geo]
+            ON [val].[geography_id] = [geo].[geography_id]
+        LEFT JOIN [acs].[detailed].[variables] AS [vari]
+            ON [val].[variable] = [vari].[variable]
+            AND [val].[table_id] = [vari].[table_id]
+        LEFT JOIN [acs].[detailed].[tables] AS [tbls]
+            ON [val].[table_id] = [tbls].[table_id]
+        WHERE
+            [tbls].[name] = 'B09019'
+            AND [tbls].[year] = @year
+            AND [tbls].[product] = '5Y'
+            AND [label] = 'Estimate!!Total:!!In households:'
+    ) AS [b09019]
+    GROUP BY [tract];
+
+    -- Create household size -------------------------------------------------
+    -- Calculate regional household size
+    DECLARE @regional_hhs FLOAT = 1.0
+        * (SELECT SUM([hhp]) FROM [#household_population])
+        / (SELECT SUM([hh]) FROM [#occupied]);
+
+    -- Calculate census tract household size
+    SELECT
+        @run_id AS [run_id],
+        @year AS [year],
+        [#tt_shell].[tract],
+        ISNULL([rate_tract].[household_size], @regional_hhs) AS [value]
+    FROM [#tt_shell]
+    LEFT OUTER JOIN (
+        SELECT
+            [#occupied].[tract],
+            CASE
+                WHEN [hh] = 0 THEN NULL
+                ELSE 1.0 * [hhp] / [hh]
+            END AS [household_size]
+        FROM [#occupied]
+        LEFT OUTER JOIN [#household_population]
+            ON [#occupied].[tract] = [#household_population].[tract]
+    ) AS [rate_tract]
+        ON [#tt_shell].[tract] = [rate_tract].[tract];
 
 
--- Clean up ------------------------------------------------------------------
--- Drop the temporary tables
-DROP TABLE [#tt_shell];
-DROP TABLE [#household_population];
-DROP TABLE [#occupied];
+    -- Clean up --------------------------------------------------------------
+    -- Drop the temporary tables
+    DROP TABLE [#tt_shell];
+    DROP TABLE [#household_population];
+    DROP TABLE [#occupied];
+END

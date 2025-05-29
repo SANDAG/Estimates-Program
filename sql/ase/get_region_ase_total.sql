@@ -45,7 +45,7 @@ with [p3] AS (
         [population]
     FROM [socioec_data].[ca_dof].[projections_p3]
     WHERE 
-        [projections_id] = 10  -- Vintage 2024 (2024.9.23)
+        [projections_id] = 11  -- Vintage 2025 (2025.4.25)
         AND [fips] = '06073'
         AND [year] = @year
 )

@@ -42,7 +42,7 @@ def run_hh_characteristics(year: int) -> None:
 
 def _get_hh_char_inputs(year: int) -> dict[str, pd.DataFrame]:
     """Get households and various tract level datas"""
-    with utils.ESTIMATES_ENGINE.connect() as conn:
+    with utils.ESTIMATES_ENGINE.connect() as con:
         # Store results here
         hh_char_inputs = {}
 
@@ -51,7 +51,7 @@ def _get_hh_char_inputs(year: int) -> dict[str, pd.DataFrame]:
         with open(utils.SQL_FOLDER / "pop_type" / "get_mgra_hh.sql") as file:
             hh_char_inputs["hh"] = pd.read_sql_query(
                 sql=sql.text(file.read()),
-                con=conn,
+                con=con,
                 params={
                     "run_id": utils.RUN_ID,
                     "year": year,
@@ -63,9 +63,9 @@ def _get_hh_char_inputs(year: int) -> dict[str, pd.DataFrame]:
         with open(
             utils.SQL_FOLDER / "hh_characteristics" / "get_tract_controls_hh_income.sql"
         ) as file:
-            hh_char_inputs["hh_income_tract_controls"] = pd.read_sql_query(
+            hh_char_inputs["hh_income_tract_controls"] = utils.read_sql_query_acs(
                 sql=sql.text(file.read()),
-                con=conn,
+                con=con,
                 params={"run_id": utils.RUN_ID, "year": year},
             )
 
@@ -253,7 +253,7 @@ def _insert_hh_char(
     hh_char_inputs: dict[str, pd.DataFrame], hh_char_outputs: dict[str, pd.DataFrame]
 ) -> None:
     """Insert hh characteristics and tract level controls to database"""
-    with utils.ESTIMATES_ENGINE.connect() as conn:
+    with utils.ESTIMATES_ENGINE.connect() as con:
         hh_char_inputs["hh_income_tract_controls"][
             ["run_id", "year", "tract", "income_category", "value"]
         ].rename(columns={"income_category": "metric"}).assign(
@@ -262,7 +262,7 @@ def _insert_hh_char(
             schema="inputs",
             name="controls_tract",
             if_exists="append",
-            con=conn,
+            con=con,
             index=False,
         )
 
@@ -274,7 +274,7 @@ def _insert_hh_char(
             schema="outputs",
             name="hh_characteristics",
             if_exists="append",
-            con=conn,
+            con=con,
             index=False,
         )
 
