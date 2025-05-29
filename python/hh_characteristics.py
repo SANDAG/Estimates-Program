@@ -39,6 +39,7 @@ def run_hh_characteristics(year: int) -> None:
 
     _insert_hh_char(hh_char_inputs, hh_char_outputs)
 
+
 def _get_hh_char_inputs(year: int) -> dict[str, pd.DataFrame]:
     """Get households and various tract level datas"""
     with utils.ESTIMATES_ENGINE.connect() as conn:
@@ -70,7 +71,9 @@ def _get_hh_char_inputs(year: int) -> dict[str, pd.DataFrame]:
 
         # Tract level households by household size distributions
         with open(
-            utils.SQL_FOLDER / "hh_characteristics" / "get_tract_controls_hh_by_size.sql"
+            utils.SQL_FOLDER
+            / "hh_characteristics"
+            / "get_tract_controls_hh_by_size.sql"
         ) as file:
             hh_char_inputs["hhs_tract_controls"] = pd.read_sql_query(
                 sql=sql.text(file.read()),
@@ -127,9 +130,22 @@ def _validate_hh_char_inputs(
 
 def _create_hh_char(hh_char_inputs: dict[str, pd.DataFrame]) -> dict[str, pd.DataFrame]:
     """Calculate the various household characteristics by MGRA."""
-    hh = hh_char_inputs["hh"]
-    tract_income_dist = hh_char_inputs["hh_income_tract_controls"]
+    return {
+        "hh_income": _create_hh_income(
+            hh_char_inputs["hh"], hh_char_inputs["hh_income_tract_controls"]
+        ),
+        "hh_size": _create_hh_size(
+            hh_char_inputs["hh"],
+            hh_char_inputs["hhs_tract_controls"],
+            hh_char_inputs["hhs_mgra_controls"],
+        ),
+    }
 
+
+def _create_hh_income(
+    hh: pd.DataFrame, tract_income_dist: pd.DataFrame
+) -> pd.DataFrame:
+    """Code to compute MGRA household income"""
     # Combine the total households in each MGRA with the distribution of households by
     # income
     hh_income = (
@@ -146,19 +162,91 @@ def _create_hh_char(hh_char_inputs: dict[str, pd.DataFrame]) -> dict[str, pd.Dat
         integerized_groups.append(group)
     hh_income = pd.concat(integerized_groups)
 
-    return {"hh_income": hh_income}
+    return hh_income
+
+
+def _create_hh_size(
+    hh: pd.DataFrame, tract_hhs_dist: pd.DataFrame, mgra_controls: pd.DataFrame
+) -> pd.DataFrame:
+    """Code to compute MGRA households by size"""
+    # Combine the total households in each MGRA with the distribution of households by
+    # income
+    hh_size = (
+        hh.merge(tract_hhs_dist, on=["run_id", "year", "tract"], how="left")
+        .assign(hh=lambda df: df["hh"] * df["value"])
+        .drop(columns=["tract", "value"])
+    )
+
+    # Control each MGRA so households by household income exactly matches the total
+    # households
+    integerized_groups = []
+    for _, group in hh_size.groupby("mgra"):
+        group["hh"] = utils.integerize_1d(group["hh"])
+        integerized_groups.append(group)
+    hh_size = pd.concat(integerized_groups)
+
+    # Control each MGRA to align with household population
+    controlled_groups = []
+    for mgra, group in hh_size.groupby("mgra"):
+        control = mgra_controls[mgra_controls["mgra"] == mgra]
+        hhp_total = control["hhp_total"].values[0]
+        hhp_over_18 = control["hhp_over_18"].values[0]
+
+        # Compute the minimum and maximum implied hhp from the hhs distribution. The
+        # maximum assumes every 7+ hh actually has 11 people on average
+        min_implied_hhp = (group["hh"] * group["household_size"]).sum()
+        max_implied_hhp = (group["hh"] * group["household_size"].replace(7, 11)).sum()
+
+        # If the maximum implied hhp is smaller than the actual hhp, then we need to
+        # shift some households from smaller sizes to larger sizes. Specifically, we
+        # will shift one household from 1-->2, 2-->3, 6-->7+, 1-->2, etc. until
+        # satisfied
+        if max_implied_hhp < hhp_total:
+            size_to_change = 1
+            while max_implied_hhp < hhp_total:
+                if group[group["household_size"] == size_to_change]["hh"].values[0] > 0:
+                    group.loc[group["household_size"] == size_to_change, "hh"] -= 1
+                    group.loc[group["household_size"] == size_to_change + 1, "hh"] += 1
+                    max_implied_hhp += 1
+                # Increase the size by one, but keep it in the inclusive range 1-6
+                size_to_change = (size_to_change % 6) + 1
+
+        # If the minimum implied hhp is greater than the actual hhp, then we need to
+        # shift some households from larger sizes to smaller sizes
+        if min_implied_hhp > hhp_total:
+            size_to_change = 7
+            while min_implied_hhp > hhp_total:
+                if group[group["household_size"] == size_to_change]["hh"].values[0] > 0:
+                    group.loc[group["household_size"] == size_to_change, "hh"] -= 1
+                    group.loc[group["household_size"] == size_to_change - 1, "hh"] += 1
+                    min_implied_hhp -= 1
+                # Decrease size by one, but keep it in the inclusive range 2-7
+                size_to_change = (size_to_change - 3) % 6 + 2
+
+        # TODO: Check hhs1 against over 18 hhp
+
+        # Store the controlled group
+        controlled_groups.append(group)
+
+    return pd.concat(controlled_groups)
 
 
 def _validate_hh_char_outputs(hh_char_outputs: dict[str, pd.DataFrame]) -> None:
     """Validate the household characteristics data"""
     tests.validate_data(
-        "MGRA Households",
+        "MGRA Household Income",
         hh_char_outputs["hh_income"],
         row_count={"key_columns": {"mgra", "income_category"}},
         negative={},
         null={},
     )
-    pass
+    tests.validate_data(
+        "MGRA Households by Size",
+        hh_char_outputs["hh_size"],
+        row_count={"key_columns": {"mgra", "household_size"}},
+        negative={},
+        null={},
+    )
 
 
 def _insert_hh_char(
@@ -190,6 +278,15 @@ def _insert_hh_char(
             index=False,
         )
 
-if __name__ == "__main__":
-    utils.RUN_ID = 134
-    run_hh_characteristics(2020)
+        hh_char_outputs["hh_size"][
+            ["run_id", "year", "mgra", "household_size", "hh"]
+        ].rename(columns={"household_size": "metric", "hh": "value"}).assign(
+            metric=lambda df: "Household Size - "
+            + df["metric"].astype(str).replace(7, "7+")
+        ).to_sql(
+            schema="outputs",
+            name="hh_characteristics",
+            if_exists="append",
+            con=conn,
+            index=False,
+        )

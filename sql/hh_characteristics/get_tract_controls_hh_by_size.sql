@@ -36,13 +36,13 @@ FROM (
 CROSS JOIN (
     SELECT [household_size] FROM (
         VALUES
-            ('1-person household'),
-            ('2-person household'),
-            ('3-person household'),
-            ('4-person household'),
-            ('5-person household'),
-            ('6-person household'),
-            ('7-or-more person household')
+            (1),
+            (2),
+            (3),
+            (4),
+            (5),
+            (6),
+            (7)
     ) AS [tt] ([household_size])
 ) AS [household_size];
 
@@ -60,13 +60,13 @@ FROM (
         [tract],
         -- The '%' wildcard matches both 'Family households' and 'Nonfamily households'
         CASE
-            WHEN [label] LIKE 'Estimate%1-person household' THEN '1-person household'
-            WHEN [label] LIKE 'Estimate%2-person household' THEN '2-person household'
-            WHEN [label] LIKE 'Estimate%3-person household' THEN '3-person household'
-            WHEN [label] LIKE 'Estimate%4-person household' THEN '4-person household'
-            WHEN [label] LIKE 'Estimate%5-person household' THEN '5-person household'
-            WHEN [label] LIKE 'Estimate%6-person household' THEN '6-person household'
-            WHEN [label] LIKE 'Estimate%7-or-more person household' THEN '7-or-more person household'
+            WHEN [label] LIKE 'Estimate%1-person household' THEN 1
+            WHEN [label] LIKE 'Estimate%2-person household' THEN 2
+            WHEN [label] LIKE 'Estimate%3-person household' THEN 3
+            WHEN [label] LIKE 'Estimate%4-person household' THEN 4
+            WHEN [label] LIKE 'Estimate%5-person household' THEN 5
+            WHEN [label] LIKE 'Estimate%6-person household' THEN 6
+            WHEN [label] LIKE 'Estimate%7-or-more person household' THEN 7
             ELSE NULL  -- NULL values for Margin of Error fields removed in subsequent WHERE clause
         END AS [household_size],
         [value]
