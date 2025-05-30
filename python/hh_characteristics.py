@@ -381,8 +381,3 @@ def _insert_hh_size(
             con=con,
             index=False,
         )
-
-
-if __name__ == "__main__":
-    utils.RUN_ID = 134
-    run_hh_characteristics(2020)
