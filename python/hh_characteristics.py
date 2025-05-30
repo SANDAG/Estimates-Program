@@ -201,7 +201,30 @@ def _create_hh_income(
 def _create_hh_size(
     hh_income_inputs: dict[str, pd.DataFrame],
 ) -> dict[str, pd.DataFrame]:
-    """Code to compute MGRA households by size"""
+    """Code to compute MGRA households by size
+
+    Similar to how income works, this function takes MGRA households, applies tract
+    level rates, then integerizes the data. But additionally, we control to MGRA hhp.
+    This is because the distribution of households by household size implies some
+    minimum and maximum household population.
+
+    For example, if we had 10 households of size one, 10 households of size two, ...,
+    10 households of size 7+, the minimum amount of household population would be 1*10
+    + 2*20 + ... + 7*10 = 280. On the flip side, the maximum amount of household
+    population, assuming the 7+ category all actually average 11 people, would be 1*10
+    + 2*20 + ... + 11*10 = 320. The actual amount of household population in this MGRA
+    must be between these two values
+
+    To make this adjustment, we basically move singular households up or down a size
+    depending on the direction of adjustment needed. If the actual hhp is more than the
+    max implied hhp, then households are shifted up. We first do HHS1 --> HHS2, then
+    HHS2 --> 3, ..., HHS6 --> HHS7, HHS1 --> HHS2. This is repeated until the max
+    implied hhp equals the actual hhp.
+
+    If the actual hhp is less than the min implied hhp, we do the reverse process until
+    the min implied hhp equals the actual hhp. In other words, we do HHS7 --> HHS6,
+    then HHS6 --> HHS5, ..., HHS2 --> HHS1, HHS7 --> HHS6.
+    """
     hh = hh_income_inputs["hh"]
     tract_hhs_dist = hh_income_inputs["hhs_tract_controls"]
     mgra_controls = hh_income_inputs["hhs_mgra_controls"]
@@ -231,8 +254,11 @@ def _create_hh_size(
 
         # Compute the minimum and maximum implied hhp from the hhs distribution. The
         # maximum assumes every 7+ hh actually has 11 people on average
+        n_people_in_7_plus = 11
         min_implied_hhp = (group["hh"] * group["household_size"]).sum()
-        max_implied_hhp = (group["hh"] * group["household_size"].replace(7, 11)).sum()
+        max_implied_hhp = (
+            group["hh"] * group["household_size"].replace(7, n_people_in_7_plus)
+        ).sum()
 
         # If the maximum implied hhp is smaller than the actual hhp, then we need to
         # shift some households from smaller sizes to larger sizes. Specifically, we
@@ -245,6 +271,8 @@ def _create_hh_size(
                     group.loc[group["household_size"] == size_to_change, "hh"] -= 1
                     group.loc[group["household_size"] == size_to_change + 1, "hh"] += 1
                     max_implied_hhp += 1
+                    if size_to_change == 6:
+                        max_implied_hhp += n_people_in_7_plus - 7
                 # Increase the size by one, but keep it in the inclusive range 1-6
                 size_to_change = (size_to_change % 6) + 1
 
@@ -260,7 +288,9 @@ def _create_hh_size(
                 # Decrease size by one, but keep it in the inclusive range 2-7
                 size_to_change = (size_to_change - 3) % 6 + 2
 
-        # TODO: Check hhs1 against over 18 hhp
+        # TODO: Log a warning if the number of households in HHS1 exceeds the hhp over
+        # 18 in this MGRA. We cannot fix this here as this is most likely an ASE error,
+        # not a hh characteristics error
 
         # Store the controlled group
         controlled_groups.append(group)
