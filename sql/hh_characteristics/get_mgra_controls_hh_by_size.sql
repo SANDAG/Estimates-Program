@@ -1,7 +1,9 @@
 /*
 Get MGRA controls for households by household size, which are total household population
-and household population over the age of 18. All this data is pulled from previously
-run modules
+and household population over the age of 14. All this data is pulled from previously
+run modules. Note, hhp over the age of 14 is used to check against the number of
+households of size one. The reason 14 is used instead of over 17 is due to the Census
+definition of householder: https://www.census.gov/glossary/?term=Householder
 
 Two input parameters are used
     run_id - the run identifier is used to get the list of census tracts in tandem with
