@@ -263,7 +263,7 @@ def _create_hh_size(
         hhp_over_14 = control["hhp_over_14"].values[0]
 
         # Compute the minimum and maximum implied hhp from the hhs distribution. The
-        # maximum assumes that every household in the 7+ category is of size 1, which
+        # maximum assumes that every household in the 7+ category is of size 11, which
         # is what we get from looking at the San Diego region PUMS data. See GithHub
         # for more info:
         # https://github.com/SANDAG/Estimates-Program/issues/112
