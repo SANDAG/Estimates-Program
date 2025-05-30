@@ -2,7 +2,6 @@
 # page for more details:
 # https://github.com/SANDAG/Estimates-Program/wiki/Household-Characteristics
 
-import numpy as np
 import pandas as pd
 import sqlalchemy as sql
 
@@ -31,16 +30,58 @@ def run_hh_characteristics(year: int) -> None:
     Args:
         year (int): estimates year
     """
-    hh_char_inputs = _get_hh_char_inputs(year)
-    _validate_hh_char_inputs(year, hh_char_inputs)
+    # Start with household income
+    hh_income_inputs = _get_hh_income_inputs(year)
+    _validate_hh_income_inputs(year, hh_income_inputs)
 
-    hh_char_outputs = _create_hh_char(hh_char_inputs)
-    _validate_hh_char_outputs(hh_char_outputs)
+    hh_income_outputs = _create_hh_income(hh_income_inputs)
+    _validate_hh_income_outputs(hh_income_outputs)
 
-    _insert_hh_char(hh_char_inputs, hh_char_outputs)
+    _insert_hh_income(hh_income_inputs, hh_income_outputs)
+
+    # Then do households by size
+    hh_size_inputs = _get_hh_size_inputs(year)
+    _validate_hh_size_inputs(year, hh_size_inputs)
+
+    hh_size_outputs = _create_hh_size(hh_size_inputs)
+    _validate_hh_size_outputs(hh_size_outputs)
+
+    _insert_hh_size(hh_size_inputs, hh_size_outputs)
 
 
-def _get_hh_char_inputs(year: int) -> dict[str, pd.DataFrame]:
+def _get_hh_income_inputs(year: int) -> dict[str, pd.DataFrame]:
+    """Get households and various tract level datas"""
+    with utils.ESTIMATES_ENGINE.connect() as con:
+        # Store results here
+        hh_income_inputs = {}
+
+        # Get MGRA level households. Note we re-use the SQL script from the 'Population
+        # by Type' module
+        with open(utils.SQL_FOLDER / "pop_type" / "get_mgra_hh.sql") as file:
+            hh_income_inputs["hh"] = pd.read_sql_query(
+                sql=sql.text(file.read()),
+                con=con,
+                params={
+                    "run_id": utils.RUN_ID,
+                    "year": year,
+                    "mgra_version": utils.MGRA_VERSION,
+                },
+            ).drop(columns=["city"])
+
+        # Tract level household income distributions
+        with open(
+            utils.SQL_FOLDER / "hh_characteristics" / "get_tract_controls_hh_income.sql"
+        ) as file:
+            hh_income_inputs["hh_income_tract_controls"] = utils.read_sql_query_acs(
+                sql=sql.text(file.read()),
+                con=con,
+                params={"run_id": utils.RUN_ID, "year": year},
+            )
+
+    return hh_income_inputs
+
+
+def _get_hh_size_inputs(year: int) -> dict[str, pd.DataFrame]:
     """Get households and various tract level datas"""
     with utils.ESTIMATES_ENGINE.connect() as con:
         # Store results here
@@ -58,16 +99,6 @@ def _get_hh_char_inputs(year: int) -> dict[str, pd.DataFrame]:
                     "mgra_version": utils.MGRA_VERSION,
                 },
             ).drop(columns=["city"])
-
-        # Tract level household income distributions
-        with open(
-            utils.SQL_FOLDER / "hh_characteristics" / "get_tract_controls_hh_income.sql"
-        ) as file:
-            hh_char_inputs["hh_income_tract_controls"] = utils.read_sql_query_acs(
-                sql=sql.text(file.read()),
-                con=con,
-                params={"run_id": utils.RUN_ID, "year": year},
-            )
 
         # Tract level households by household size distributions
         with open(
@@ -94,7 +125,7 @@ def _get_hh_char_inputs(year: int) -> dict[str, pd.DataFrame]:
     return hh_char_inputs
 
 
-def _validate_hh_char_inputs(
+def _validate_hh_income_inputs(
     year: int, hh_char_inputs: dict[str, pd.DataFrame]
 ) -> None:
     """Validate the household characteristics input data"""
@@ -112,40 +143,42 @@ def _validate_hh_char_inputs(
         negative={},
         null={},
     )
+
+
+def _validate_hh_size_inputs(
+    year: int, hh_size_inputs: dict[str, pd.DataFrame]
+) -> None:
+    """Validate the household characteristics input data"""
+    tests.validate_data(
+        "MGRA households",
+        hh_size_inputs["hh"],
+        row_count={"key_columns": {"mgra"}},
+        negative={},
+        null={},
+    )
     tests.validate_data(
         "Tract households by household size distribution",
-        hh_char_inputs["hhs_tract_controls"],
+        hh_size_inputs["hhs_tract_controls"],
         row_count={"key_columns": {"tract", "household_size"}, "year": year},
         negative={},
         null={},
     )
     tests.validate_data(
         "MGRA households by household size controls",
-        hh_char_inputs["hhs_mgra_controls"],
+        hh_size_inputs["hhs_mgra_controls"],
         row_count={"key_columns": {"mgra"}},
         negative={},
         null={},
     )
 
 
-def _create_hh_char(hh_char_inputs: dict[str, pd.DataFrame]) -> dict[str, pd.DataFrame]:
-    """Calculate the various household characteristics by MGRA."""
-    return {
-        "hh_income": _create_hh_income(
-            hh_char_inputs["hh"], hh_char_inputs["hh_income_tract_controls"]
-        ),
-        "hh_size": _create_hh_size(
-            hh_char_inputs["hh"],
-            hh_char_inputs["hhs_tract_controls"],
-            hh_char_inputs["hhs_mgra_controls"],
-        ),
-    }
-
-
 def _create_hh_income(
-    hh: pd.DataFrame, tract_income_dist: pd.DataFrame
-) -> pd.DataFrame:
+    hh_income_inputs: dict[str, pd.DataFrame],
+) -> dict[str, pd.DataFrame]:
     """Code to compute MGRA household income"""
+    hh = hh_income_inputs["hh"]
+    tract_income_dist = hh_income_inputs["hh_income_tract_controls"]
+
     # Combine the total households in each MGRA with the distribution of households by
     # income
     hh_income = (
@@ -162,13 +195,17 @@ def _create_hh_income(
         integerized_groups.append(group)
     hh_income = pd.concat(integerized_groups)
 
-    return hh_income
+    return {"hh_income": hh_income}
 
 
 def _create_hh_size(
-    hh: pd.DataFrame, tract_hhs_dist: pd.DataFrame, mgra_controls: pd.DataFrame
-) -> pd.DataFrame:
+    hh_income_inputs: dict[str, pd.DataFrame],
+) -> dict[str, pd.DataFrame]:
     """Code to compute MGRA households by size"""
+    hh = hh_income_inputs["hh"]
+    tract_hhs_dist = hh_income_inputs["hhs_tract_controls"]
+    mgra_controls = hh_income_inputs["hhs_mgra_controls"]
+
     # Combine the total households in each MGRA with the distribution of households by
     # income
     hh_size = (
@@ -228,33 +265,38 @@ def _create_hh_size(
         # Store the controlled group
         controlled_groups.append(group)
 
-    return pd.concat(controlled_groups)
+    return {"hh_size": pd.concat(controlled_groups)}
 
 
-def _validate_hh_char_outputs(hh_char_outputs: dict[str, pd.DataFrame]) -> None:
-    """Validate the household characteristics data"""
+def _validate_hh_income_outputs(hh_income_outputs: dict[str, pd.DataFrame]) -> None:
+    """Validate the household income output data"""
     tests.validate_data(
         "MGRA Household Income",
-        hh_char_outputs["hh_income"],
+        hh_income_outputs["hh_income"],
         row_count={"key_columns": {"mgra", "income_category"}},
         negative={},
         null={},
     )
+
+
+def _validate_hh_size_outputs(hh_size_outputs: dict[str, pd.DataFrame]) -> None:
+    """Validate the household size output data"""
     tests.validate_data(
         "MGRA Households by Size",
-        hh_char_outputs["hh_size"],
+        hh_size_outputs["hh_size"],
         row_count={"key_columns": {"mgra", "household_size"}},
         negative={},
         null={},
     )
 
 
-def _insert_hh_char(
-    hh_char_inputs: dict[str, pd.DataFrame], hh_char_outputs: dict[str, pd.DataFrame]
+def _insert_hh_income(
+    hh_income_inputs: dict[str, pd.DataFrame],
+    hh_income_outputs: dict[str, pd.DataFrame],
 ) -> None:
     """Insert hh characteristics and tract level controls to database"""
     with utils.ESTIMATES_ENGINE.connect() as con:
-        hh_char_inputs["hh_income_tract_controls"][
+        hh_income_inputs["hh_income_tract_controls"][
             ["run_id", "year", "tract", "income_category", "value"]
         ].rename(columns={"income_category": "metric"}).assign(
             metric=lambda df: "Income Category - " + df["metric"]
@@ -266,7 +308,7 @@ def _insert_hh_char(
             index=False,
         )
 
-        hh_char_outputs["hh_income"][
+        hh_income_outputs["hh_income"][
             ["run_id", "year", "mgra", "income_category", "hh"]
         ].rename(columns={"income_category": "metric", "hh": "value"}).assign(
             metric=lambda df: "Income Category - " + df["metric"]
@@ -278,15 +320,39 @@ def _insert_hh_char(
             index=False,
         )
 
-        hh_char_outputs["hh_size"][
+
+def _insert_hh_size(
+    hh_size_inputs: dict[str, pd.DataFrame], hh_size_outputs: dict[str, pd.DataFrame]
+) -> None:
+    """Insert hh characteristics and tract level controls to database"""
+    with utils.ESTIMATES_ENGINE.connect() as con:
+        hh_size_inputs["hhs_tract_controls"].rename(
+            columns={"household_size": "metric"}
+        ).assign(
+            metric=lambda df: "Household Size - "
+            + df["metric"].astype(str).replace("7", "7+")
+        ).to_sql(
+            schema="inputs",
+            name="controls_tract",
+            if_exists="append",
+            con=con,
+            index=False,
+        )
+
+        hh_size_outputs["hh_size"][
             ["run_id", "year", "mgra", "household_size", "hh"]
         ].rename(columns={"household_size": "metric", "hh": "value"}).assign(
             metric=lambda df: "Household Size - "
-            + df["metric"].astype(str).replace(7, "7+")
+            + df["metric"].astype(str).replace("7", "7+")
         ).to_sql(
             schema="outputs",
             name="hh_characteristics",
             if_exists="append",
-            con=conn,
+            con=con,
             index=False,
         )
+
+
+if __name__ == "__main__":
+    utils.RUN_ID = 134
+    run_hh_characteristics(2020)

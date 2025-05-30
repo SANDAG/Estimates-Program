@@ -15,6 +15,10 @@ Two input parameters are used
 
 SET NOCOUNT ON;
 
+-- Initialize parameters ---------------------------------------------------------------
+DECLARE @run_id integer = :run_id;
+DECLARE @year integer = :year;
+
 -- Send error message if no data exists ------------------------------------------------
 DECLARE @msg nvarchar(45) = 'ACS 5-Year Table does not exist';
 IF NOT EXISTS (
@@ -28,10 +32,6 @@ IF NOT EXISTS (
 SELECT @msg AS [msg]
 ELSE
 BEGIN
-
-    -- Initialize parameters and return table ------------------------------------------
-    DECLARE @run_id integer = :run_id;
-    DECLARE @year integer = :year;
 
     -- Build the expected return table Tract x Structure Type
     DROP TABLE IF EXISTS [#tt_shell];
