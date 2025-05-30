@@ -14,25 +14,25 @@ Two input parameters are used
 */
 
 SET NOCOUNT ON;
--- Initialize parameters -----------------------------------------------------
+-- Initialize parameters ---------------------------------------------------------------
 DECLARE @run_id integer = :run_id;
 DECLARE @year integer = :year;
 DECLARE @msg nvarchar(45) = 'ACS 5-Year Table does not exist';
 
-
--- Send error message if no data exists --------------------------------------
+-- Send error message if no data exists ------------------------------------------------
 IF NOT EXISTS (
     SELECT TOP (1) *
     FROM [acs].[detailed].[tables]
     WHERE 
         [name] = 'B19001'
-	    AND [year] = @year
-	    AND [product] = '5Y'
+        AND [year] = @year
+        AND [product] = '5Y'
 )
 SELECT @msg AS [msg]
 ELSE
 BEGIN
-    -- Build the expected return table Tract x Structure Type ----------------
+
+    -- Build the expected return table Tract x Structure Type --------------------------
     DROP TABLE IF EXISTS [#tt_shell];
     SELECT 
         [tract],
@@ -63,7 +63,7 @@ BEGIN
     ) AS [income_category];
 
 
-    -- Prepare intermediary results from ACS datasets ------------------------
+    -- Prepare intermediary results from ACS datasets ----------------------------------
     -- 5-year ACS Detailed Table B19001 - Household Income in the Past 12 Months
     DROP TABLE IF EXISTS [#income_category];
     SELECT
@@ -74,9 +74,10 @@ BEGIN
     FROM (
         SELECT
             [tract],
-            -- REPLACE is used here since between 2018 and 2019, the [label] format changed slightly.
-            -- In 2018, there was no ':', but starting in 2019, a ':' was added. We remove the ':' so 
-            -- that all string matching is done to the same string
+            -- REPLACE is used here since between 2018 and 2019, the [label] format
+            -- changed slightly. In 2018, there was no ':', but starting in 2019, a ':'
+            -- was added. We remove the ':' so that all string matching is done to the
+            -- same string
             CASE
                 WHEN REPLACE([label], ':', '') IN (
                     'Estimate!!Total!!Less than $10,000',
@@ -129,7 +130,7 @@ BEGIN
         [tract],
         [income_category]
 
-    -- Create hh income distribution -----------------------------------------
+    -- Create hh income distribution ---------------------------------------------------
     -- Calculate hh income distribution
     DECLARE @total_hh INTEGER = (SELECT SUM([hh]) FROM [#income_category]);
     WITH [region_income_distribution] AS (
@@ -170,4 +171,5 @@ BEGIN
     LEFT JOIN [income_distribution]
         ON [#tt_shell].[tract] = [income_distribution].[tract]
         AND [#tt_shell].[income_category] = [income_distribution].[income_category]
+
 END
