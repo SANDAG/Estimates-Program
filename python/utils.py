@@ -28,7 +28,8 @@ logging.basicConfig(
     filename=ROOT_FOLDER / "log.txt", filemode="w", encoding="utf-8", level=logging.INFO
 )
 logger.info(
-    "Initialize log file: " + datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    "Utilities module: Initialize log file: "
+    + datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 )
 
 
@@ -92,6 +93,13 @@ RUN_INSTRUCTIONS = input_parser.run_instructions
 RUN_ID = input_parser.run_id
 MGRA_VERSION = input_parser.mgra_version
 
+logger.info(
+    f"""Utilities module:
+    RUN_ID: {RUN_ID},
+    MGRA_VERSION: {MGRA_VERSION},
+    YEARS: {RUN_INSTRUCTIONS["years"]}"""
+)
+
 # Minimum and maximum age values for each age group
 AGE_MAPPING = {
     "Under 5": {"min": 0, "max": 4},
@@ -120,6 +128,16 @@ AGE_MAPPING = {
 #####################
 # UTILITY FUNCTIONS #
 #####################
+
+
+def display_ascii_art(filename):
+    """Displays ASCII art from a text file."""
+    try:
+        with open(filename, "r") as file:
+            for line in file:
+                print(line, end="")
+    except FileNotFoundError:
+        print(f"Error: File '{filename}' not found.")
 
 
 def integerize_1d(
@@ -333,7 +351,7 @@ def integerize_2d(
             else:
                 relax_skip_condition = True
                 logger.warning(
-                    "No adjustments made. Skip condition relaxed for 2d-integerizer."
+                    "Utilities module: No adjustments made. Skip condition relaxed for 2d-integerizer."
                 )
 
         # Recalculate the row deviations
@@ -378,7 +396,7 @@ def read_sql_query_acs(**kwargs: dict) -> pd.DataFrame:
             kwargs["params"]["year"] -= 1
 
             logger.warning(
-                "Re-running SQL query with 'year' set to: "
+                "Utilities module: Re-running SQL query with 'year' set to: "
                 + str(kwargs["params"]["year"])
             )
 

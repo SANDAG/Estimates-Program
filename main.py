@@ -25,41 +25,42 @@ logger = logging.getLogger(__name__)
 # Run the Startup module first. Since this module contains only year agnostic data, it
 # is run outside of the main year loop
 if utils.RUN_INSTRUCTIONS["startup"]:
-    logger.info("Running Startup module...")
+    utils.display_ascii_art("data/welcome.txt")
+    logger.info("Main module: Running Startup module...")
     startup.run_startup()
 
 # Loop through the years first
 for year in utils.RUN_INSTRUCTIONS["years"]:
-    logger.info(f"Running {year}...")
+    logger.info(f"Main module: Running {year}...")
 
     # Go through each module in the correct order for the specified year
 
     # Housing and Households module
     if utils.RUN_INSTRUCTIONS["housing_and_households"]:
-        logger.info("\tRunning Housing and Households module...")
+        logger.info("Main module: Running Housing and Households module...")
         hs_hh.run_hs_hh(year)
 
     # Population module
     if utils.RUN_INSTRUCTIONS["population"]:
-        logger.info("\tRunning Population module...")
+        logger.info("Main module: Running Population module...")
         pop.run_pop(year)
 
     # Population by Age/Sex/Ethnicity module
     if utils.RUN_INSTRUCTIONS["population_by_ase"]:
-        logger.info("\tRunning Population by Age/Sex/Ethnicity module...")
+        logger.info("Main module: Running Population by Age/Sex/Ethnicity module...")
         ase.run_ase(year)
 
     # Household Characteristics module
     if utils.RUN_INSTRUCTIONS["household_characteristics"]:
-        logger.info("\tRunning Household Characteristics module...")
+        logger.info("Main module: Running Household Characteristics module...")
         hh_characteristics.run_hh_characteristics(year)
 
     # Staging module
     if utils.RUN_INSTRUCTIONS["staging"]:
-        logger.info("\tRunning Staging module...")
+        logger.info("Main module: Running Staging module...")
 
     # Diagnostic print for this year
-    logger.info(f"Finished running {year}\n")
+    logger.info(f"Main module: Finished running {year}\n")
 
 # Final print for completion
-logger.info("Completed")
+logger.info("Main module: Completed")
