@@ -336,8 +336,19 @@ def _create_seed(seed_inputs: dict[str, pd.DataFrame]) -> pd.DataFrame:
 
 def _get_ase_inputs(year: int) -> dict[str, pd.DataFrame]:
     with utils.ESTIMATES_ENGINE.connect() as con:
+        # Get Households by MGRA
+        with open(utils.SQL_FOLDER / "ase" / "get_mgra_hh.sql") as file:
+            hh = pd.read_sql_query(
+                sql=sql.text(file.read()),
+                con=con,
+                params={
+                    "run_id": utils.RUN_ID,
+                    "year": year,
+                },
+            )
+
         # Get the MGRA-level population by type data
-        with open(utils.SQL_FOLDER / "ase/get_mgra_pop_type.sql") as file:
+        with open(utils.SQL_FOLDER / "ase" / "get_mgra_pop_type.sql") as file:
             mgra_pop_type = pd.read_sql_query(
                 sql=sql.text(file.read()),
                 con=con,
@@ -348,7 +359,7 @@ def _get_ase_inputs(year: int) -> dict[str, pd.DataFrame]:
             )
 
         # Get special MGRAs for age/sex restrictions
-        with open(utils.SQL_FOLDER / "ase/get_special_mgras.sql") as file:
+        with open(utils.SQL_FOLDER / "ase" / "get_special_mgras.sql") as file:
             special_mgras = pd.read_sql_query(
                 sql=sql.text(file.read()),
                 con=con,
@@ -363,6 +374,7 @@ def _get_ase_inputs(year: int) -> dict[str, pd.DataFrame]:
 
     return {
         "year": year,
+        "hh": hh,
         "mgra_pop_type": mgra_pop_type,
         "special_mgras": special_mgras,
         "controls_ase": controls_ase,
@@ -372,6 +384,13 @@ def _get_ase_inputs(year: int) -> dict[str, pd.DataFrame]:
 
 def _validate_ase_inputs(year: int, ase_inputs: dict[str, pd.DataFrame]) -> None:
     """Validate the age/sex/ethnicity input data"""
+    tests.validate_data(
+        "MGRA Households Estimates",
+        ase_inputs["hh"],
+        row_count={"key_columns": {"mgra"}},
+        negative={},
+        null={},
+    )
     tests.validate_data(
         "MGRA Population by Type Estimates",
         ase_inputs["mgra_pop_type"],
@@ -552,6 +571,128 @@ def _create_ase(
         population["run_id"] = utils.RUN_ID
         population["year"] = year
         result[pop_type] = population
+
+    # The following section seeks to balance MGRAs such that the number of households
+    # is greater than or equal to the number of householders (i.e., household population >= 15)
+
+    # Within the Household Population Type
+    # Get MGRAs where Household Population >= 15 is less than Households
+    householders = []
+    for age_group, range in utils.AGE_MAPPING.items():
+        if range["min"] >= 15:
+            householders.append(age_group)
+
+    problem_mgras = (
+        pd.merge(
+            left=result["Household Population"]
+            .query("age_group in @householders")
+            .groupby("mgra")["value"]
+            .sum()
+            .reset_index(),
+            right=ase_inputs["hh"],
+            on="mgra",
+            suffixes=["_head_hh", "_hh"],
+        )
+        .query("value_head_hh < value_hh")
+        .assign(adjustment=lambda x: x["value_hh"] - x["value_head_hh"])
+    )
+
+    # For each of these MGRAs
+    for row in problem_mgras.itertuples(index=False):
+        problem_mgra = row.mgra
+        adjustment = row.adjustment
+
+        # While adjustment needed is greater than zero
+        while adjustment > 0:
+            # Select largest non-householder age/sex/ethnicity category and subtract one
+            problem_mgra_subtract_idx = (
+                result["Household Population"]
+                .query("mgra == @problem_mgra")
+                .query("age_group not in @householders")["value"]
+                .idxmax()
+            )
+            result["Household Population"].loc[problem_mgra_subtract_idx, "value"] -= 1
+
+            # Store the category that was subtracted
+            problem_mgra_subtract_category = {
+                "age_group": result["Household Population"].loc[
+                    problem_mgra_subtract_idx, "age_group"
+                ],
+                "sex": result["Household Population"].loc[
+                    problem_mgra_subtract_idx, "sex"
+                ],
+                "ethnicity": result["Household Population"].loc[
+                    problem_mgra_subtract_idx, "ethnicity"
+                ],
+            }
+
+            # Find MGRAs where Household Population >= 15 is strictly greater than Households
+            donor_mgras = (
+                pd.merge(
+                    left=result["Household Population"]
+                    .query("age_group in @householders")
+                    .groupby("mgra")["value"]
+                    .sum()
+                    .reset_index(),
+                    right=ase_inputs["hh"],
+                    on="mgra",
+                    suffixes=["_head_hh", "_hh"],
+                )
+                .query("value_head_hh > value_hh")["mgra"]
+                .to_list()
+            )
+
+            # Select donor MGRA with the largest age/sex/category that was subtracted and add one
+            donor_mgra_add_idx = (
+                result["Household Population"]
+                .query("mgra in @donor_mgras")
+                .query(f"age_group == '{problem_mgra_subtract_category["age_group"]}'")
+                .query(f"sex == '{problem_mgra_subtract_category["sex"]}'")
+                .query(f"ethnicity == '{problem_mgra_subtract_category["ethnicity"]}'")[
+                    "value"
+                ]
+                .idxmax()
+            )
+            result["Household Population"].loc[donor_mgra_add_idx, "value"] += 1
+            donor_mgra = result["Household Population"].loc[donor_mgra_add_idx, "mgra"]
+
+            # Select largest householder age/sex/ethnicity category within donor MGRA and subtract one
+            donor_mgra_subtract_idx = (
+                result["Household Population"]
+                .query("mgra == @donor_mgra")
+                .query("age_group in @householders")["value"]
+                .idxmax()
+            )
+            result["Household Population"].loc[donor_mgra_subtract_idx, "value"] -= 1
+
+            # Store the category that was subtracted
+            donor_mgra_subtract_category = {
+                "age_group": result["Household Population"].loc[
+                    donor_mgra_subtract_idx, "age_group"
+                ],
+                "sex": result["Household Population"].loc[
+                    donor_mgra_subtract_idx, "sex"
+                ],
+                "ethnicity": result["Household Population"].loc[
+                    donor_mgra_subtract_idx, "ethnicity"
+                ],
+            }
+
+            # Add one to this category for the MGRA with Household Population >= 15 less than Households
+            problem_mgra_add_idx = (
+                result["Household Population"]
+                .query("mgra == @problem_mgra")
+                .query(f"age_group == '{donor_mgra_subtract_category["age_group"]}'")
+                .query(f"sex == '{donor_mgra_subtract_category["sex"]}'")
+                .query(f"ethnicity == '{donor_mgra_subtract_category["ethnicity"]}'")[
+                    "value"
+                ]
+                .index
+            )
+            result["Household Population"].loc[problem_mgra_add_idx, "value"] += 1
+
+            # Decrease the adjustment needed by one
+            adjustment -= 1
 
     # Return integerized results
     return result
