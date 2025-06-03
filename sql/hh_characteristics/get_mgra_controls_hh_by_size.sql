@@ -1,9 +1,6 @@
 /*
-Get MGRA controls for households by household size, which are total household population
-and household population over the age of 14. All this data is pulled from previously
-run modules. Note, hhp over the age of 14 is used to check against the number of
-households of size one. The reason 14 is used instead of over 17 is due to the Census
-definition of householder: https://www.census.gov/glossary/?term=Householder
+Get MGRA controls for household population used in households by household size.
+This data is pulled from previously run modules.
 
 Two input parameters are used
     run_id - the run identifier is used to get the list of census tracts in tandem with
@@ -13,40 +10,17 @@ Two input parameters are used
         (2010-2019 uses 2010, 2020-2029 uses 2020)
 */
 
-SET NOCOUNT ON;
-
 -- Initialize parameters
 DECLARE @run_id integer = :run_id;
 DECLARE @year integer = :year;
 
--- Get household population and household population over the age of 18
-WITH [hhp_total] AS (
-        SELECT
-            [mgra],
-            [value] AS [hhp_total]
-        FROM [outputs].[hhp]
-        WHERE [run_id] = @run_id
-            AND [year] = @year
-    ),
-    [hhp_over_18] AS (
-        SELECT
-            [mgra],
-            SUM([value]) AS [hhp_over_18]
-        FROM [outputs].[ase]
-        WHERE [run_id] = @run_id
-            AND [year] = @year
-            AND [pop_type] = 'Household Population'
-            AND [age_group] NOT IN ('Under 5', '5 to 9', '10 to 14')
-        GROUP BY [mgra]
-    )
-
--- Combine the two variables
+-- Get household population
 SELECT
     @run_id AS [run_id],
     @year AS [year],
-    [hhp_total].[mgra],
-    [hhp_total],
-    [hhp_over_18]
-FROM [hhp_total]
-LEFT JOIN [hhp_over_18]
-    ON [hhp_total].[mgra] = [hhp_over_18].[mgra]
+    [mgra],
+    [value] AS [hhp_total]
+FROM [outputs].[hhp]
+WHERE
+    [run_id] = @run_id
+    AND [year] = @year
