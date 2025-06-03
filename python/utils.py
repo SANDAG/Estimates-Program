@@ -1,7 +1,8 @@
+import datetime
+import logging
 import math
 import pathlib
 import yaml
-import warnings
 
 import numpy as np
 import pandas as pd
@@ -17,6 +18,18 @@ import python.parsers as parsers
 # Store project root folder
 ROOT_FOLDER = pathlib.Path(__file__).parent.resolve().parent
 SQL_FOLDER = ROOT_FOLDER / "sql"
+
+
+###########
+# LOGGING #
+###########
+logger = logging.getLogger(__name__)
+logging.basicConfig(
+    filename=ROOT_FOLDER / "log.txt", filemode="w", encoding="utf-8", level=logging.INFO
+)
+logger.info(
+    "Initialize log file: " + datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+)
 
 
 #####################
@@ -319,7 +332,9 @@ def integerize_2d(
                 raise ValueError("No adjustments made. Check marginal controls.")
             else:
                 relax_skip_condition = True
-                warnings.warn("Skip condition relaxed for 2d-integerizer.")
+                logger.warning(
+                    "No adjustments made. Skip condition relaxed for 2d-integerizer."
+                )
 
         # Recalculate the row deviations
         deviations = np.sum(array_2d, axis=1) - row_ctrls
@@ -362,7 +377,7 @@ def read_sql_query_acs(**kwargs: dict) -> pd.DataFrame:
             # If the table does not exist run query for prior year
             kwargs["params"]["year"] -= 1
 
-            warnings.warn(
+            logger.warning(
                 "Re-running SQL query with 'year' set to: "
                 + str(kwargs["params"]["year"])
             )

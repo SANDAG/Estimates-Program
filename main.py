@@ -6,12 +6,17 @@
 # Imports #
 ###########
 
+import logging
+
 import python.startup as startup
 import python.hs_hh as hs_hh
 import python.pop_type as pop
 import python.ase as ase
+import python.hh_characteristics as hh_characteristics
 
 import python.utils as utils
+
+logger = logging.getLogger(__name__)
 
 ################
 # Control flow #
@@ -20,41 +25,41 @@ import python.utils as utils
 # Run the Startup module first. Since this module contains only year agnostic data, it
 # is run outside of the main year loop
 if utils.RUN_INSTRUCTIONS["startup"]:
-    print("Running Startup module...")
+    logger.info("Running Startup module...")
     startup.run_startup()
-    print()
 
 # Loop through the years first
 for year in utils.RUN_INSTRUCTIONS["years"]:
-    print(f"Running {year}...")
+    logger.info(f"Running {year}...")
 
     # Go through each module in the correct order for the specified year
 
     # Housing and Households module
     if utils.RUN_INSTRUCTIONS["housing_and_households"]:
-        print("\tRunning Housing and Households module...")
+        logger.info("\tRunning Housing and Households module...")
         hs_hh.run_hs_hh(year)
 
     # Population module
     if utils.RUN_INSTRUCTIONS["population"]:
-        print("\tRunning Population module...")
+        logger.info("\tRunning Population module...")
         pop.run_pop(year)
 
     # Population by Age/Sex/Ethnicity module
     if utils.RUN_INSTRUCTIONS["population_by_ase"]:
-        print("\tRunning Population by Age/Sex/Ethnicity module...")
+        logger.info("\tRunning Population by Age/Sex/Ethnicity module...")
         ase.run_ase(year)
 
     # Household Characteristics module
     if utils.RUN_INSTRUCTIONS["household_characteristics"]:
-        print("\tRunning Household Characteristics module...")
+        logger.info("\tRunning Household Characteristics module...")
+        hh_characteristics.run_hh_characteristics(year)
 
     # Staging module
     if utils.RUN_INSTRUCTIONS["staging"]:
-        print("\tRunning Staging module...")
+        logger.info("\tRunning Staging module...")
 
     # Diagnostic print for this year
-    print(f"Finished running {year}\n")
+    logger.info(f"Finished running {year}\n")
 
 # Final print for completion
-print("Completed")
+logger.info("Completed")

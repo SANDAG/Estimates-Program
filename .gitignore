@@ -9,6 +9,9 @@ __pycache__/
 # Secrets file
 secrets.yml
 
+# Log file
+log.txt
+
 # Testing Python files
 test.py
 
