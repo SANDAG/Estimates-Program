@@ -260,7 +260,6 @@ def _create_hh_size(
     for mgra, group in hh_size.groupby("mgra"):
         control = mgra_controls[mgra_controls["mgra"] == mgra]
         hhp_total = control["hhp_total"].values[0]
-        hhp_over_14 = control["hhp_over_14"].values[0]
 
         # Compute the minimum and maximum implied hhp from the hhs distribution. The
         # maximum assumes that every household in the 7+ category is of size 11, which
@@ -300,10 +299,6 @@ def _create_hh_size(
                     min_implied_hhp -= 1
                 # Decrease size by one, but keep it in the inclusive range 2-7
                 size_to_change = (size_to_change - 3) % 6 + 2
-
-        # TODO: Log a warning if the number of households in HHS1 exceeds the hhp over
-        # 14 in this MGRA. We cannot fix this here as this is most likely an ASE error,
-        # not a hh characteristics error
 
         # Store the controlled group
         controlled_groups.append(group)

@@ -1,15 +1,18 @@
-# Testing suite for the entire Estimates Program project. At least for now, all tests
+# Testing suite for the Estimates Program project. At least for now, all tests
 # are integration tests, in the sense that they run on actual module inputs and outputs.
-
-# TODO: Integration with the Python logging library. The idea is that critical errors
-# will both raise an error and be logged, while warnings will only be logged
+# Runtime errors are raised if the tests fail, with further information sent to log file.
+# https://docs.python.org/3/howto/logging.html
 
 import inspect
+import logging
 import math
 import textwrap
 import pandas as pd
 
 import python.utils as utils
+
+logger = logging.getLogger(__name__)
+
 
 #####################
 # HELPFUL CONSTANTS #
@@ -246,12 +249,21 @@ def _validate_negative(
         # allowed to be negative
         if column not in negative_ok:
             if pd.api.types.is_numeric_dtype(data[column]) and (data[column] < 0).any():
-                error = (
-                    f"'{table_name}' contains negative values in the column '{column}'. "
-                    f"Some of the associated rows are:\n"
-                    + textwrap.indent(data[data[column] < 0].head(5).to_string(), "\t")
+                # Log the first 5 rows which contain negative values
+                logging.debug(
+                    (
+                        f"'{table_name}' contains negative values in the column '{column}'. "
+                        f"Some of the associated rows are:\n"
+                        + textwrap.indent(
+                            data[data[column] < 0].head(5).to_string(), "\t"
+                        )
+                    )
                 )
-                raise ValueError(error)
+
+                # Raise error and terminate program
+                raise ValueError(
+                    f"'{table_name}' contains negative values in the column '{column}'. See log for details."
+                )
 
 
 def _validate_null(
@@ -283,11 +295,18 @@ def _validate_null(
         # have null values
         if column not in null_ok:
             if (data[column].isna()).any():
-                error = (
-                    f"'{table_name}' contains null values in the column '{column}'. "
-                    f"Some of the associated rows are:\n"
-                    + textwrap.indent(
-                        data[data[column].isna()].head(5).to_string(), "\t"
+                # Log the first 5 rows which contain null values
+                logging.debug(
+                    (
+                        f"'{table_name}' contains null values in the column '{column}'. "
+                        f"Some of the associated rows are:\n"
+                        + textwrap.indent(
+                            data[data[column].isna()].head(5).to_string(), "\t"
+                        )
                     )
                 )
-                raise ValueError(error)
+
+                # Raise error and terminate program
+                raise ValueError(
+                    f"'{table_name}' contains null values in the column '{column}'. See log for details."
+                )

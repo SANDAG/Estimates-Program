@@ -1,7 +1,7 @@
+import logging
 import math
 import pathlib
 import yaml
-import warnings
 
 import numpy as np
 import pandas as pd
@@ -17,6 +17,32 @@ import python.parsers as parsers
 # Store project root folder
 ROOT_FOLDER = pathlib.Path(__file__).parent.resolve().parent
 SQL_FOLDER = ROOT_FOLDER / "sql"
+
+
+###########
+# LOGGING #
+###########
+# Create a console handler
+_console_handler = logging.StreamHandler()
+_console_handler.setLevel(logging.INFO)
+
+# Create a file handler
+_file_handler = logging.FileHandler(
+    filename=ROOT_FOLDER / "log.txt", mode="w", encoding="utf-8"
+)
+_file_handler.setLevel(logging.DEBUG)
+
+# Set up root logger
+logging.basicConfig(
+    level=logging.DEBUG,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
+    handlers=[_console_handler, _file_handler],
+)
+
+# Create logger for this module
+logger = logging.getLogger(__name__)
+logger.info("Initialize log file")
 
 
 #####################
@@ -79,6 +105,10 @@ RUN_INSTRUCTIONS = input_parser.run_instructions
 RUN_ID = input_parser.run_id
 MGRA_VERSION = input_parser.mgra_version
 
+logger.info(
+    f"RUN_ID: {RUN_ID}, MGRA_VERSION: {MGRA_VERSION}, YEARS: {RUN_INSTRUCTIONS["years"]}"
+)
+
 # Minimum and maximum age values for each age group
 AGE_MAPPING = {
     "Under 5": {"min": 0, "max": 4},
@@ -107,6 +137,16 @@ AGE_MAPPING = {
 #####################
 # UTILITY FUNCTIONS #
 #####################
+
+
+def display_ascii_art(filename):
+    """Displays ASCII art from a text file."""
+    try:
+        with open(filename, "r") as file:
+            for line in file:
+                print(line, end="")
+    except FileNotFoundError:
+        print(f"Error: File '{filename}' not found.")
 
 
 def integerize_1d(
@@ -143,8 +183,8 @@ def integerize_1d(
     # Check class of input data. If not a np.ndarray, convert to one
     if not isinstance(data, (np.ndarray, list, pd.Series)):
         raise TypeError(
-            f"Input data is of type {type(data)} when it should be one of pd.Series, "
-            f"np.ndarray, or list"
+            f"Input parameter 'data' is of type {type(data)}, "
+            f"when it must be one of pd.Series, np.ndarray, or list"
         )
     if isinstance(data, list):
         data = np.array(data)
@@ -153,9 +193,9 @@ def integerize_1d(
 
     # Confirm no negative values are passed
     if np.any(data < 0):
-        raise ValueError("Input variable 'data' contains negative values")
+        raise ValueError("Input parameter 'data' contains negative values")
     if control is not None and control < 0:
-        raise ValueError("Input variable 'control' contains is negative")
+        raise ValueError(f"Input parameter 'control' is negative: {control}")
 
     # If no control provided preserve current sum
     if control is None:
@@ -163,7 +203,7 @@ def integerize_1d(
 
     # Ensure control is an integer
     if not math.isclose(control, round(control)):  # type: ignore
-        raise ValueError(f"Control must be integer: {control}")
+        raise ValueError(f"Input parameter 'control' must be integer: {control}")
     else:
         control = int(round(control))  # type: ignore
 
@@ -319,7 +359,9 @@ def integerize_2d(
                 raise ValueError("No adjustments made. Check marginal controls.")
             else:
                 relax_skip_condition = True
-                warnings.warn("Skip condition relaxed for 2d-integerizer.")
+                logger.warning(
+                    "No adjustments made. Skip condition relaxed for 2d-integerizer."
+                )
 
         # Recalculate the row deviations
         deviations = np.sum(array_2d, axis=1) - row_ctrls
@@ -362,8 +404,8 @@ def read_sql_query_acs(**kwargs: dict) -> pd.DataFrame:
             # If the table does not exist run query for prior year
             kwargs["params"]["year"] -= 1
 
-            warnings.warn(
-                "Re-running SQL query with 'year' set to: "
+            logger.warning(
+                "Re-running ACS SQL query with 'year' set to: "
                 + str(kwargs["params"]["year"])
             )
 
