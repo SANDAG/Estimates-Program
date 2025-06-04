@@ -10,7 +10,7 @@ CREATE TABLE [metadata].[run] (
     [date] DATETIME NOT NULL,
     [version] NVARCHAR(50) NOT NULL,
     [comments] NVARCHAR(MAX) NULL,
-    [loaded] BIT NOT NULL,
+    [complete] BIT NOT NULL,
     CONSTRAINT [pk_metadata_run] PRIMARY KEY ([run_id])
 ) WITH (DATA_COMPRESSION = PAGE)
 GO

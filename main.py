@@ -13,6 +13,7 @@ import python.hs_hh as hs_hh
 import python.pop_type as pop
 import python.ase as ase
 import python.hh_characteristics as hh_characteristics
+import python.staging as staging
 
 import python.utils as utils
 
@@ -24,7 +25,7 @@ logger = logging.getLogger(__name__)
 ################
 
 # Run the Startup module first. Since this module contains only year agnostic data, it
-# is run outside of the main year loop
+# is run outside the main year loop
 if utils.RUN_INSTRUCTIONS["startup"]:
     utils.display_ascii_art("data/welcome.txt")
     logger.info("Running Startup module...")
@@ -32,7 +33,7 @@ if utils.RUN_INSTRUCTIONS["startup"]:
 
 # Loop through the years first
 for year in utils.RUN_INSTRUCTIONS["years"]:
-    logger.info(f"\tRunning {year}...")
+    logger.info(f"Running {year}...")
 
     # Go through each module in the correct order for the specified year
 
@@ -56,12 +57,14 @@ for year in utils.RUN_INSTRUCTIONS["years"]:
         logger.info("\tRunning Household Characteristics module...")
         hh_characteristics.run_hh_characteristics(year)
 
-    # Staging module
-    if utils.RUN_INSTRUCTIONS["staging"]:
-        logger.info("\tRunning Staging module...")
-
     # Diagnostic print for this year
     logger.info(f"\tFinished running {year}\n")
+
+# Staging module. For now, all this does is mark this run as completed in the
+# [metadata].[run] table
+if utils.RUN_INSTRUCTIONS["staging"]:
+    logger.info("Running Staging module...")
+    staging.run_staging()
 
 # Final print for completion
 logger.info("Completed")

@@ -328,11 +328,25 @@ class InputParser:
                     sql.text(
                         """
                             INSERT INTO [metadata].[run] (
-                                [run_id], [mgra], [start_year], [end_year],
-                                [user], [date], [version], [comments], [loaded]
+                                [run_id], 
+                                [mgra], 
+                                [start_year], 
+                                [end_year],
+                                [user], 
+                                [date], 
+                                [version], 
+                                [comments], 
+                                [complete]
                             ) VALUES (
-                                :run_id, :mgra, :start_year, :end_year, USER_NAME(),
-                                GETDATE(), :version, :comments, 0
+                                :run_id, 
+                                :mgra, 
+                                :start_year, 
+                                :end_year, 
+                                USER_NAME(),
+                                GETDATE(), 
+                                :version, 
+                                :comments, 
+                                0
                             )
                         """
                     ),
