@@ -33,7 +33,7 @@ if utils.RUN_INSTRUCTIONS["startup"]:
 
 # Loop through the years first
 for year in utils.RUN_INSTRUCTIONS["years"]:
-    logger.info(f"\tRunning {year}...")
+    logger.info(f"Running {year}...")
 
     # Go through each module in the correct order for the specified year
 
@@ -63,7 +63,7 @@ for year in utils.RUN_INSTRUCTIONS["years"]:
 # Staging module. For now, all this does is mark this run as completed in the
 # [metadata].[run] table
 if utils.RUN_INSTRUCTIONS["staging"]:
-    logger.info("\tRunning Staging module...")
+    logger.info("Running Staging module...")
     staging.run_staging()
 
 # Final print for completion
