@@ -1,4 +1,3 @@
-import datetime
 import logging
 import math
 import pathlib
@@ -23,14 +22,27 @@ SQL_FOLDER = ROOT_FOLDER / "sql"
 ###########
 # LOGGING #
 ###########
-logger = logging.getLogger(__name__)
+# Create a console handler
+_console_handler = logging.StreamHandler()
+_console_handler.setLevel(logging.INFO)
+
+# Create a file handler
+_file_handler = logging.FileHandler(
+    filename=ROOT_FOLDER / "log.txt", mode="w", encoding="utf-8"
+)
+_file_handler.setLevel(logging.DEBUG)
+
+# Set up root logger
 logging.basicConfig(
-    filename=ROOT_FOLDER / "log.txt", filemode="w", encoding="utf-8", level=logging.INFO
+    level=logging.DEBUG,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
+    handlers=[_console_handler, _file_handler],
 )
-logger.info(
-    "Utilities module: Initialize log file: "
-    + datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-)
+
+# Create logger for this module
+logger = logging.getLogger(__name__)
+logger.info("Initialize log file")
 
 
 #####################
@@ -94,10 +106,7 @@ RUN_ID = input_parser.run_id
 MGRA_VERSION = input_parser.mgra_version
 
 logger.info(
-    f"""Utilities module:
-    RUN_ID: {RUN_ID},
-    MGRA_VERSION: {MGRA_VERSION},
-    YEARS: {RUN_INSTRUCTIONS["years"]}"""
+    f"RUN_ID: {RUN_ID}, MGRA_VERSION: {MGRA_VERSION}, YEARS: {RUN_INSTRUCTIONS["years"]}"
 )
 
 # Minimum and maximum age values for each age group
@@ -174,8 +183,8 @@ def integerize_1d(
     # Check class of input data. If not a np.ndarray, convert to one
     if not isinstance(data, (np.ndarray, list, pd.Series)):
         raise TypeError(
-            f"Input data is of type {type(data)} when it should be one of pd.Series, "
-            f"np.ndarray, or list"
+            f"Input parameter 'data' is of type {type(data)}, "
+            f"when it must be one of pd.Series, np.ndarray, or list"
         )
     if isinstance(data, list):
         data = np.array(data)
@@ -184,9 +193,9 @@ def integerize_1d(
 
     # Confirm no negative values are passed
     if np.any(data < 0):
-        raise ValueError("Input variable 'data' contains negative values")
+        raise ValueError("Input parameter 'data' contains negative values")
     if control is not None and control < 0:
-        raise ValueError("Input variable 'control' contains is negative")
+        raise ValueError(f"Input parameter 'control' is negative: {control}")
 
     # If no control provided preserve current sum
     if control is None:
@@ -194,7 +203,7 @@ def integerize_1d(
 
     # Ensure control is an integer
     if not math.isclose(control, round(control)):  # type: ignore
-        raise ValueError(f"Control must be integer: {control}")
+        raise ValueError(f"Input parameter 'control' must be integer: {control}")
     else:
         control = int(round(control))  # type: ignore
 
@@ -351,7 +360,7 @@ def integerize_2d(
             else:
                 relax_skip_condition = True
                 logger.warning(
-                    "Utilities module: No adjustments made. Skip condition relaxed for 2d-integerizer."
+                    "No adjustments made. Skip condition relaxed for 2d-integerizer."
                 )
 
         # Recalculate the row deviations
@@ -396,7 +405,7 @@ def read_sql_query_acs(**kwargs: dict) -> pd.DataFrame:
             kwargs["params"]["year"] -= 1
 
             logger.warning(
-                "Utilities module: Re-running SQL query with 'year' set to: "
+                "Re-running ACS SQL query with 'year' set to: "
                 + str(kwargs["params"]["year"])
             )
 

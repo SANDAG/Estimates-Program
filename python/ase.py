@@ -526,10 +526,7 @@ def _create_ase(
     result = {}
     # For each population type
     for pop_type in ipf_result["pop_type"].unique():
-        logger.info(
-            "Population by Age Sex Ethnicity module: Integerizing population for "
-            + pop_type
-        )
+        logger.info("Integerizing population for " + pop_type)
 
         # Pivot data into numpy array
         # Set age/sex/ethnicity to columns
@@ -721,9 +718,7 @@ def _validate_ase_outputs(ase_outputs: dict[str, pd.DataFrame]) -> None:
 def _insert_ase(ase_outputs: dict[str, pd.DataFrame]) -> None:
     """Insert age/sex/ethnicity population by type to database."""
     for pop_type, output in ase_outputs.items():
-        logger.info(
-            "Population by Age Sex Ethnicity module: Loading Estimates for " + pop_type
-        )
+        logger.info("Loading Estimates for " + pop_type)
 
         # Convert the DataFrame to a Polars DataFrame
         # Polars used solely for write to CSV performance
