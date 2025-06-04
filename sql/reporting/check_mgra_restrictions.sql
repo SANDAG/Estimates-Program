@@ -16,7 +16,7 @@ LEFT JOIN (
             [sex],
             SUM([value]) AS [pop]
         FROM [outputs].[ase]
-        WHERE [run_id] = 189
+        WHERE [run_id] = @run_id
         GROUP BY [year], [mgra], [sex]
     ) AS [mgra_sex]
     ON [special_mgras].[mgra15] = [mgra_sex].[mgra]
@@ -36,7 +36,7 @@ LEFT JOIN [demographic_warehouse].[dim].[age_group]
     ON [ase].[age_group] = [age_group].[name]
 LEFT JOIN [inputs].[special_mgras]
     ON [ase].[mgra] = [special_mgras].[mgra15]
-WHERE [run_id] = 189
+WHERE [run_id] = @run_id
     AND [special_mgras].[min_age] IS NOT NULL
     AND [upper_bound] < [min_age]
     AND [value] > 0
@@ -54,7 +54,7 @@ LEFT JOIN [demographic_warehouse].[dim].[age_group]
     ON [ase].[age_group] = [age_group].[name]
 LEFT JOIN [inputs].[special_mgras]
     ON [ase].[mgra] = [special_mgras].[mgra15]
-WHERE [run_id] = 189
+WHERE [run_id] = @run_id
     AND [special_mgras].[max_age] IS NOT NULL
     AND [lower_bound] > [max_age]
     AND [value] > 0
