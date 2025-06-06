@@ -13,6 +13,7 @@ import pathlib
 import textwrap
 import sqlalchemy as sql
 import pandas as pd
+import numpy as np
 
 ROOT_FOLDER = pathlib.Path(__file__).parent.resolve().parent
 try:
@@ -51,12 +52,60 @@ with ESTIMATES_ENGINE.connect() as con:
             results = pd.read_sql_query(
                 sql=sql.text(file.read()), con=con, params={"run_id": RUN_ID}
             )
-            if results.shape[0] > 5:
-                print(f"\t{results.shape[0]} error rows returned, printing TOP(5)")
-                print(textwrap.indent(results.head(5).to_string(index=False), "\t"))
-            elif results.shape[0] > 0:
+            if results.shape[0] > 0:
                 print(f"\t{results.shape[0]} error rows returned")
                 print(textwrap.indent(results.to_string(index=False), "\t"))
             else:
                 print("\tNo error rows returned")
         print()
+
+# For the ASE script, there's not really a solid threshold for errors, so instead we
+# get all the rows and do some Python processing to pick out Geography/ASE combinations
+# which may be flagged
+with ESTIMATES_ENGINE.connect() as con:
+    print("Check large changes in ASE pop")
+
+    # First, get the start/end year for this run_id
+    start_year = con.execute(
+        sql.text(f"SELECT [start_year] FROM [metadata].[run] WHERE [run_id] = {RUN_ID}")
+    ).scalar()
+    end_year = con.execute(
+        sql.text(f"SELECT [end_year] FROM [metadata].[run] WHERE [run_id] = {RUN_ID}")
+    ).scalar()
+    years = ", ".join([f"[{year}]" for year in range(start_year, end_year + 1)])
+
+    # Then, pull the data
+    with open("check_ase_at_geography.sql") as file:
+        results = pd.read_sql_query(
+            sql=sql.text(file.read()),
+            con=con,
+            params={
+                "run_id": RUN_ID,
+                "geography": "cpa",
+                "pop_type": "Total",
+                "years": years,
+            },
+        )
+
+    # For every pair of consecutive years, compute if there was a significant change.
+    # Note that to avoid log(0) or divide by zero errors, we replace all zeros with
+    # tiny values
+    results_no_zero = results.copy(deep=True).replace(0, 0.0001)
+    flagged_rows = np.full(results.shape[0], False)
+    for year in range(start_year, end_year):
+        abs_diff = (
+            (results_no_zero[str(year + 1)] - results_no_zero[str(year)])
+            .abs()
+            .replace(0, 0.0001)
+        )
+        scaled_pct = 100 * np.log(abs_diff) / results_no_zero[str(year)]
+        measure = np.exp(5.9317 * (np.log(abs_diff) ** -0.596))
+        flagged_rows = flagged_rows | (measure < scaled_pct)
+
+    # Print different error messages based on the number of flagged rows
+    if flagged_rows.sum() > 0:
+        print(f"\t{flagged_rows.sum()} error rows returned")
+        print(textwrap.indent(results[flagged_rows].to_string(index=False), "\t"))
+    else:
+        print("\tNo error rows returned")
+    print()

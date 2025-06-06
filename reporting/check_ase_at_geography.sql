@@ -2,9 +2,10 @@
 -- geography. Just fill in the values at the top and you will get three tables, one for 
 -- each of age, sex, and ethnicity. The geography value must exactly match a column of
 -- the table [demographic_warehouse].[dim].[mgra_denormalize]
-DECLARE @run_id INTEGER = 189;
-DECLARE @geography NVARCHAR(32) = 'cpa';
-DECLARE @pop_type NVARCHAR(32) = 'Total';
+DECLARE @run_id NVARCHAR(4) = :run_id;
+DECLARE @geography NVARCHAR(32) = :geography;
+DECLARE @pop_type NVARCHAR(32) = :pop_type;
+DECLARE @years NVARCHAR(32) = :years;
 DECLARE @series NVARCHAR(4) = '15';
 DECLARE @query NVARCHAR(MAX);
 
@@ -13,81 +14,79 @@ DECLARE @query NVARCHAR(MAX);
 IF @pop_type = 'Total'
 BEGIN
     SET @query = '
-        SELECT 
-            [' + @geography + '],
-            [age_group],
-            [2020],
-            [2021]
+        SELECT *
         FROM (
-                SELECT 
-                    [year],
-                    [' + @geography + '],
-                    [age_group],
-                    SUM([value]) AS [value]
-                FROM [outputs].[ase]
-                LEFT JOIN [demographic_warehouse].[dim].[mgra_denormalize]
-                    ON [ase].[mgra] = [mgra_denormalize].[mgra]
-                    AND [mgra_denormalize].[series] = ' + @series + '
-                WHERE [run_id] = 189
-                GROUP BY [year], [' + @geography + '], [age_group]
-            ) AS [grouped]
-        PIVOT(
-                SUM([value])
-                FOR [year] IN ([2020], [2021])
-            ) AS [pivot]
-        ORDER BY [' + @geography + '], [age_group]';
-    EXEC sp_executesql @query;
+            SELECT 
+                [' + @geography + '],
+                ''Age Group - '' + [age_group] AS [metric],
+                ' + @years + '
+            FROM (
+                    SELECT 
+                        [year],
+                        [' + @geography + '],
+                        [age_group],
+                        SUM([value]) AS [value]
+                    FROM [outputs].[ase]
+                    LEFT JOIN [demographic_warehouse].[dim].[mgra_denormalize]
+                        ON [ase].[mgra] = [mgra_denormalize].[mgra]
+                        AND [mgra_denormalize].[series] = ' + @series + '
+                    WHERE [run_id] = ' + @run_id + '
+                    GROUP BY [year], [' + @geography + '], [age_group]
+                ) AS [grouped]
+            PIVOT(
+                    SUM([value])
+                    FOR [year] IN (' + @years + ')
+                ) AS [pivot]
+        
+            UNION ALL
+        
+            SELECT 
+                [' + @geography + '],
+                ''Sex - '' + [sex] AS [metric],
+                ' + @years + '
+            FROM (
+                    SELECT 
+                        [year],
+                        [' + @geography + '],
+                        [sex],
+                        SUM([value]) AS [value]
+                    FROM [outputs].[ase]
+                    LEFT JOIN [demographic_warehouse].[dim].[mgra_denormalize]
+                        ON [ase].[mgra] = [mgra_denormalize].[mgra]
+                        AND [mgra_denormalize].[series] = ' + @series + '
+                    WHERE [run_id] = ' + @run_id + '
+                    GROUP BY [year], [' + @geography + '], [sex]
+                ) AS [grouped]
+            PIVOT(
+                    SUM([value])
+                    FOR [year] IN (' + @years + ')
+                ) AS [pivot]
 
-    SET @query = '
-        SELECT 
-            [' + @geography + '],
-            [sex],
-            [2020],
-            [2021]
-        FROM (
-                SELECT 
-                    [year],
-                    [' + @geography + '],
-                    [sex],
-                    SUM([value]) AS [value]
-                FROM [outputs].[ase]
-                LEFT JOIN [demographic_warehouse].[dim].[mgra_denormalize]
-                    ON [ase].[mgra] = [mgra_denormalize].[mgra]
-                    AND [mgra_denormalize].[series] = ' + @series + '
-                WHERE [run_id] = 189
-                GROUP BY [year], [' + @geography + '], [sex]
-            ) AS [grouped]
-        PIVOT(
-                SUM([value])
-                FOR [year] IN ([2020], [2021])
-            ) AS [pivot]
-        ORDER BY [' + @geography + '], [sex]';
-    EXEC sp_executesql @query;
+            UNION ALL
 
-    SET @query = '
-        SELECT 
-            [' + @geography + '],
-            [ethnicity],
-            [2020],
-            [2021]
-        FROM (
-                SELECT 
-                    [year],
-                    [' + @geography + '],
-                    [ethnicity],
-                    SUM([value]) AS [value]
-                FROM [outputs].[ase]
-                LEFT JOIN [demographic_warehouse].[dim].[mgra_denormalize]
-                    ON [ase].[mgra] = [mgra_denormalize].[mgra]
-                    AND [mgra_denormalize].[series] = ' + @series + '
-                WHERE [run_id] = 189
-                GROUP BY [year], [' + @geography + '], [ethnicity]
-            ) AS [grouped]
-        PIVOT(
-                SUM([value])
-                FOR [year] IN ([2020], [2021])
-            ) AS [pivot]
-        ORDER BY [' + @geography + '], [ethnicity]';
+            SELECT 
+                [' + @geography + '],
+                ''Ethnicity - '' + [ethnicity] AS [metric],
+                ' + @years + '
+            FROM (
+                    SELECT 
+                        [year],
+                        [' + @geography + '],
+                        [ethnicity],
+                        SUM([value]) AS [value]
+                    FROM [outputs].[ase]
+                    LEFT JOIN [demographic_warehouse].[dim].[mgra_denormalize]
+                        ON [ase].[mgra] = [mgra_denormalize].[mgra]
+                        AND [mgra_denormalize].[series] = ' + @series + '
+                    WHERE [run_id] = ' + @run_id + '
+                    GROUP BY [year], [' + @geography + '], [ethnicity]
+                ) AS [grouped]
+            PIVOT(
+                    SUM([value])
+                    FOR [year] IN (' + @years + ')
+                ) AS [pivot]
+        ) AS [table]
+        ORDER BY [' + @geography + '], [metric]';
     EXEC sp_executesql @query;
 END
 
@@ -95,83 +94,81 @@ END
 ELSE
 BEGIN
     SET @query = '
-        SELECT 
-            [' + @geography + '],
-            [age_group],
-            [2020],
-            [2021]
+        SELECT *
         FROM (
-                SELECT 
-                    [year],
-                    [' + @geography + '],
-                    [age_group],
-                    SUM([value]) AS [value]
-                FROM [outputs].[ase]
-                LEFT JOIN [demographic_warehouse].[dim].[mgra_denormalize]
-                    ON [ase].[mgra] = [mgra_denormalize].[mgra]
-                    AND [mgra_denormalize].[series] = ' + @series + '
-                WHERE [run_id] = 189
-                    AND [pop_type] = ''' + @pop_type + '''
-                GROUP BY [year], [' + @geography + '], [age_group]
-            ) AS [grouped]
-        PIVOT(
-                SUM([value])
-                FOR [year] IN ([2020], [2021])
-            ) AS [pivot]
-        ORDER BY [' + @geography + '], [age_group]';
-    EXEC sp_executesql @query;
+            SELECT 
+                [' + @geography + '],
+                ''Age Group - '' + [age_group] AS [metric],
+                ' + @years + '
+            FROM (
+                    SELECT 
+                        [year],
+                        [' + @geography + '],
+                        [age_group],
+                        SUM([value]) AS [value]
+                    FROM [outputs].[ase]
+                    LEFT JOIN [demographic_warehouse].[dim].[mgra_denormalize]
+                        ON [ase].[mgra] = [mgra_denormalize].[mgra]
+                        AND [mgra_denormalize].[series] = ' + @series + '
+                    WHERE [run_id] = ' + @run_id + '
+                        AND [pop_type] = ''' + @pop_type + '''
+                    GROUP BY [year], [' + @geography + '], [age_group]
+                ) AS [grouped]
+            PIVOT(
+                    SUM([value])
+                    FOR [year] IN (' + @years + ')
+                ) AS [pivot]
+        
+            UNION ALL
 
-    SET @query = '
-        SELECT 
-            [' + @geography + '],
-            [sex],
-            [2020],
-            [2021]
-        FROM (
-                SELECT 
-                    [year],
-                    [' + @geography + '],
-                    [sex],
-                    SUM([value]) AS [value]
-                FROM [outputs].[ase]
-                LEFT JOIN [demographic_warehouse].[dim].[mgra_denormalize]
-                    ON [ase].[mgra] = [mgra_denormalize].[mgra]
-                    AND [mgra_denormalize].[series] = ' + @series + '
-                WHERE [run_id] = 189
-                    AND [pop_type] = ''' + @pop_type + '''
-                GROUP BY [year], [' + @geography + '], [sex]
-            ) AS [grouped]
-        PIVOT(
-                SUM([value])
-                FOR [year] IN ([2020], [2021])
-            ) AS [pivot]
-        ORDER BY [' + @geography + '], [sex]';
-    EXEC sp_executesql @query;
+            SELECT 
+                [' + @geography + '],
+                ''Sex - '' + [sex] AS [metric],
+                ' + @years + '
+            FROM (
+                    SELECT 
+                        [year],
+                        [' + @geography + '],
+                        [sex],
+                        SUM([value]) AS [value]
+                    FROM [outputs].[ase]
+                    LEFT JOIN [demographic_warehouse].[dim].[mgra_denormalize]
+                        ON [ase].[mgra] = [mgra_denormalize].[mgra]
+                        AND [mgra_denormalize].[series] = ' + @series + '
+                    WHERE [run_id] = ' + @run_id + '
+                        AND [pop_type] = ''' + @pop_type + '''
+                    GROUP BY [year], [' + @geography + '], [sex]
+                ) AS [grouped]
+            PIVOT(
+                    SUM([value])
+                    FOR [year] IN (' + @years + ')
+                ) AS [pivot]
 
-    SET @query = '
-        SELECT 
-            [' + @geography + '],
-            [ethnicity],
-            [2020],
-            [2021]
-        FROM (
-                SELECT 
-                    [year],
-                    [' + @geography + '],
-                    [ethnicity],
-                    SUM([value]) AS [value]
-                FROM [outputs].[ase]
-                LEFT JOIN [demographic_warehouse].[dim].[mgra_denormalize]
-                    ON [ase].[mgra] = [mgra_denormalize].[mgra]
-                    AND [mgra_denormalize].[series] = ' + @series + '
-                WHERE [run_id] = 189
-                    AND [pop_type] = ''' + @pop_type + '''
-                GROUP BY [year], [' + @geography + '], [ethnicity]
-            ) AS [grouped]
-        PIVOT(
-                SUM([value])
-                FOR [year] IN ([2020], [2021])
-            ) AS [pivot]
-        ORDER BY [' + @geography + '], [ethnicity]';
+            UNION ALL
+
+            SELECT 
+                [' + @geography + '],
+                ''Ethnicity - '' + [ethnicity] AS [metric],
+                ' + @years + '
+            FROM (
+                    SELECT 
+                        [year],
+                        [' + @geography + '],
+                        [ethnicity],
+                        SUM([value]) AS [value]
+                    FROM [outputs].[ase]
+                    LEFT JOIN [demographic_warehouse].[dim].[mgra_denormalize]
+                        ON [ase].[mgra] = [mgra_denormalize].[mgra]
+                        AND [mgra_denormalize].[series] = ' + @series + '
+                    WHERE [run_id] = ' + @run_id + '
+                        AND [pop_type] = ''' + @pop_type + '''
+                    GROUP BY [year], [' + @geography + '], [ethnicity]
+                ) AS [grouped]
+            PIVOT(
+                    SUM([value])
+                    FOR [year] IN (' + @years + ')
+                ) AS [pivot]
+        ) AS [table]
+        ORDER BY [' + @geography + '], [metric]';
     EXEC sp_executesql @query;
 END
