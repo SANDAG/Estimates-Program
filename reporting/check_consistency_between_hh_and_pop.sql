@@ -2,13 +2,17 @@
 -- includes but is not limited to checking things like making sure there are enough
 -- adults (age >= 15 by Census definition) for all households of size 1
 DECLARE @run_id INTEGER = 189;
+DECLARE @7_plus_max_size INTEGER = 11;
 
 -- Check adults vs households of size one ---------------------------------------------
 SELECT 
     [adults].[year],
     [adults].[mgra],
     [adult_hhp],
-    [value] AS [hhs1]
+    [hh_size_1],
+    [hhp],
+    [implied_min_hhp],
+    [implied_max_hhp]
 FROM (  
         SELECT 
             [year],
@@ -20,20 +24,27 @@ FROM (
             AND [age_group] NOT IN ('Under 5', '5 to 9', '10 to 14')
         GROUP BY [year], [mgra]
     ) AS [adults]
-LEFT JOIN [outputs].[hh_characteristics]
-    ON [adults].[year] = [hh_characteristics].[year]
-    AND [adults].[mgra] = [hh_characteristics].[mgra]
-WHERE [hh_characteristics].[metric] = 'Household Size - 1'
-    AND [hh_characteristics].[run_id] = @run_id
-    AND [adult_hhp] < [value]
-
--- Check implied minimum household size from hhs distribution -------------------------
-SELECT 
-    [hhp].[year],
-    [hhp].[mgra],
-    [hhp].[value] AS [actual_hhp],
-    [implied_min_hhp]
-FROM [outputs].[hhp]
+LEFT JOIN (
+        SELECT 
+            [year],
+            [mgra],
+            [value] AS [hh_size_1]
+        FROM [outputs].[hh_characteristics]
+        WHERE [run_id] = @run_id
+            AND [metric] = 'Household Size - 1'
+    ) AS [hhs1]
+    ON [adults].[year] = [hhs1].[year]
+    AND [adults].[mgra] = [hhs1].[mgra]
+LEFT JOIN (
+        SELECT 
+            [year],
+            [mgra],
+            [value] AS [hhp]
+        FROM [outputs].[hhp]
+        WHERE [run_id] = @run_id
+    ) AS [hhp]
+    ON [adults].[year] = [hhp].[year]
+    AND [adults].[mgra] = [hhp].[mgra]
 LEFT JOIN (
         SELECT 
             [year],
@@ -59,18 +70,8 @@ LEFT JOIN (
             ) AS [pivot]
         WHERE [run_id] = @run_id
     ) AS [implied_min_hhp]
-    ON  [hhp].[year] = [implied_min_hhp].[year]
-    AND [hhp].[mgra] = [implied_min_hhp].[mgra]
-WHERE [run_id] = @run_id
-    AND [hhp].[value] < [implied_min_hhp]
-
--- Check implied maximum household size from hhs distribution -------------------------
-SELECT 
-    [hhp].[year],
-    [hhp].[mgra],
-    [hhp].[value] AS [actual_hhp],
-    [implied_max_hhp]
-FROM [outputs].[hhp]
+    ON  [adults].[year] = [implied_min_hhp].[year]
+    AND [adults].[mgra] = [implied_min_hhp].[mgra]
 LEFT JOIN (
         SELECT 
             [year],
@@ -81,7 +82,7 @@ LEFT JOIN (
                 + 4 * [Household Size - 4]
                 + 5 * [Household Size - 5]
                 + 6 * [Household Size - 6]
-                + 11 * [Household Size - 7+] AS [implied_max_hhp]
+                + @7_plus_max_size * [Household Size - 7+] AS [implied_max_hhp]
         FROM [outputs].[hh_characteristics]
         PIVOT(
             SUM([value])
@@ -96,7 +97,8 @@ LEFT JOIN (
             ) AS [pivot]
         WHERE [run_id] = @run_id
     ) AS [implied_max_hhp]
-    ON  [hhp].[year] = [implied_max_hhp].[year]
-    AND [hhp].[mgra] = [implied_max_hhp].[mgra]
-WHERE [run_id] = @run_id
-    AND [hhp].[value] > [implied_max_hhp]
+    ON  [adults].[year] = [implied_max_hhp].[year]
+    AND [adults].[mgra] = [implied_max_hhp].[mgra]
+WHERE [adult_hhp] < [hh_size_1]
+    OR [hhp] < [implied_min_hhp]
+    OR [hhp] > [implied_max_hhp]
