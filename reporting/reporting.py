@@ -4,7 +4,7 @@
 # https://github.com/SANDAG/Series-15-Urban-Development-Model/blob/main/Other/Significant%20Change.xlsx
 
 # Main configuration, what run_id to operate on
-RUN_ID = 189
+RUN_ID = 238
 
 # We cannot import python.utils, as just importing will cause a new [run_id]` value and
 # new log file to be created. Instead, copy what we need for now :(
@@ -74,38 +74,43 @@ with ESTIMATES_ENGINE.connect() as con:
     ).scalar()
     years = ", ".join([f"[{year}]" for year in range(start_year, end_year + 1)])
 
-    # Then, pull the data
-    with open("check_ase_at_geography.sql") as file:
-        results = pd.read_sql_query(
-            sql=sql.text(file.read()),
-            con=con,
-            params={
-                "run_id": RUN_ID,
-                "geography": "cpa",
-                "pop_type": "Total",
-                "years": years,
-            },
-        )
-
-    # For every pair of consecutive years, compute if there was a significant change.
-    # Note that to avoid log(0) or divide by zero errors, we replace all zeros with
-    # tiny values
-    results_no_zero = results.copy(deep=True).replace(0, 0.0001)
-    flagged_rows = np.full(results.shape[0], False)
-    for year in range(start_year, end_year):
-        abs_diff = (
-            (results_no_zero[str(year + 1)] - results_no_zero[str(year)])
-            .abs()
-            .replace(0, 0.0001)
-        )
-        scaled_pct = 100 * np.log(abs_diff) / results_no_zero[str(year)]
-        measure = np.exp(5.9317 * (np.log(abs_diff) ** -0.596))
-        flagged_rows = flagged_rows | (measure < scaled_pct)
-
-    # Print different error messages based on the number of flagged rows
-    if flagged_rows.sum() > 0:
-        print(f"\t{flagged_rows.sum()} error rows returned")
-        print(textwrap.indent(results[flagged_rows].to_string(index=False), "\t"))
+    # Stop this check if there is only on year of data available
+    if start_year == end_year:
+        print("\tCannot run check, only one year of data available")
     else:
-        print("\tNo error rows returned")
+
+        # Then, pull the data
+        with open("check_ase_at_geography.sql") as file:
+            results = pd.read_sql_query(
+                sql=sql.text(file.read()),
+                con=con,
+                params={
+                    "run_id": RUN_ID,
+                    "geography": "cpa",
+                    "pop_type": "Total",
+                    "years": years,
+                },
+            )
+
+        # For every pair of consecutive years, compute if there was a significant
+        # change. Note that to avoid log(0) or divide by zero errors, we replace all
+        # zeros with tiny values
+        results_no_zero = results.copy(deep=True).replace(0, 0.0001)
+        flagged_rows = np.full(results.shape[0], False)
+        for year in range(start_year, end_year):
+            abs_diff = (
+                (results_no_zero[str(year + 1)] - results_no_zero[str(year)])
+                .abs()
+                .replace(0, 0.0001)
+            )
+            scaled_pct = 100 * np.log(abs_diff) / results_no_zero[str(year)]
+            measure = np.exp(5.9317 * (np.log(abs_diff) ** -0.596))
+            flagged_rows = flagged_rows | (measure < scaled_pct)
+
+        # Print different error messages based on the number of flagged rows
+        if flagged_rows.sum() > 0:
+            print(f"\t{flagged_rows.sum()} error rows returned")
+            print(textwrap.indent(results[flagged_rows].to_string(index=False), "\t"))
+        else:
+            print("\tNo error rows returned")
     print()
