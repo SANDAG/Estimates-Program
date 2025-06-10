@@ -702,12 +702,11 @@ def _create_ase(
                         # Find largest un-restricted category within the donor
                         # And subtract one from the un-restricted category
                         balance_idx = df.query(
-                            "mgra == @donor_mgra and restricted == 0"
-                            "and value > 0 and ase_concat in @unrestricted_ase"
+                            "mgra == @donor_mgra and restricted == 0 and value > 0 and ase_concat in @unrestricted_ase"
                         )["value"].idxmax()
 
                         df.loc[balance_idx, "value"] -= 1
-                        balance_ase = df.loc[adjust_idx]["ase_concat"]
+                        balance_ase = df.loc[balance_idx]["ase_concat"]
 
                         # Add one to the special MGRA for the un-restricted category
                         df.loc[
