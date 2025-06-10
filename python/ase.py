@@ -711,7 +711,7 @@ def _create_ase(
 
                         # Add one to the special MGRA for the un-restricted category
                         df.loc[
-                            (df["mgra"] == mgra) & df["ase_concat"] == balance_ase,
+                            (df["mgra"] == mgra) & (df["ase_concat"] == balance_ase),
                             "value",
                         ] += 1
 
