@@ -1,7 +1,7 @@
 -- SQL script to check consistency between households and population variables. This 
 -- includes but is not limited to checking things like making sure there are enough
 -- adults (age >= 15 by Census definition) for all households of size 1
-DECLARE @run_id INTEGER = 189;
+DECLARE @run_id INTEGER = :run_id;
 DECLARE @7_plus_max_size INTEGER = 11;
 
 -- Check adults vs households of size one ---------------------------------------------
