@@ -625,99 +625,70 @@ def _create_ase(
 
             # For each MGRA in the special MGRAs
             for mgra in special_mgras["mgra"].unique():
-                # Indicator if balancer failed
-                balancer_fail = False
-                step = 0
-                max_step = None
+                # Store values of un-restricted categories for the MGRA
+                unrestricted_ase = df.query("mgra == @mgra and restricted == 0")[
+                    "ase_concat"
+                ]
 
-                # Condition to check
-                is_ok = df.query(
-                    "mgra == @mgra and restricted == 1 and value > 0"
-                ).empty
+                # Get non-zero restricted categories
+                violations = df.query("mgra == @mgra and restricted == 1 and value > 0")
 
-                # While there are restricted categories with non-zero values
-                while not is_ok:
-                    # Store unique values of un-restricted categories in the MGRA
-                    unrestricted_ase = df.query("mgra == @mgra and restricted == 0")[
-                        "ase_concat"
-                    ]
+                # For each non-zero restricted category
+                for violation_idx in violations.index.to_list():
+                    # Get the age/sex/ethnicity category of the violation
+                    violation_ase = df.loc[violation_idx]["ase_concat"]
 
-                    # Find largest non-zero restricted category to subtract
-                    if not balancer_fail:
-                        adjust_idx = df.query(
-                            "mgra == @mgra and restricted == 1 and value > 0"
-                        )["value"].idxmax()
-                    # If balancer fails using maximum try all non-zero categories
-                    elif balancer_fail and step == 0:
-                        eligible_idx = df.query(
-                            "mgra == @mgra and restricted == 1 and value > 0"
-                        ).index.tolist()
-                        max_step = len(eligible_idx)
-                        adjust_idx = eligible_idx[step]
-                        step += 1
-                    elif balancer_fail and step > 0:
-                        if step < max_step:
-                            adjust_idx = eligible_idx[step]
-                            step += 1
-                        # If no eligible donor MGRAs found after trying all non-zero categories
-                        # Skip to the next MGRA and do not adjust
-                        else:
+                    # Until the category has been zero-ed out
+                    while df.loc[violation_idx, "value"] > 0:
+                        # Get eligible donor MGRAs
+                        donors = list(
+                            # These are MGRAs without restrictions on the category
+                            set(
+                                df.query(
+                                    "restricted == 0 and ase_concat == @violation_ase"
+                                )["mgra"].to_list()
+                            )
+                            &
+                            # That also have a non-zero value in a category that is not restricted
+                            set(
+                                df.query(
+                                    "restricted == 0 and value > 0 and ase_concat in @unrestricted_ase"
+                                )["mgra"].to_list()
+                            )
+                        )
+
+                        # If no eligible donor MGRAs found, skip and try next category
+                        if not donors:
                             logger.warning(f"Unbalanced Special MGRA: {mgra}")
+                            logger.warning(f"Restricted Category: {violation_ase}")
                             break  # skip balancing
+                        # If donor MGRAs found continue balancing
+                        else:
+                            # Subtract one from restricted category
+                            df.loc[violation_idx, "value"] -= 1
 
-                    adjust_ase = df.loc[adjust_idx]["ase_concat"]
+                            # Find the donor with the largest value in the restricted category
+                            # Add one to the donor MGRA for the restricted category
+                            donor_idx = df.query(
+                                "mgra in @donors and ase_concat == @violation_ase"
+                            )["value"].idxmax()
+                            df.loc[donor_idx, "value"] += 1
+                            donor_mgra = df.loc[donor_idx, "mgra"]
 
-                    # Get eligible donor MGRAs
-                    donors = list(
-                        # These are MGRAs without restrictions on the category
-                        set(
-                            df.query("restricted == 0 and ase_concat == @adjust_ase")[
-                                "mgra"
-                            ].to_list()
-                        )
-                        &
-                        # That also have a non-zero value in a category that is not restricted
-                        set(
-                            df.query(
-                                "restricted == 0 and value > 0 and ase_concat in @unrestricted_ase"
-                            )["mgra"].to_list()
-                        )
-                    )
+                            # Find largest un-restricted category within the donor
+                            # And subtract one from the un-restricted category
+                            balance_idx = df.query(
+                                "mgra == @donor_mgra and restricted == 0 and value > 0 and ase_concat in @unrestricted_ase"
+                            )["value"].idxmax()
+                            df.loc[balance_idx, "value"] -= 1
+                            balance_ase = df.loc[balance_idx]["ase_concat"]
 
-                    # If no eligible donor MGRAs found, skip and try all non-zero categories
-                    if not donors:
-                        balancer_fail = True
-                    # If donor MGRAs found, subtract from category and continue balancing
-                    else:
-                        df.loc[adjust_idx, "value"] -= 1
-
-                        # Find the donor with the largest value in the restricted category
-                        # Add one to the donor MGRA for the restricted category
-                        donor_idx = df.query(
-                            "mgra in @donors and ase_concat == @adjust_ase"
-                        )["value"].idxmax()
-                        df.loc[donor_idx, "value"] += 1
-                        donor_mgra = df.loc[donor_idx, "mgra"]
-
-                        # Find largest un-restricted category within the donor
-                        # And subtract one from the un-restricted category
-                        balance_idx = df.query(
-                            "mgra == @donor_mgra and restricted == 0 and value > 0 and ase_concat in @unrestricted_ase"
-                        )["value"].idxmax()
-
-                        df.loc[balance_idx, "value"] -= 1
-                        balance_ase = df.loc[balance_idx]["ase_concat"]
-
-                        # Add one to the special MGRA for the un-restricted category
-                        df.loc[
-                            (df["mgra"] == mgra) & (df["ase_concat"] == balance_ase),
-                            "value",
-                        ] += 1
-
-                        # Check if any further adjustments will be needed
-                        is_ok = df.query(
-                            "mgra == @mgra and restricted == 1 and value > 0"
-                        ).empty
+                            # Add one to the special MGRA for the un-restricted category
+                            df.loc[
+                                (df["mgra"] == mgra)
+                                & (df["ase_concat"] == balance_ase),
+                                "value",
+                            ] += 1
 
             # Merge the adjusted data back into the result set
             result[pop_type] = result[pop_type].merge(
