@@ -5,7 +5,7 @@
 DECLARE @run_id NVARCHAR(4) = :run_id;
 DECLARE @geography NVARCHAR(32) = :geography;
 DECLARE @pop_type NVARCHAR(32) = :pop_type;
-DECLARE @years NVARCHAR(32) = :years;
+DECLARE @years NVARCHAR(64) = :years;
 DECLARE @series NVARCHAR(4) = '15';
 DECLARE @query NVARCHAR(MAX);
 
