@@ -86,7 +86,7 @@ with ESTIMATES_ENGINE.connect() as con:
                 con=con,
                 params={
                     "run_id": RUN_ID,
-                    "geography": "cpa",
+                    "geography": "jurisdiction",
                     "pop_type": "Total",
                     "years": years,
                 },
