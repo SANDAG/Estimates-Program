@@ -37,15 +37,15 @@ ESTIMATES_ENGINE = sql.create_engine(
 # a parameter for [run_id]. It is also assumed that rows of data will only be returned
 # if there is an error, in which case it will be printed out
 qa_qc_scripts = {
-    # "Check city control totals": "check_controls_city.sql",
-    # "Check region ASE controls": "check_controls_region_ase.sql",
-    # "Check cross-table pop by type": "check_cross_table_pop_by_type.sql",
-    # "Check cross-table total hh": "check_cross_table_total_hh.sql",
-    # "Check MGRA restrictions": "check_mgra_restrictions.sql",
-    # "Check every HH has HS": "check_every_hh_has_hs.sql",
-    # "Check every HHP has HH": "check_every_hhp_has_hh.sql",
-    # "Check implied HHP vs actual HHP": "check_implied_hhp_vs_actual_hhp.sql",
-    # "Check householders vs adult HHP": "check_householders_vs_adult_hhp.sql",
+    "Check city control totals": "check_controls_city.sql",
+    "Check region ASE controls": "check_controls_region_ase.sql",
+    "Check cross-table pop by type": "check_cross_table_pop_by_type.sql",
+    "Check cross-table total hh": "check_cross_table_total_hh.sql",
+    "Check MGRA restrictions": "check_mgra_restrictions.sql",
+    "Check every HH has HS": "check_every_hh_has_hs.sql",
+    "Check every HHP has HH": "check_every_hhp_has_hh.sql",
+    "Check implied HHP vs actual HHP": "check_implied_hhp_vs_actual_hhp.sql",
+    "Check householders vs adult HHP": "check_householders_vs_adult_hhp.sql",
 }
 
 # Run each script, printing out status messages if necessary:
