@@ -1,4 +1,5 @@
--- SQL script to check that all data in a given [run_id] matches control totals
+-- SQL script to check that all data in a given [run_id] matches city level control
+-- totals
 DECLARE @run_id INTEGER = :run_id;
 
 -- The threshold variable determines how far away the aggregated occupancy rate must be

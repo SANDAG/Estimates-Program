@@ -1,8 +1,7 @@
 -- SQL script to check that every household has a housing structure
 DECLARE @run_id INTEGER = :run_id;
 
--- Check housing stock and households -------------------------------------------------
-SELECT  
+SELECT
     [hs].[year],
     [hs].[mgra],
     [hs_sfd],

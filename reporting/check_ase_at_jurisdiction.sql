@@ -1,7 +1,5 @@
--- Generic SQL script which can be used to check ASE distributions at any generic 
--- geography. Just fill in the values at the top and you will get three tables, one for 
--- each of age, sex, and ethnicity. The geography value must exactly match a column of
--- the table [demographic_warehouse].[dim].[mgra_denormalize]
+-- SQL scrip to get ASE population aggregated at the city level, based on the input
+-- population type
 DECLARE @run_id INTEGER = :run_id;
 DECLARE @pop_type NVARCHAR(32) = :pop_type;
 DECLARE @series NVARCHAR(4) = '15';
