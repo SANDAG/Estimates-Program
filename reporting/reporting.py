@@ -85,7 +85,7 @@ with ESTIMATES_ENGINE.connect() as con:
 
         # Then, pull the data. Because a certain someone hates dynamic SQL, we cannot
         # pivot out the years in SQL and instead have to do it in Python
-        with open("check_ase_at_geography.sql") as file:
+        with open("check_ase_at_jurisdiction.sql") as file:
             results = (
                 pd.read_sql_query(
                     sql=sql.text(file.read()),
