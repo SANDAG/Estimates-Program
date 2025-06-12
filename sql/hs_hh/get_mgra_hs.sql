@@ -6,10 +6,11 @@ the choice of LUDU layer is determined by the input @year parameter.
 
 SET NOCOUNT ON;
 -- Initialize parameters and return table ------------------------------------
-DECLARE @run_id integer = :run_id;
-DECLARE @year integer = :year;
-DECLARE @mgra_version nvarchar(10) = :mgra_version;
-DECLARE @gis_server nvarchar(20) = :gis_server;
+DECLARE @run_id INTEGER = :run_id;
+DECLARE @year INTEGER = :year;
+DECLARE @mgra_version NVARCHAR(10) = :mgra_version;
+DECLARE @gis_server NVARCHAR(20) = :gis_server;
+DECLARE @override_date DATE = (SELECT CONVERT(DATE, [date]) FROM [metadata].[run] WHERE [run_id] = @run_id);
 
 -- Build the expected return table MGRA x Structure Type
 DROP TABLE IF EXISTS [#tt_shell];
@@ -32,7 +33,7 @@ WHERE [run_id] = @run_id
 
 -- Get SANDAG GIS team LUDU dataset ------------------------------------------
 -- Use the year parameter to select the LUDU point table of interest
-DECLARE @tbl nvarchar(25) = 
+DECLARE @tbl NVARCHAR(25) = 
     CASE WHEN @year = 2010 THEN 'LUDU2010_CENPOINTS'
          WHEN @year = 2020 THEN 'LUDU2020_CENSUSPOINTS'
          ELSE CONCAT('LUDU', @year, 'POINTS')
@@ -42,10 +43,10 @@ DECLARE @tbl nvarchar(25) =
 -- Note the statement stores results in a temporary table for later use
 DROP TABLE IF EXISTS [#ludu];
 CREATE TABLE [#ludu] (
-    [id] INT IDENTITY(1,1) NOT NULL,
-    [lu] INT NOT NULL,
-    [du] INT NOT NULL,
-    [Shape] geometry NOT NULL,
+    [id] INTEGER IDENTITY(1,1) NOT NULL,
+    [lu] INTEGER NOT NULL,
+    [du] INTEGER NOT NULL,
+    [Shape] GEOMETRY NOT NULL,
     CONSTRAINT [pk_tt_ludu] PRIMARY KEY ([id])
 )
 
@@ -62,13 +63,27 @@ WITH (BOUNDING_BOX = (
     CELLS_PER_OBJECT = 8
 )
 
-DECLARE @qry nvarchar(max) = '
+DECLARE @qry NVARCHAR(max) = '
     INSERT INTO [#ludu]
     SELECT *
     FROM OPENQUERY([' + @gis_server + '], ''
-        SELECT [lu], [du], [Shape] 
-        FROM [GeoDepot].[sde].[' + @tbl +'] 
-        WHERE [du] > 0
+        SELECT
+            ISNULL([overrides].[lu], [ludu].[lu]) AS [lu],
+            ISNULL([overrides].[du], [ludu].[du]) AS [du],
+            [Shape]
+        FROM [GeoDepot].[sde].[' + @tbl +'] AS [ludu]
+        LEFT OUTER JOIN (
+            SELECT
+                [LCkey],
+                [lu],
+                [du]
+            FROM [SPACECORE].[gis].[LUDU_OVERRIDE_TABLE]
+            WHERE
+                [year] = ' + CONVERT(NVARCHAR, @year) + '
+                AND [date] <= ''''' + CONVERT(NVARCHAR, @override_date) + '''''
+        ) AS [overrides]
+            ON [ludu].[LCkey] = [overrides].[LCKey]
+        WHERE ISNULL([overrides].[du], [ludu].[du]) > 0
     '')
 '
 EXEC sp_executesql @qry;
