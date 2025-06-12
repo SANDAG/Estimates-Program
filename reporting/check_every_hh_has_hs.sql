@@ -1,6 +1,4 @@
--- SQL script to check that there are valid places to live in each MGRA. Basically 
--- meaning there is housing stock for each household, and there are households for 
--- every household population
+-- SQL script to check that every household has a housing structure
 DECLARE @run_id INTEGER = :run_id;
 
 -- Check housing stock and households -------------------------------------------------
@@ -14,9 +12,7 @@ SELECT
     [hs_mf],
     [hh_mf],
     [hs_mh],
-    [hh_mh],
-    [hh_sfd] + [hh_sfmu] + [hh_mf] + [hh_mh] AS [total_hh],
-    [hhp]
+    [hh_mh]
 FROM (
         SELECT 
             [year],
@@ -57,19 +53,8 @@ LEFT JOIN (
     ) AS [hh]
     ON [hs].[year] = [hh].[year]
     AND [hs].[mgra] = [hh].[mgra]
-LEFT JOIN (
-        SELECT 
-            [year],
-            [mgra],
-            [value] AS [hhp]
-        FROM [outputs].[hhp]
-        WHERE [run_id] = @run_id
-    ) AS [hhp]
-    ON [hs].[year] = [hhp].[year]
-    AND [hs].[mgra] = [hhp].[mgra]
 WHERE [hs_sfd] < [hh_sfd]
     OR [hs_sfmu] < [hh_sfmu]
     OR [hs_mf] < [hh_mf]
     OR [hs_mh] < [hh_mh]
-    OR [hh_sfd] + [hh_sfmu] + [hh_mf] + [hh_mh] > [hhp]
 ORDER BY [hs].[year], [hs].[mgra]

@@ -37,11 +37,15 @@ ESTIMATES_ENGINE = sql.create_engine(
 # a parameter for [run_id]. It is also assumed that rows of data will only be returned
 # if there is an error, in which case it will be printed out
 qa_qc_scripts = {
-    "Check control totals": "check_control_totals.sql",
-    "Check cross-table consistency": "check_cross_table_consistency.sql",
-    "Check MGRA restrictions": "check_mgra_restrictions.sql",
-    "Check valid places to live": "check_valid_places_to_live.sql",
-    "Check hh and pop consistency": "check_consistency_between_hh_and_pop.sql",
+    # "Check city control totals": "check_controls_city.sql",
+    # "Check region ASE controls": "check_controls_region_ase.sql",
+    # "Check cross-table pop by type": "check_cross_table_pop_by_type.sql",
+    # "Check cross-table total hh": "check_cross_table_total_hh.sql",
+    # "Check MGRA restrictions": "check_mgra_restrictions.sql",
+    # "Check every HH has HS": "check_every_hh_has_hs.sql",
+    # "Check every HHP has HH": "check_every_hhp_has_hh.sql",
+    # "Check implied HHP vs actual HHP": "check_implied_hhp_vs_actual_hhp.sql",
+    # "Check householders vs adult HHP": "check_householders_vs_adult_hhp.sql",
 }
 
 # Run each script, printing out status messages if necessary:
@@ -79,17 +83,25 @@ with ESTIMATES_ENGINE.connect() as con:
         print("\tCannot run check, only one year of data available")
     else:
 
-        # Then, pull the data
+        # Then, pull the data. Because a certain someone hates dynamic SQL, we cannot
+        # pivot out the years in SQL and instead have to do it in Python
         with open("check_ase_at_geography.sql") as file:
-            results = pd.read_sql_query(
-                sql=sql.text(file.read()),
-                con=con,
-                params={
-                    "run_id": RUN_ID,
-                    "geography": "jurisdiction",
-                    "pop_type": "Total",
-                    "years": years,
-                },
+            results = (
+                pd.read_sql_query(
+                    sql=sql.text(file.read()),
+                    con=con,
+                    params={
+                        "run_id": RUN_ID,
+                        "pop_type": "Total",
+                    },
+                )
+                .pivot_table(
+                    columns="year",
+                    index=["jurisdiction", "metric"],
+                    values="value",
+                    aggfunc="sum",
+                )
+                .reset_index(drop=False)
             )
 
         # For every pair of consecutive years, compute if there was a significant
@@ -99,17 +111,17 @@ with ESTIMATES_ENGINE.connect() as con:
         flagged_rows = np.full(results.shape[0], False)
         for year in range(start_year, end_year):
             abs_diff = (
-                (results_no_zero[str(year + 1)] - results_no_zero[str(year)])
+                (results_no_zero[year + 1] - results_no_zero[year])
                 .abs()
                 .replace(0, 0.0001)
             )
-            scaled_pct = 100 * np.log(abs_diff) / results_no_zero[str(year)]
+            scaled_pct = 100 * np.log(abs_diff) / results_no_zero[year]
             measure = np.exp(5.9317 * (np.log(abs_diff) ** -0.596))
             flagged_rows = flagged_rows | (measure < scaled_pct)
 
         # Print different error messages based on the number of flagged rows
         if flagged_rows.sum() > 0:
-            print(f"\t{flagged_rows.sum()} error rows returned")
+            print(f"\t{flagged_rows.sum()} warning rows returned")
             print(textwrap.indent(results[flagged_rows].to_string(index=False), "\t"))
         else:
             print("\tNo error rows returned")

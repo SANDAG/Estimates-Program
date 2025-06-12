@@ -1,5 +1,10 @@
 -- SQL script to check the MGRA restrictions present in [inputs].[special_mgras]
 DECLARE @run_id INTEGER = :run_id;
+DECLARE @mgra_version nvarchar(6) = (
+    SELECT [mgra]
+    FROM [metadata].[run]
+    WHERE [run_id] = @run_id
+);
 
 SELECT *
 FROM (
@@ -22,7 +27,7 @@ FROM (
             WHERE [run_id] = @run_id
             GROUP BY [year], [mgra], [sex], [pop_type]
         ) AS [mgra_sex]
-        ON [special_mgras].[mgra15] = [mgra_sex].[mgra]
+        ON [mgra_sex].[mgra] = CASE WHEN @mgra_version = 'mgra15' THEN [special_mgras].[mgra15] ELSE NULL END
         AND [special_mgras].[sex] != [mgra_sex].[sex]
         AND [special_mgras].[pop_type] = [mgra_sex].[pop_type]
     WHERE [special_mgras].[sex] IS NOT NULL
@@ -41,7 +46,7 @@ FROM (
     LEFT JOIN [demographic_warehouse].[dim].[age_group]
         ON [ase].[age_group] = [age_group].[name]
     LEFT JOIN [inputs].[special_mgras]
-        ON [ase].[mgra] = [special_mgras].[mgra15]
+        ON [ase].[mgra] = CASE WHEN @mgra_version = 'mgra15' THEN [special_mgras].[mgra15] ELSE NULL END
         AND [ase].[pop_type] = [special_mgras].[pop_type]
     WHERE [run_id] = @run_id
         AND [special_mgras].[min_age] IS NOT NULL
@@ -62,7 +67,7 @@ FROM (
     LEFT JOIN [demographic_warehouse].[dim].[age_group]
         ON [ase].[age_group] = [age_group].[name]
     LEFT JOIN [inputs].[special_mgras]
-        ON [ase].[mgra] = [special_mgras].[mgra15]
+        ON [ase].[mgra] = CASE WHEN @mgra_version = 'mgra15' THEN [special_mgras].[mgra15] ELSE NULL END
         AND [ase].[pop_type] = [special_mgras].[pop_type]
     WHERE [run_id] = @run_id
         AND [special_mgras].[max_age] IS NOT NULL
