@@ -591,7 +591,7 @@ def _create_ase(
 
             # Get special MGRAs in a/s/e result
             # Note that all MGRAs in this population type with persons are special
-            df = (
+            special_ase = (
                 result[pop_type]
                 .merge(
                     right=special_mgras,
@@ -615,44 +615,47 @@ def _create_ase(
             )
 
             # Indicate a/s/e categories that are restricted
-            df["restricted"] = np.where(
-                ((df["sex"] != df["sex_special"]) & (df["sex_special"].notna()))
-                | (df["max"] < df["min_age"])
-                | (df["min"] > df["max_age"]),
-                1,
-                0,
+            special_ase["restricted"] = (
+                (
+                    (special_ase["sex"] != special_ase["sex_special"])
+                    & (special_ase["sex_special"].notna())
+                )
+                | (special_ase["max"] < special_ase["min_age"])
+                | (special_ase["min"] > special_ase["max_age"])
             )
 
             # For each MGRA in the special MGRAs
             for mgra in special_mgras["mgra"].unique():
                 # Store values of un-restricted categories for the MGRA
-                unrestricted_ase = df.query("mgra == @mgra and restricted == 0")[
-                    "ase_concat"
-                ]
+                unrestricted_ase = special_ase.query(
+                    "mgra == @mgra and not restricted"
+                )["ase_concat"]
 
                 # Get non-zero restricted categories
-                violations = df.query("mgra == @mgra and restricted == 1 and value > 0")
+                violations = special_ase.query(
+                    "mgra == @mgra and restricted and value > 0"
+                )
 
                 # For each non-zero restricted category
                 for violation_idx in violations.index.to_list():
                     # Get the age/sex/ethnicity category of the violation
-                    violation_ase = df.loc[violation_idx]["ase_concat"]
+                    violation_ase = special_ase.loc[violation_idx]["ase_concat"]
 
                     # Until the category has been zero-ed out
-                    while df.loc[violation_idx, "value"] > 0:
+                    while special_ase.loc[violation_idx, "value"] > 0:
                         # Get eligible donor MGRAs
                         donors = list(
                             # These are MGRAs without restrictions on the category
                             set(
-                                df.query(
-                                    "restricted == 0 and ase_concat == @violation_ase"
+                                special_ase.query(
+                                    "not restricted and ase_concat == @violation_ase"
                                 )["mgra"].to_list()
                             )
                             &
                             # That also have a non-zero value in a category that is not restricted
                             set(
-                                df.query(
-                                    "restricted == 0 and value > 0 and ase_concat in @unrestricted_ase"
+                                special_ase.query(
+                                    "not restricted and value > 0 and ase_concat in @unrestricted_ase"
                                 )["mgra"].to_list()
                             )
                         )
@@ -665,34 +668,34 @@ def _create_ase(
                         # If donor MGRAs found continue balancing
                         else:
                             # Subtract one from restricted category
-                            df.loc[violation_idx, "value"] -= 1
+                            special_ase.loc[violation_idx, "value"] -= 1
 
                             # Find the donor with the largest value in the restricted category
                             # Add one to the donor MGRA for the restricted category
-                            donor_idx = df.query(
+                            donor_idx = special_ase.query(
                                 "mgra in @donors and ase_concat == @violation_ase"
                             )["value"].idxmax()
-                            df.loc[donor_idx, "value"] += 1
-                            donor_mgra = df.loc[donor_idx, "mgra"]
+                            special_ase.loc[donor_idx, "value"] += 1
+                            donor_mgra = special_ase.loc[donor_idx, "mgra"]
 
                             # Find largest un-restricted category within the donor
                             # And subtract one from the un-restricted category
-                            balance_idx = df.query(
-                                "mgra == @donor_mgra and restricted == 0 and value > 0 and ase_concat in @unrestricted_ase"
+                            balance_idx = special_ase.query(
+                                "mgra == @donor_mgra and not restricted and value > 0 and ase_concat in @unrestricted_ase"
                             )["value"].idxmax()
-                            df.loc[balance_idx, "value"] -= 1
-                            balance_ase = df.loc[balance_idx]["ase_concat"]
+                            special_ase.loc[balance_idx, "value"] -= 1
+                            balance_ase = special_ase.loc[balance_idx]["ase_concat"]
 
                             # Add one to the special MGRA for the un-restricted category
-                            df.loc[
-                                (df["mgra"] == mgra)
-                                & (df["ase_concat"] == balance_ase),
+                            special_ase.loc[
+                                (special_ase["mgra"] == mgra)
+                                & (special_ase["ase_concat"] == balance_ase),
                                 "value",
                             ] += 1
 
             # Merge the adjusted data back into the result set
             result[pop_type] = result[pop_type].merge(
-                right=df[["mgra", "age_group", "sex", "ethnicity", "value"]],
+                right=special_ase[["mgra", "age_group", "sex", "ethnicity", "value"]],
                 on=["mgra", "age_group", "sex", "ethnicity"],
                 how="left",
                 suffixes=("", "_adjusted"),
