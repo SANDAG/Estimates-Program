@@ -276,7 +276,9 @@ def integerize_2d(
     values for the 'neighborhood' are explored as each fails, provided by the
     'nearest_neighbors' input parameter. If all 'neighborhood' values fail,
     the non-zero requirement is completely abandoned and all columns that were
-    adjusted downward for rows with + deviation are allowed.
+    adjusted downward for rows with + deviation are allowed. As the
+    'Nearest Neighbors' strategy looks in a neighborhood of nearby columns,
+    column ordering in the array is a critical component to the strategy.
 
     Args:
         data (np.ndarray): An array-like structure of float or integer values
