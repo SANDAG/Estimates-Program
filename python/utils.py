@@ -323,7 +323,7 @@ def integerize_2d(
 
     # Ensure nearest_neighbors parameter is set properly
     if nearest_neighbors is None:
-        nearest_neighbors = list[1]
+        nearest_neighbors = [1]
     if not isinstance(nearest_neighbors, list) or not all(
         isinstance(n, int) for n in nearest_neighbors
     ):
