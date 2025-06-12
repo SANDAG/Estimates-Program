@@ -253,7 +253,7 @@ def integerize_2d(
     row_ctrls: np.ndarray,
     col_ctrls: np.ndarray,
     condition: str = "exact",
-    nearest_neighbors: list[int] = [1],
+    nearest_neighbors: list[int] = None,
 ) -> np.ndarray:
     """Safe rounding of 2-dimensional array-like structures.
 
@@ -319,11 +319,16 @@ def integerize_2d(
     else:
         raise ValueError("condition must be one of ['exact', 'less than']")
 
-    # Ensure nearest_neighbors is a list of integers
+    # Ensure nearest_neighbors parameter is set properly
+    if nearest_neighbors is None:
+        nearest_neighbors = list[1]
     if not isinstance(nearest_neighbors, list) or not all(
         isinstance(n, int) for n in nearest_neighbors
     ):
         raise ValueError("nearest_neighbors must be a list of integers")
+    if len(nearest_neighbors) == 0:
+        raise ValueError("nearest_neighbors list must contain at least one value")
+    nearest_neighbors.sort()
 
     # Round columns of the input data array to match marginal controls
     for col_idx in range(array_2d.shape[1]):
