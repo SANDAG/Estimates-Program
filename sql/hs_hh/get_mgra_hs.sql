@@ -10,6 +10,7 @@ DECLARE @run_id integer = :run_id;
 DECLARE @year integer = :year;
 DECLARE @mgra_version nvarchar(10) = :mgra_version;
 DECLARE @gis_server nvarchar(20) = :gis_server;
+DECLARE @override_date date = (SELECT CONVERT(date, [date]) FROM [metadata].[run] WHERE [run_id] = @run_id);
 
 -- Build the expected return table MGRA x Structure Type
 DROP TABLE IF EXISTS [#tt_shell];
@@ -67,8 +68,8 @@ DECLARE @qry nvarchar(max) = '
     SELECT *
     FROM OPENQUERY([' + @gis_server + '], ''
         SELECT
-            CASE WHEN [overrides].[lu] IS NOT NULL THEN [overrides].[lu] ELSE [ludu].[lu] END AS [lu],
-            CASE WHEN [overrides].[du] IS NOT NULL THEN [overrides].[du] ELSE [ludu].[du] END AS [du],
+            ISNULL([overrides].[lu], [ludu].[lu]) AS [lu],
+            ISNULL([overrides].[du], [ludu].[du]) AS [du],
             [Shape]
         FROM [GeoDepot].[sde].[' + @tbl +'] AS [ludu]
         LEFT OUTER JOIN (
@@ -77,10 +78,12 @@ DECLARE @qry nvarchar(max) = '
                 [lu],
                 [du]
             FROM [SPACECORE].[gis].[LUDU_OVERRIDE_TABLE]
-            WHERE [year] = ' + CONVERT(nvarchar, @year) + '
+            WHERE
+                [year] = ' + CONVERT(nvarchar, @year) + '
+                AND [date] <= ''''' + CONVERT(nvarchar, @override_date) + '''''
         ) AS [overrides]
             ON [ludu].[LCkey] = [overrides].[LCKey]
-        WHERE CASE WHEN [overrides].[du] IS NOT NULL THEN [overrides].[du] ELSE [ludu].[du] END > 0
+        WHERE ISNULL([overrides].[du], [ludu].[du]) > 0
     '')
 '
 EXEC sp_executesql @qry;
