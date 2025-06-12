@@ -391,14 +391,11 @@ def integerize_2d(
                     # if and only if any neighboring columns are non-zero
                     elif relax_skip_condition == "Nearest Neighbors":
                         for col in cols:
+                            low_neighbor = max(0, col - neighborhood)
+                            high_neighbor = min(array_2d.shape[1], col + neighborhood)
+
                             if np.any(
-                                array_2d[
-                                    row_idx,
-                                    max(0, col - neighborhood) : min(
-                                        array_2d.shape[1], col + neighborhood
-                                    ),
-                                ]
-                                > 0
+                                array_2d[row_idx, low_neighbor:high_neighbor] > 0
                             ):
                                 pass
                             else:
