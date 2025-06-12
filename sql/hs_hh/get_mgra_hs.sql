@@ -66,9 +66,21 @@ DECLARE @qry nvarchar(max) = '
     INSERT INTO [#ludu]
     SELECT *
     FROM OPENQUERY([' + @gis_server + '], ''
-        SELECT [lu], [du], [Shape] 
-        FROM [GeoDepot].[sde].[' + @tbl +'] 
-        WHERE [du] > 0
+        SELECT
+            CASE WHEN [overrides].[lu] IS NOT NULL THEN [overrides].[lu] ELSE [ludu].[lu] END AS [lu],
+            CASE WHEN [overrides].[du] IS NOT NULL THEN [overrides].[du] ELSE [ludu].[du] END AS [du],
+            [Shape]
+        FROM [GeoDepot].[sde].[' + @tbl +'] AS [ludu]
+        LEFT OUTER JOIN (
+            SELECT
+                [LCkey],
+                [lu],
+                [du]
+            FROM [SPACECORE].[gis].[LUDU_OVERRIDE_TABLE]
+            WHERE [year] = ' + CONVERT(nvarchar, @year) + '
+        ) AS [overrides]
+            ON [ludu].[LCkey] = [overrides].[LCKey]
+        WHERE CASE WHEN [overrides].[du] IS NOT NULL THEN [overrides].[du] ELSE [ludu].[du] END > 0
     '')
 '
 EXEC sp_executesql @qry;
