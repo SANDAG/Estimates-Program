@@ -196,8 +196,9 @@ def _create_hs_hh(hs_hh_inputs: dict[str, pd.DataFrame]) -> dict[str, pd.DataFra
             else:
                 continue
 
-            # Adjust possible records prioritizing the largest households
-            records = int(min(len(hh.index), abs(adjustment)))
+            # Adjust possible records prioritizing the MGRAs with the largest number of
+            # households
+            records = int(min(condition.sum(), abs(adjustment)))
             if records > 0:
                 indices = (
                     hh[condition]
