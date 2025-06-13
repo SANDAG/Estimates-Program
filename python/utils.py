@@ -145,6 +145,7 @@ def display_ascii_art(filename):
         with open(filename, "r") as file:
             for line in file:
                 print(line, end="")
+            print()  # Ensure a newline after the ASCII art
     except FileNotFoundError:
         print(f"Error: File '{filename}' not found.")
 
@@ -252,7 +253,47 @@ def integerize_2d(
     row_ctrls: np.ndarray,
     col_ctrls: np.ndarray,
     condition: str = "exact",
+    nearest_neighbors: list[int] = None,
 ) -> np.ndarray:
+    """Safe rounding of 2-dimensional array-like structures.
+
+    After some basic input data validation, column data is rounded preserving
+    column control totals, then rounding error is corrected for row controls.
+
+    Preserving column control total while correcting rounding error for row
+    controls is done using an integer reallocation process. Rows with +
+    deviations have their smallest non-zero column adjusted downwards in
+    increments of -1. Rows with - deviation have their largest non-zero column
+    that was adjusted downwards for rows with + deviation adjusted upwards in
+    increments of +1. This is repeated until all rows are either equal to or
+    less than their row control total, depending on the 'condition' parameter.
+
+    For rows with - deviation, is not always possible to find non-zero columns
+    that were adjusted downward for rows with + deviation. Subsequently, the
+    non-zero requirement is relaxed first to a 'Nearest Neighbors' strategy.
+    Under this strategy, zero-valued columns with non-zero columns in a
+    'neighborhood' around them are eligible for upwards adjustment. Multiple
+    values for the 'neighborhood' are explored as each fails, provided by the
+    'nearest_neighbors' input parameter. If all 'neighborhood' values fail,
+    the non-zero requirement is completely abandoned and all columns that were
+    adjusted downward for rows with + deviation are allowed. As the
+    'Nearest Neighbors' strategy looks in a neighborhood of nearby columns,
+    column ordering in the array is a critical component to the strategy.
+
+    Args:
+        data (np.ndarray): An array-like structure of float or integer values
+        row_ctrls (np.ndarray): 1-dimensional array-like structure of float or
+            integer values
+        col_ctrls (np.ndarray): 1-dimensional array-like structure of float or
+            integer values
+        condition (str, optional): Control matching condition. Must be one of
+            ['exact', 'less than']. Defaults to "exact".
+        nearest_neighbors (list[int], optional): List of integer values to use as
+            neighborhood for 'Nearest Neighbors' relaxation. Defaults to [1].
+
+    Returns:
+        np.ndarray: Integerized data preserving control values
+    """
     # Take deep copy of input array to avoid altering original
     array_2d = data.copy(order="K")
 
@@ -280,6 +321,17 @@ def integerize_2d(
     else:
         raise ValueError("condition must be one of ['exact', 'less than']")
 
+    # Ensure nearest_neighbors parameter is set properly
+    if nearest_neighbors is None:
+        nearest_neighbors = [1]
+    if not isinstance(nearest_neighbors, list) or not all(
+        isinstance(n, int) for n in nearest_neighbors
+    ):
+        raise ValueError("nearest_neighbors must be a list of integers")
+    if len(nearest_neighbors) == 0:
+        raise ValueError("nearest_neighbors list must contain at least one value")
+    nearest_neighbors.sort()
+
     # Round columns of the input data array to match marginal controls
     for col_idx in range(array_2d.shape[1]):
         array_2d[:, col_idx] = integerize_1d(array_2d[:, col_idx], col_ctrls[col_idx])
@@ -299,7 +351,7 @@ def integerize_2d(
         raise ValueError("condition must be one of ['exact', 'less than']")
 
     # Initialize skip condition relaxation switch
-    relax_skip_condition = False
+    relax_skip_condition = None
 
     # While there are deviations to adjust
     while any_deviation:
@@ -317,11 +369,10 @@ def integerize_2d(
                 # And smallest positive non-zero column value
                 min_value = np.min(array_2d[row_idx, cols][array_2d[row_idx, cols] > 0])
                 col_idx = np.where(array_2d[row_idx] == min_value)[0][0]
-                adjustment = min(deviations[row_idx], array_2d[row_idx, col_idx])
 
                 # Adjust value downward and store adjustment made
-                array_2d[row_idx, col_idx] -= adjustment
-                adjustments[col_idx] += adjustment
+                array_2d[row_idx, col_idx] -= 1
+                adjustments[col_idx] += 1
 
         # For rows with - deviation
         for row_idx in range(deviations.shape[0]):
@@ -331,13 +382,29 @@ def integerize_2d(
                     # Restrict to columns with available positive adjustments
                     cols = list(np.where(adjustments > 0)[0])
 
-                    # Depending on skip condition
-                    # Either allow or do not allow zero-values to be adjusted
-                    # Find the largest column with available adjustment
-                    # Calculate minimum of possible row and column adjustments
-                    if not relax_skip_condition:
+                    # Further restrict adjustable columns depending on skip condition
+                    # Default skip condition: only allow columns with non-zero values
+                    if relax_skip_condition is None:
                         if np.max(array_2d[row_idx, cols]) == 0:
                             continue
+                    # Nearest Neighbors skip condition: allow columns to be adjusted
+                    # if and only if any neighboring columns are non-zero
+                    elif relax_skip_condition == "Nearest Neighbors":
+                        for col in cols:
+                            low_neighbor = max(0, col - neighborhood)
+                            high_neighbor = min(array_2d.shape[1], col + neighborhood)
+
+                            if np.any(
+                                array_2d[row_idx, low_neighbor:high_neighbor] > 0
+                            ):
+                                pass
+                            else:
+                                cols.remove(col)
+                        if len(cols) == 0:
+                            continue
+                    # Allow all Columns skip condition: allow all columns to be adjusted
+                    elif relax_skip_condition == "Allow all Columns":
+                        pass
 
                     # Find first eligible column with maximum value
                     max_value = np.max(array_2d[row_idx, cols])
@@ -346,21 +413,38 @@ def integerize_2d(
                             break
 
                     # Adjust value upward and store adjustment made
-                    adjustment = min(np.abs(deviations[row_idx]), adjustments[col_idx])
-                    array_2d[row_idx, col_idx] += adjustment
-                    adjustments[col_idx] -= adjustment
+                    array_2d[row_idx, col_idx] += 1
+                    adjustments[col_idx] -= 1
 
         # If no changes were made avoid infinite loop
         if np.array_equal(deviations, np.sum(array_2d, axis=1) - row_ctrls):
             # First time no deviations are adjusted relax skip condition
             # For rows with - deviations allow adjustment to zero-valued columns
-            # If condition has already been relaxed raise error
-            if relax_skip_condition:
-                raise ValueError("No adjustments made. Check marginal controls.")
-            else:
-                relax_skip_condition = True
+            # If any nearest-neighbors are non-zero
+            if relax_skip_condition is None:
+                relax_skip_condition = "Nearest Neighbors"
+                neighborhood = nearest_neighbors[0]  # use first value in list
                 logger.warning(
-                    "No adjustments made. Skip condition relaxed for 2d-integerizer."
+                    f"Skip condition relaxed to '{relax_skip_condition}' for 2-d integerizer."
+                    f" Neighborhood set to (+/-) {neighborhood}."
+                )
+            # If condition has already been relaxed to nearest neighbors
+            # Set neighborhood to next value in the list of integers
+            # If nearest_neighbors is exhausted, allow adjustment to all columns
+            elif relax_skip_condition == "Nearest Neighbors":
+                relax_skip_condition = "Allow all Columns"
+                msg = f"Skip condition relaxed to '{relax_skip_condition}' for 2d-integerizer."
+                for n in nearest_neighbors:
+                    if n > neighborhood:
+                        relax_skip_condition = "Nearest Neighbors"
+                        neighborhood = n
+                        msg = f" Neighborhood increased to (+/-) {neighborhood}."
+                        break
+                logger.warning(msg)
+            # If condition has already been relaxed to allow all columns raise error
+            elif relax_skip_condition == "Allow all Columns":
+                raise ValueError(
+                    "No adjustments able to be made. Check marginal controls."
                 )
 
         # Recalculate the row deviations
