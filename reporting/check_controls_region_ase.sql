@@ -1,5 +1,5 @@
 -- SQL Script to check that MGRA level ASE data exactly matches regional ASE controls
-DECLARE @run_id INTEGER = 239;
+DECLARE @run_id INTEGER = :run_id;
 
 SELECT 
     [controls_ase].[year],
