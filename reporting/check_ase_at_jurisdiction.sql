@@ -2,7 +2,6 @@
 -- population type
 DECLARE @run_id INTEGER = :run_id;
 DECLARE @pop_type NVARCHAR(32) = :pop_type;
-DECLARE @query NVARCHAR(MAX);
 
 -- Since 'Total' is not technically a [pop_type] in [outputs].[ase], we need to do it 
 -- separately
