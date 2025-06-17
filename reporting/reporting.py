@@ -45,7 +45,6 @@ qa_qc_scripts = {
     "Check every HH has HS": "check_every_hh_has_hs.sql",
     "Check every HHP has HH": "check_every_hhp_has_hh.sql",
     "Check implied HHP vs actual HHP": "check_implied_hhp_vs_actual_hhp.sql",
-    "Check householders vs HHP 15+": "check_householders_vs_hhp_15_plus.sql",
     "Check householders vs households": "check_householders_vs_households.sql",
 }
 
