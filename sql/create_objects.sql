@@ -78,7 +78,10 @@ CREATE TABLE [inputs].[special_mgras] (
     [sex] NVARCHAR(6) NULL,
     [min_age] INT NULL,
     [max_age] INT NULL,
-    [comment] NVARCHAR(max) NOT NULL
+    [comment] NVARCHAR(max) NOT NULL,
+    CONSTRAINT [pk_inputs_special_mgras] PRIMARY KEY ([id]),
+    CONSTRAINT [ixuq_inputs_special_mgras] UNIQUE ([mgra15], [start_year], [end_year], [pop_type], [sex], [min_age], [max_age]),
+    CONSTRAINT [chk_valid_sex_special_mgras] CHECK ([sex] IN ('Male', 'Female'))
 ) WITH (DATA_COMPRESSION = PAGE)
 
 INSERT INTO [inputs].[special_mgras] VALUES
