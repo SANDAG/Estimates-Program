@@ -102,3 +102,6 @@ sql:
     database: <SqlDatabaseName>  # database within instance containing GIS datasets (GQ/LUDU)
   staging: <FolderPath>  # unconditional network folder path visible to SQL instance for BULK INSERT
 ```
+
+### Production Database Schema
+![input](./documentation/Database%20Diagram.png)
