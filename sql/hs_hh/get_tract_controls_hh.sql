@@ -12,6 +12,10 @@ Two input parameters are used
 	year - the year parameter is used to identify the 5-year ACS Detailed
 	    Tables release to use (ex. 2023 maps to 2019-2023) and the census
 		tract geography vintage (2010-2019 uses 2010, 2020-2029 uses 2020)
+
+Note, see https://github.com/SANDAG/Estimates-Program/issues/138 for
+additional context on including the ACS category 'Boat, RV, van, etc.' in the
+'Single Family - Detached' category as opposed to the 'Mobile Home' category
 */
 
 
@@ -72,7 +76,10 @@ BEGIN
         SELECT
             [tract],
             CASE
-                WHEN [label] = 'Estimate!!Total:!!1, detached' THEN 'Single Family - Detached'
+                WHEN [label] IN (
+                    'Estimate!!Total:!!1, detached',
+                    'Estimate!!Total:!!Boat, RV, van, etc.'
+                ) THEN 'Single Family - Detached'
                 WHEN [label] = 'Estimate!!Total:!!1, attached' THEN 'Single Family - Multiple Unit'
                 WHEN [label] IN (
                     'Estimate!!Total:!!2',
@@ -82,10 +89,7 @@ BEGIN
                     'Estimate!!Total:!!20 to 49',
                     'Estimate!!Total:!!50 or more'
                 )  THEN 'Multifamily'
-                WHEN [label] IN (
-                    'Estimate!!Total:!!Mobile home',
-                    'Estimate!!Total:!!Boat, RV, van, etc.'
-                ) THEN 'Mobile Home'
+                WHEN [label] = 'Estimate!!Total:!!Mobile home' THEN 'Mobile Home'
                 ELSE NULL  -- NULL values for Margin of Error fields removed in subsequent WHERE clause
             END AS [structure_type],
             [value]
@@ -121,8 +125,10 @@ BEGIN
             [tract],
             CASE
                 WHEN [label] IN (
+                        'Estimate!!Total:!!Owner-occupied housing units:!!Boat, RV, van, etc.',
                         'Estimate!!Total:!!Owner-occupied housing units:!!1, detached',
-                        'Estimate!!Total:!!Renter-occupied housing units:!!1, detached') 
+                        'Estimate!!Total:!!Renter-occupied housing units:!!Boat, RV, van, etc.',
+                        'Estimate!!Total:!!Renter-occupied housing units:!!1, detached')
                     THEN 'Single Family - Detached'
                 WHEN [label] IN (
                         'Estimate!!Total:!!Owner-occupied housing units:!!1, attached', 
@@ -143,9 +149,7 @@ BEGIN
                         'Estimate!!Total:!!Renter-occupied housing units:!!50 or more')
                     THEN 'Multifamily'
                 WHEN [label] IN (
-                        'Estimate!!Total:!!Owner-occupied housing units:!!Boat, RV, van, etc.', 
                         'Estimate!!Total:!!Owner-occupied housing units:!!Mobile home',
-                        'Estimate!!Total:!!Renter-occupied housing units:!!Boat, RV, van, etc.',
                         'Estimate!!Total:!!Renter-occupied housing units:!!Mobile home') 
                     THEN 'Mobile Home'
                 ELSE NULL  -- NULL values for Margin of Error fields removed in subsequent WHERE clause
