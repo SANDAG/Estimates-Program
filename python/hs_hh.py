@@ -158,6 +158,7 @@ def _create_hs_hh(hs_hh_inputs: dict[str, pd.DataFrame]) -> dict[str, pd.DataFra
             )
             .assign(value_hh=lambda x: x["value_hs"] * x["value_rate"])
             .drop(columns=["tract", "value_rate"])
+            .sort_values(by=["mgra", "structure_type"])
         )
 
         # Compute overall occupancy rate and apply city occupancy control

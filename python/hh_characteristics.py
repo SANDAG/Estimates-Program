@@ -196,6 +196,7 @@ def _create_hh_income(
         hh.merge(tract_income_dist, on=["run_id", "year", "tract"], how="left")
         .assign(hh=lambda df: df["hh"] * df["value"])
         .drop(columns=["tract", "value"])
+        .sort_values(by=["mgra", "income_category"])
     )
 
     # Control each MGRA so households by household income exactly matches the total
@@ -246,6 +247,7 @@ def _create_hh_size(
         hh.merge(tract_hhs_dist, on=["run_id", "year", "tract"], how="left")
         .assign(hh=lambda df: df["hh"] * df["value"])
         .drop(columns=["tract", "value"])
+        .sort_values(by=["mgra", "household_size"])
     )
 
     # Control each MGRA so households by size exactly match total households
