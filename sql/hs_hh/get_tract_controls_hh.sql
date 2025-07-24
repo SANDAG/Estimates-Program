@@ -14,8 +14,8 @@ Two input parameters are used
 		tract geography vintage (2010-2019 uses 2010, 2020-2029 uses 2020)
 
 Note, see https://github.com/SANDAG/Estimates-Program/issues/138 for
-additional context on including the ACS category 'Boat, RV, van, etc.' in the
-'Single Family - Detached' category as opposed to the 'Mobile Home' category
+additional context on including the ACS category 'Boat, RV, van, etc.' in both
+the 'Single Family - Detached' category and the 'Mobile Home' category
 */
 
 
@@ -77,8 +77,8 @@ BEGIN
             [tract],
             CASE
                 WHEN [label] IN (
-                    'Estimate!!Total:!!1, detached',
-                    'Estimate!!Total:!!Boat, RV, van, etc.'
+                    'Estimate!!Total:!!Boat, RV, van, etc.',
+                    'Estimate!!Total:!!1, detached'
                 ) THEN 'Single Family - Detached'
                 WHEN [label] = 'Estimate!!Total:!!1, attached' THEN 'Single Family - Multiple Unit'
                 WHEN [label] IN (
@@ -89,7 +89,10 @@ BEGIN
                     'Estimate!!Total:!!20 to 49',
                     'Estimate!!Total:!!50 or more'
                 )  THEN 'Multifamily'
-                WHEN [label] = 'Estimate!!Total:!!Mobile home' THEN 'Mobile Home'
+                WHEN [label] IN (
+                    'Estimate!!Total:!!Boat, RV, van, etc.',
+                    'Estimate!!Total:!!Mobile home')
+                THEN 'Mobile Home'
                 ELSE NULL  -- NULL values for Margin of Error fields removed in subsequent WHERE clause
             END AS [structure_type],
             [value]
@@ -149,7 +152,9 @@ BEGIN
                         'Estimate!!Total:!!Renter-occupied housing units:!!50 or more')
                     THEN 'Multifamily'
                 WHEN [label] IN (
+                        'Estimate!!Total:!!Owner-occupied housing units:!!Boat, RV, van, etc.',
                         'Estimate!!Total:!!Owner-occupied housing units:!!Mobile home',
+                        'Estimate!!Total:!!Renter-occupied housing units:!!Boat, RV, van, etc.',
                         'Estimate!!Total:!!Renter-occupied housing units:!!Mobile home') 
                     THEN 'Mobile Home'
                 ELSE NULL  -- NULL values for Margin of Error fields removed in subsequent WHERE clause
