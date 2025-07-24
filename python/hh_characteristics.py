@@ -195,17 +195,44 @@ def _create_hh_income(
     hh_income = (
         hh.merge(tract_income_dist, on=["run_id", "year", "tract"], how="left")
         .assign(hh=lambda df: df["hh"] * df["value"])
-        .drop(columns=["tract", "value"])
-        .sort_values(by=["mgra", "income_category"])
+        .drop(columns=["value"])
+        .pivot(
+            index=["run_id", "year", "mgra", "tract"],
+            columns="income_category",
+            values="hh",
+        )
+        .reset_index(drop=False)
+        .sort_values(by="mgra")
     )
 
-    # Control each MGRA so households by household income exactly matches the total
-    # households
-    integerized_groups = []
-    for _, group in hh_income.groupby("mgra"):
-        group["hh"] = utils.integerize_1d(group["hh"])
-        integerized_groups.append(group)
-    hh_income = pd.concat(integerized_groups)
+    # To ensure that we pretty much exactly match ACS distributions, we will do two
+    # dimensional controlling on the MGRA level data. After splitting the data into
+    # separate tracts, row controls will be total households in each MGRA and column
+    # controls will be tract level household income
+    controlled_groups = []
+    for tract, group in hh_income.groupby("tract"):
+        seed_data = group[utils.INCOME_CATEGORIES].to_numpy()
+        row_controls = (
+            group[utils.INCOME_CATEGORIES].sum(axis=1).to_numpy().round(0).astype(int)
+        )
+        col_controls = utils.integerize_1d(group[utils.INCOME_CATEGORIES].sum(axis=0))
+        controlled_data = utils.integerize_2d(
+            data=seed_data,
+            row_ctrls=row_controls,
+            col_ctrls=col_controls,
+            condition="exact",
+        )
+        group[utils.INCOME_CATEGORIES] = controlled_data
+        controlled_groups.append(group)
+
+    # Coerce the controlled data back into the original format. Note that pd.melt()
+    # does not include the "tract" column, which functionally drops it
+    hh_income = pd.concat(controlled_groups).melt(
+        id_vars=["run_id", "year", "mgra"],
+        value_vars=utils.INCOME_CATEGORIES,
+        var_name="income_category",
+        value_name="hh",
+    )
 
     return {"hh_income": hh_income}
 

@@ -22,6 +22,7 @@ SQL_FOLDER = ROOT_FOLDER / "sql"
 ###########
 # LOGGING #
 ###########
+
 # Create a console handler
 _console_handler = logging.StreamHandler()
 _console_handler.setLevel(logging.INFO)
@@ -108,6 +109,23 @@ MGRA_VERSION = input_parser.mgra_version
 logger.info(
     f"RUN_ID: {RUN_ID}, MGRA_VERSION: {MGRA_VERSION}, YEARS: {RUN_INSTRUCTIONS["years"]}"
 )
+
+##############################
+# UTILITY LISTS AND MAPPINGS #
+##############################
+
+INCOME_CATEGORIES = [
+    "Less than $15,000",
+    "$15,000 to $29,999",
+    "$30,000 to $44,999",
+    "$45,000 to $59,999",
+    "$60,000 to $74,999",
+    "$75,000 to $99,999",
+    "$100,000 to $124,999",
+    "$125,000 to $149,999",
+    "$150,000 to $199,999",
+    "$200,000 or more",
+]
 
 # Minimum and maximum age values for each age group
 AGE_MAPPING = {
