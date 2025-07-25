@@ -114,6 +114,8 @@ logger.info(
 # UTILITY LISTS AND MAPPINGS #
 ##############################
 
+HOUSEHOLD_SIZES = list(range(1, 8))
+
 INCOME_CATEGORIES = [
     "Less than $15,000",
     "$15,000 to $29,999",
