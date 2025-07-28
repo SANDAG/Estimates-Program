@@ -76,7 +76,7 @@ def _get_hh_income_inputs(year: int) -> dict[str, pd.DataFrame]:
                     "run_id": utils.RUN_ID,
                     "year": year,
                     "mgra_version": utils.MGRA_VERSION,
-                },
+                },  # type: ignore
             ).drop(columns=["city"])
 
         # Tract level household income distributions
@@ -84,8 +84,8 @@ def _get_hh_income_inputs(year: int) -> dict[str, pd.DataFrame]:
             utils.SQL_FOLDER / "hh_characteristics" / "get_tract_controls_hh_income.sql"
         ) as file:
             hh_income_inputs["hh_income_tract_controls"] = utils.read_sql_query_acs(
-                sql=sql.text(file.read()),
-                con=con,
+                sql=sql.text(file.read()),  # type: ignore
+                con=con,  # type: ignore
                 params={"run_id": utils.RUN_ID, "year": year},
             )
 
@@ -93,7 +93,7 @@ def _get_hh_income_inputs(year: int) -> dict[str, pd.DataFrame]:
 
 
 def _get_hh_size_inputs(year: int) -> dict[str, pd.DataFrame]:
-    """Get households and various tract level datas"""
+    """Get households and various tract level datas."""
     with utils.ESTIMATES_ENGINE.connect() as con:
         # Store results here
         hh_char_inputs = {}
@@ -108,7 +108,7 @@ def _get_hh_size_inputs(year: int) -> dict[str, pd.DataFrame]:
                     "run_id": utils.RUN_ID,
                     "year": year,
                     "mgra_version": utils.MGRA_VERSION,
-                },
+                },  # type: ignore
             ).drop(columns=["city"])
 
         # Tract level households by household size distributions
@@ -118,8 +118,8 @@ def _get_hh_size_inputs(year: int) -> dict[str, pd.DataFrame]:
             / "get_tract_controls_hh_by_size.sql"
         ) as file:
             hh_char_inputs["hhs_tract_controls"] = utils.read_sql_query_acs(
-                sql=sql.text(file.read()),
-                con=con,
+                sql=sql.text(file.read()),  # type: ignore
+                con=con,  # type: ignore
                 params={"run_id": utils.RUN_ID, "year": year},
             )
 
@@ -130,7 +130,7 @@ def _get_hh_size_inputs(year: int) -> dict[str, pd.DataFrame]:
             hh_char_inputs["hhs_mgra_controls"] = pd.read_sql_query(
                 sql=sql.text(file.read()),
                 con=con,
-                params={"run_id": utils.RUN_ID, "year": year},
+                params={"run_id": utils.RUN_ID, "year": year},  # type: ignore
             )
 
     return hh_char_inputs
@@ -221,6 +221,7 @@ def _create_hh_income(
             row_ctrls=row_controls,
             col_ctrls=col_controls,
             condition="exact",
+            suppress_warnings=True,
         )
         group[utils.INCOME_CATEGORIES] = controlled_data
         controlled_groups.append(group)
@@ -299,6 +300,7 @@ def _create_hh_size(
             row_ctrls=row_controls,
             col_ctrls=col_controls,
             condition="exact",
+            suppress_warnings=True,
         )
         group[utils.HOUSEHOLD_SIZES] = controlled_data
         controlled_groups.append(group)
@@ -325,9 +327,8 @@ def _create_hh_size(
 
         # Compute the minimum and maximum implied hhp from the hhs distribution. The
         # maximum assumes that every household in the 7+ category is of size 11, which
-        # is what we get from looking at the San Diego region PUMS data. See GithHub
-        # for more info:
-        # https://github.com/SANDAG/Estimates-Program/issues/112
+        # is what we get from looking at the San Diego region PUMS data. See GitHub
+        # for more info: https://github.com/SANDAG/Estimates-Program/issues/112
         n_people_in_7_plus = 11
         min_implied_hhp = (group["hh"] * group["household_size"]).sum()
         max_implied_hhp = (
