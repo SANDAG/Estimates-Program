@@ -171,7 +171,9 @@ def display_ascii_art(filename):
 
 
 def integerize_1d(
-    data: np.ndarray | list | pd.Series, control: int | float | None = None
+    data: np.ndarray | list | pd.Series,
+    control: int | float | None = None,
+    methodology: str = "largest",
 ) -> np.ndarray:
     """Safe rounding of 1-dimensional array-like structures.
 
@@ -191,6 +193,14 @@ def integerize_1d(
         control: Optional control value to scale the input data such that the final sum
             of the elements exactly the control value. If not value is provided, then
             the sum of the input data will be preserved
+        methodology: How to adjust for rounding error. Valid inputs are:
+            * "largest": Adjust rounding error by decreasing the largest values until
+              the control value is hit
+            * "smallest": Adjust rounding error by decreasing the smallest non-zero
+              until the control value is hit
+            * "largest_difference" (Not implemented yet): Adjust rounding error by
+              decreasing the rounded values with the largest change from the original
+              valeus until the control value is hit
 
     Returns:
         np.ndarray: Integerized data preserving sum or control value
@@ -201,6 +211,15 @@ def integerize_1d(
         ValueError: If no control value is provided and the input data does not sum to
             an integer
     """
+    # Check rounding error methodology
+    allowed_methodology = ["largest", "smallest", "largest_difference"]
+    if methodology not in allowed_methodology:
+        raise ValueError(
+            f"Input parameter 'methodology' must be one of {str(allowed_methodology)}"
+        )
+    if methodology == "largest_difference":
+        raise NotImplementedError("Methodology 'largest_difference' is not implemented")
+
     # Check class of input data. If not a np.ndarray, convert to one
     if not isinstance(data, (np.ndarray, list, pd.Series)):
         raise TypeError(
@@ -253,9 +272,24 @@ def integerize_1d(
     if diff == 0:
         return data
     else:
-        # Find the index values for the n-largest data points
-        # Where n is equal to the difference
-        to_decrease = np.argsort(data, stable=True)[-diff:]
+
+        # Find the index values for the n largest data points
+        if methodology == "largest":
+            to_decrease = np.argsort(data, stable=True)[-diff:]
+
+        # Find the index values for the n smallest non-zero data points
+        elif methodology == "smallest":
+            # Find and store all non-zero values/indicies
+            mask = data != 0
+            non_zero_indicies = np.flatnonzero(mask)
+            non_zero_values = data[mask]
+
+            # Get index values of the n smallest non-zero data points
+            n_smallest_non_zero = np.argsort(non_zero_values, stable=True)[:diff]
+
+            # The index values correspond to non_zero_values, not to the original data.
+            # Use the reverse lookup to get the indicies of the original data
+            to_decrease = non_zero_indicies[n_smallest_non_zero]
 
         # Decrease n-largest data points by one to match control
         np.add.at(data, to_decrease, -1)
