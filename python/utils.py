@@ -200,7 +200,7 @@ def integerize_1d(
               until the control value is hit
             * "largest_difference" (Not implemented yet): Adjust rounding error by
               decreasing the rounded values with the largest change from the original
-              valeus until the control value is hit
+              values until the control value is hit
 
     Returns:
         np.ndarray: Integerized data preserving sum or control value
