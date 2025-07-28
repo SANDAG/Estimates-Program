@@ -217,8 +217,6 @@ def integerize_1d(
         raise ValueError(
             f"Input parameter 'methodology' must be one of {str(allowed_methodology)}"
         )
-    if methodology == "largest_difference":
-        raise NotImplementedError("Methodology 'largest_difference' is not implemented")
 
     # Check class of input data. If not a np.ndarray, convert to one
     if not isinstance(data, (np.ndarray, list, pd.Series)):
@@ -258,31 +256,31 @@ def integerize_1d(
         return data
 
     # Scale data to match the control
-    data = data * control / np.sum(data)
+    unrounded_data = data * control / np.sum(data)
 
     # Round every value up
-    data = np.ceil(data).astype(int)
+    rounded_data = np.ceil(unrounded_data).astype(int)
 
     # Get difference between control and post-rounding sum.
     # Since data was rounded up, it is guaranteed to be the
     # same or larger than control, making diff non-negative.
-    diff = int(np.sum(data) - control)
+    diff = int(np.sum(rounded_data) - control)
 
     # Adjust values to match difference
     if diff == 0:
-        return data
+        return rounded_data
     else:
 
         # Find the index values for the n largest data points
         if methodology == "largest":
-            to_decrease = np.argsort(data, stable=True)[-diff:]
+            to_decrease = np.argsort(rounded_data, stable=True)[-diff:]
 
         # Find the index values for the n smallest non-zero data points
         elif methodology == "smallest":
             # Find and store all non-zero values/indicies
-            mask = data != 0
+            mask = rounded_data != 0
             non_zero_indicies = np.flatnonzero(mask)
-            non_zero_values = data[mask]
+            non_zero_values = rounded_data[mask]
 
             # Get index values of the n smallest non-zero data points
             n_smallest_non_zero = np.argsort(non_zero_values, stable=True)[:diff]
@@ -291,15 +289,21 @@ def integerize_1d(
             # Use the reverse lookup to get the indicies of the original data
             to_decrease = non_zero_indicies[n_smallest_non_zero]
 
+        # Find the index values for the n data points with the largest change after
+        # rounding
+        elif methodology == "largest_difference":
+            rounding_difference = rounded_data - unrounded_data
+            to_decrease = np.argsort(rounding_difference, stable=True)[-diff:]
+
         # Decrease n-largest data points by one to match control
-        np.add.at(data, to_decrease, -1)
+        np.add.at(rounded_data, to_decrease, -1)
 
         # Double check no negatives are present
-        if np.any(data < 0):
+        if np.any(rounded_data < 0):
             raise ValueError("Negative values encountered in integerized data")
 
         # Return the data
-        return data.astype(int)
+        return rounded_data.astype(int)
 
 
 def integerize_2d(
