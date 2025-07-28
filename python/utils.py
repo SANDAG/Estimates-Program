@@ -277,17 +277,16 @@ def integerize_1d(
 
         # Find the index values for the n smallest non-zero data points
         elif methodology == "smallest":
-            # Find and store all non-zero values/indicies
-            mask = rounded_data != 0
-            non_zero_indicies = np.flatnonzero(mask)
-            non_zero_values = rounded_data[mask]
+            # Find and store all non-zero values/indices
+            non_zero_indices = np.flatnonzero(rounded_data)
+            non_zero_values = rounded_data[non_zero_indices]
 
             # Get index values of the n smallest non-zero data points
             n_smallest_non_zero = np.argsort(non_zero_values, stable=True)[:diff]
 
             # The index values correspond to non_zero_values, not to the original data.
-            # Use the reverse lookup to get the indicies of the original data
-            to_decrease = non_zero_indicies[n_smallest_non_zero]
+            # Use the reverse lookup to get the indices of the original data
+            to_decrease = non_zero_indices[n_smallest_non_zero]
 
         # Find the index values for the n data points with the largest change after
         # rounding
