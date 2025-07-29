@@ -125,7 +125,9 @@ def _create_gq_outputs(gq_inputs: dict[str, pd.DataFrame]) -> dict[str, pd.DataF
     for city in gq["city"].unique():
 
         # Copy the necessary input data for this city
-        city_gq = gq[gq["city"] == city].copy(deep=True)
+        city_gq = (
+            gq[gq["city"] == city].copy(deep=True).sort_values(by=["mgra", "gq_type"])
+        )
         city_control = city_controls[city_controls["city"] == city]["value"].values[0]
 
         # Scale values to match control
@@ -289,6 +291,7 @@ def _create_hhp_outputs(hhp_inputs: dict[str, pd.DataFrame]) -> dict[str, pd.Dat
             .rename(columns={"hh": "value_hh", "value": "value_hhs"})
             .assign(value_hhp=lambda df: df["value_hh"] * df["value_hhs"])
             .drop(columns=["tract", "value_hhs"])
+            .sort_values(by=["mgra"])
         )
 
         # Compute the difference between our initial estimate of HHP and the control

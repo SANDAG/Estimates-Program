@@ -76,7 +76,7 @@ def _get_hh_income_inputs(year: int) -> dict[str, pd.DataFrame]:
                     "run_id": utils.RUN_ID,
                     "year": year,
                     "mgra_version": utils.MGRA_VERSION,
-                },
+                },  # type: ignore
             ).drop(columns=["city"])
 
         # Tract level household income distributions
@@ -84,8 +84,8 @@ def _get_hh_income_inputs(year: int) -> dict[str, pd.DataFrame]:
             utils.SQL_FOLDER / "hh_characteristics" / "get_tract_controls_hh_income.sql"
         ) as file:
             hh_income_inputs["hh_income_tract_controls"] = utils.read_sql_query_acs(
-                sql=sql.text(file.read()),
-                con=con,
+                sql=sql.text(file.read()),  # type: ignore
+                con=con,  # type: ignore
                 params={"run_id": utils.RUN_ID, "year": year},
             )
 
@@ -93,7 +93,7 @@ def _get_hh_income_inputs(year: int) -> dict[str, pd.DataFrame]:
 
 
 def _get_hh_size_inputs(year: int) -> dict[str, pd.DataFrame]:
-    """Get households and various tract level datas"""
+    """Get households and various tract level datas."""
     with utils.ESTIMATES_ENGINE.connect() as con:
         # Store results here
         hh_char_inputs = {}
@@ -108,7 +108,7 @@ def _get_hh_size_inputs(year: int) -> dict[str, pd.DataFrame]:
                     "run_id": utils.RUN_ID,
                     "year": year,
                     "mgra_version": utils.MGRA_VERSION,
-                },
+                },  # type: ignore
             ).drop(columns=["city"])
 
         # Tract level households by household size distributions
@@ -118,8 +118,8 @@ def _get_hh_size_inputs(year: int) -> dict[str, pd.DataFrame]:
             / "get_tract_controls_hh_by_size.sql"
         ) as file:
             hh_char_inputs["hhs_tract_controls"] = utils.read_sql_query_acs(
-                sql=sql.text(file.read()),
-                con=con,
+                sql=sql.text(file.read()),  # type: ignore
+                con=con,  # type: ignore
                 params={"run_id": utils.RUN_ID, "year": year},
             )
 
@@ -130,7 +130,7 @@ def _get_hh_size_inputs(year: int) -> dict[str, pd.DataFrame]:
             hh_char_inputs["hhs_mgra_controls"] = pd.read_sql_query(
                 sql=sql.text(file.read()),
                 con=con,
-                params={"run_id": utils.RUN_ID, "year": year},
+                params={"run_id": utils.RUN_ID, "year": year},  # type: ignore
             )
 
     return hh_char_inputs
@@ -195,16 +195,45 @@ def _create_hh_income(
     hh_income = (
         hh.merge(tract_income_dist, on=["run_id", "year", "tract"], how="left")
         .assign(hh=lambda df: df["hh"] * df["value"])
-        .drop(columns=["tract", "value"])
+        .drop(columns=["value"])
+        .pivot(
+            index=["run_id", "year", "mgra", "tract"],
+            columns="income_category",
+            values="hh",
+        )
+        .reset_index(drop=False)
+        .sort_values(by="mgra")
     )
 
-    # Control each MGRA so households by household income exactly matches the total
-    # households
-    integerized_groups = []
-    for _, group in hh_income.groupby("mgra"):
-        group["hh"] = utils.integerize_1d(group["hh"])
-        integerized_groups.append(group)
-    hh_income = pd.concat(integerized_groups)
+    # To ensure that we pretty much exactly match ACS distributions, we will do two
+    # dimensional controlling on the MGRA level data. After splitting the data into
+    # separate tracts, row controls will be total households in each MGRA and column
+    # controls will be tract level household income
+    controlled_groups = []
+    for tract, group in hh_income.groupby("tract"):
+        seed_data = group[utils.INCOME_CATEGORIES].to_numpy()
+        row_controls = (
+            group[utils.INCOME_CATEGORIES].sum(axis=1).to_numpy().round(0).astype(int)
+        )
+        col_controls = utils.integerize_1d(group[utils.INCOME_CATEGORIES].sum(axis=0))
+        controlled_data = utils.integerize_2d(
+            data=seed_data,
+            row_ctrls=row_controls,
+            col_ctrls=col_controls,
+            condition="exact",
+            suppress_warnings=True,
+        )
+        group[utils.INCOME_CATEGORIES] = controlled_data
+        controlled_groups.append(group)
+
+    # Coerce the controlled data back into the original format. Note that pd.melt()
+    # does not include the "tract" column, which functionally drops it
+    hh_income = pd.concat(controlled_groups).melt(
+        id_vars=["run_id", "year", "mgra"],
+        value_vars=utils.INCOME_CATEGORIES,
+        var_name="income_category",
+        value_name="hh",
+    )
 
     return {"hh_income": hh_income}
 
@@ -245,15 +274,50 @@ def _create_hh_size(
     hh_size = (
         hh.merge(tract_hhs_dist, on=["run_id", "year", "tract"], how="left")
         .assign(hh=lambda df: df["hh"] * df["value"])
-        .drop(columns=["tract", "value"])
+        .drop(columns=["value"])
+        .pivot(
+            index=["run_id", "year", "mgra", "tract"],
+            columns="household_size",
+            values="hh",
+        )
+        .reset_index(drop=False)
+        .sort_values(by="mgra")
     )
 
-    # Control each MGRA so households by size exactly match total households
-    integerized_groups = []
-    for _, group in hh_size.groupby("mgra"):
-        group["hh"] = utils.integerize_1d(group["hh"])
-        integerized_groups.append(group)
-    hh_size = pd.concat(integerized_groups)
+    # To ensure that we pretty much exactly match ACS distributions, we will do two
+    # dimensional controlling on the MGRA level data. After splitting the data into
+    # separate tracts, row controls will be total households in each MGRA and column
+    # controls will be tract level households by size
+    controlled_groups = []
+    for tract, group in hh_size.groupby("tract"):
+        seed_data = group[utils.HOUSEHOLD_SIZES].to_numpy()
+        row_controls = (
+            group[utils.HOUSEHOLD_SIZES].sum(axis=1).to_numpy().round(0).astype(int)
+        )
+        col_controls = utils.integerize_1d(group[utils.HOUSEHOLD_SIZES].sum(axis=0))
+        controlled_data = utils.integerize_2d(
+            data=seed_data,
+            row_ctrls=row_controls,
+            col_ctrls=col_controls,
+            condition="exact",
+            suppress_warnings=True,
+        )
+        group[utils.HOUSEHOLD_SIZES] = controlled_data
+        controlled_groups.append(group)
+
+    # Coerce the controlled data back into the original format. Note that pd.melt()
+    # does not include the "tract" column, which functionally drops it
+    hh_size = (
+        pd.concat(controlled_groups).melt(
+            id_vars=["run_id", "year", "mgra"],
+            value_vars=utils.HOUSEHOLD_SIZES,
+            var_name="household_size",
+            value_name="hh",
+        )
+        # For some reason, melt forces the household_size column to object type, even
+        # though all values are integer
+        .astype(int)
+    )
 
     # Control each MGRA to align with household population
     controlled_groups = []
@@ -263,9 +327,8 @@ def _create_hh_size(
 
         # Compute the minimum and maximum implied hhp from the hhs distribution. The
         # maximum assumes that every household in the 7+ category is of size 11, which
-        # is what we get from looking at the San Diego region PUMS data. See GithHub
-        # for more info:
-        # https://github.com/SANDAG/Estimates-Program/issues/112
+        # is what we get from looking at the San Diego region PUMS data. See GitHub
+        # for more info: https://github.com/SANDAG/Estimates-Program/issues/112
         n_people_in_7_plus = 11
         min_implied_hhp = (group["hh"] * group["household_size"]).sum()
         max_implied_hhp = (

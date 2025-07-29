@@ -22,6 +22,7 @@ SQL_FOLDER = ROOT_FOLDER / "sql"
 ###########
 # LOGGING #
 ###########
+
 # Create a console handler
 _console_handler = logging.StreamHandler()
 _console_handler.setLevel(logging.INFO)
@@ -109,6 +110,25 @@ logger.info(
     f"RUN_ID: {RUN_ID}, MGRA_VERSION: {MGRA_VERSION}, YEARS: {RUN_INSTRUCTIONS["years"]}"
 )
 
+##############################
+# UTILITY LISTS AND MAPPINGS #
+##############################
+
+HOUSEHOLD_SIZES = list(range(1, 8))
+
+INCOME_CATEGORIES = [
+    "Less than $15,000",
+    "$15,000 to $29,999",
+    "$30,000 to $44,999",
+    "$45,000 to $59,999",
+    "$60,000 to $74,999",
+    "$75,000 to $99,999",
+    "$100,000 to $124,999",
+    "$125,000 to $149,999",
+    "$150,000 to $199,999",
+    "$200,000 or more",
+]
+
 # Minimum and maximum age values for each age group
 AGE_MAPPING = {
     "Under 5": {"min": 0, "max": 4},
@@ -139,7 +159,7 @@ AGE_MAPPING = {
 #####################
 
 
-def display_ascii_art(filename):
+def display_ascii_art(filename: str) -> None:
     """Displays ASCII art from a text file."""
     try:
         with open(filename, "r") as file:
@@ -151,7 +171,9 @@ def display_ascii_art(filename):
 
 
 def integerize_1d(
-    data: np.ndarray | list | pd.Series, control: int | float | None = None
+    data: np.ndarray | list | pd.Series,
+    control: int | float | None = None,
+    methodology: str = "largest_difference",
 ) -> np.ndarray:
     """Safe rounding of 1-dimensional array-like structures.
 
@@ -167,10 +189,20 @@ def integerize_1d(
     zero gives us much more flexibility in manual adjustment.
 
     Args:
-        data: An array-like structure of float or integer values
-        control: Optional control value to scale the input data such that the final sum
-            of the elements exactly the control value. If not value is provided, then
-            the sum of the input data will be preserved
+        data (np.ndarray | list | pd.Series): An array-like structure of float or
+            integer values
+        control (int | float | None): Optional control value to scale the input data
+            such that the final sum of the elements exactly the control value. If not
+            value is provided, then the sum of the input data will be preserved
+        methodology (str): How to adjust for rounding error. Defaults to
+            "largest_difference". Valid inputs are:
+            * "largest": Adjust rounding error by decreasing the largest values until
+              the control value is hit
+            * "smallest": Adjust rounding error by decreasing the smallest non-zero
+              until the control value is hit
+            * "largest_difference": Adjust rounding error by decreasing the rounded
+              values with the largest change from the original values until the control
+              value is hit
 
     Returns:
         np.ndarray: Integerized data preserving sum or control value
@@ -181,6 +213,13 @@ def integerize_1d(
         ValueError: If no control value is provided and the input data does not sum to
             an integer
     """
+    # Check rounding error methodology
+    allowed_methodology = ["largest", "smallest", "largest_difference"]
+    if methodology not in allowed_methodology:
+        raise ValueError(
+            f"Input parameter 'methodology' must be one of {str(allowed_methodology)}"
+        )
+
     # Check class of input data. If not a np.ndarray, convert to one
     if not isinstance(data, (np.ndarray, list, pd.Series)):
         raise TypeError(
@@ -219,33 +258,53 @@ def integerize_1d(
         return data
 
     # Scale data to match the control
-    data = data * control / np.sum(data)
+    unrounded_data = data * control / np.sum(data)
 
     # Round every value up
-    data = np.ceil(data).astype(int)
+    rounded_data = np.ceil(unrounded_data).astype(int)
 
     # Get difference between control and post-rounding sum.
     # Since data was rounded up, it is guaranteed to be the
     # same or larger than control, making diff non-negative.
-    diff = int(np.sum(data) - control)
+    diff = int(np.sum(rounded_data) - control)
 
     # Adjust values to match difference
     if diff == 0:
-        return data
+        return rounded_data
     else:
-        # Find the index values for the n-largest data points
-        # Where n is equal to the difference
-        to_decrease = np.argsort(data, stable=True)[-diff:]
+
+        # Find the index values for the n largest data points
+        if methodology == "largest":
+            to_decrease = np.argsort(rounded_data, stable=True)[-diff:]
+
+        # Find the index values for the n smallest non-zero data points
+        elif methodology == "smallest":
+            # Find and store all non-zero values/indices
+            non_zero_indices = np.flatnonzero(rounded_data)
+            non_zero_values = rounded_data[non_zero_indices]
+
+            # Get index values of the n smallest non-zero data points
+            n_smallest_non_zero = np.argsort(non_zero_values, stable=True)[:diff]
+
+            # The index values correspond to non_zero_values, not to the original data.
+            # Use the reverse lookup to get the indices of the original data
+            to_decrease = non_zero_indices[n_smallest_non_zero]
+
+        # Find the index values for the n data points with the largest change after
+        # rounding
+        elif methodology == "largest_difference":
+            rounding_difference = rounded_data - unrounded_data
+            to_decrease = np.argsort(rounding_difference, stable=True)[-diff:]
 
         # Decrease n-largest data points by one to match control
-        np.add.at(data, to_decrease, -1)
+        np.add.at(rounded_data, to_decrease, -1)
 
         # Double check no negatives are present
-        if np.any(data < 0):
+        if np.any(rounded_data < 0):
             raise ValueError("Negative values encountered in integerized data")
 
         # Return the data
-        return data.astype(int)
+        return rounded_data.astype(int)
 
 
 def integerize_2d(
@@ -253,7 +312,8 @@ def integerize_2d(
     row_ctrls: np.ndarray,
     col_ctrls: np.ndarray,
     condition: str = "exact",
-    nearest_neighbors: list[int] = None,
+    nearest_neighbors: list[int] | None = None,
+    suppress_warnings: bool = False,
 ) -> np.ndarray:
     """Safe rounding of 2-dimensional array-like structures.
 
@@ -290,7 +350,8 @@ def integerize_2d(
             ['exact', 'less than']. Defaults to "exact".
         nearest_neighbors (list[int], optional): List of integer values to use as
             neighborhood for 'Nearest Neighbors' relaxation. Defaults to [1].
-
+        suppress_warnings (bool, optional): If True, suppresses warnings about
+            relaxing the skip condition. Defaults to False.
     Returns:
         np.ndarray: Integerized data preserving control values
     """
@@ -424,10 +485,11 @@ def integerize_2d(
             if relax_skip_condition is None:
                 relax_skip_condition = "Nearest Neighbors"
                 neighborhood = nearest_neighbors[0]  # use first value in list
-                logger.warning(
-                    f"Skip condition relaxed to '{relax_skip_condition}' for 2-d integerizer."
-                    f" Neighborhood set to (+/-) {neighborhood}."
-                )
+                if not suppress_warnings:
+                    logger.warning(
+                        f"Skip condition relaxed to '{relax_skip_condition}' for 2-d integerizer."
+                        f" Neighborhood set to (+/-) {neighborhood}."
+                    )
             # If condition has already been relaxed to nearest neighbors
             # Set neighborhood to next value in the list of integers
             # If nearest_neighbors is exhausted, allow adjustment to all columns
@@ -440,7 +502,8 @@ def integerize_2d(
                         neighborhood = n
                         msg = f" Neighborhood increased to (+/-) {neighborhood}."
                         break
-                logger.warning(msg)
+                if not suppress_warnings:
+                    logger.warning(msg)
             # If condition has already been relaxed to allow all columns raise error
             elif relax_skip_condition == "Allow all Columns":
                 raise ValueError(
@@ -479,7 +542,7 @@ def read_sql_query_acs(**kwargs: dict) -> pd.DataFrame:
     Returns:
         pd.DataFrame: Result of the SQL query
     """
-    df = pd.read_sql_query(**kwargs)
+    df = pd.read_sql_query(**kwargs)  # type: ignore
 
     # Check if returned DataFrame contains SQL message
     if df.columns.tolist() == ["msg"]:
@@ -493,7 +556,7 @@ def read_sql_query_acs(**kwargs: dict) -> pd.DataFrame:
                 + str(kwargs["params"]["year"])
             )
 
-            df = pd.read_sql_query(**kwargs)
+            df = pd.read_sql_query(**kwargs)  # type: ignore
 
             # If the year column exists, set it to the original year
             if "year" in df.columns:
