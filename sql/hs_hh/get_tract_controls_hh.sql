@@ -89,25 +89,41 @@ BEGIN
                     'Estimate!!Total:!!20 to 49',
                     'Estimate!!Total:!!50 or more'
                 )  THEN 'Multifamily'
-                WHEN [label] IN (
-                    'Estimate!!Total:!!Boat, RV, van, etc.',
-                    'Estimate!!Total:!!Mobile home')
-                THEN 'Mobile Home'
                 ELSE NULL  -- NULL values for Margin of Error fields removed in subsequent WHERE clause
             END AS [structure_type],
             [value]
-        FROM [acs].[detailed].[values] AS [val]
-        LEFT JOIN [acs].[detailed].[geography] AS [geo]
-            ON [val].[geography_id] = [geo].[geography_id]
-        LEFT JOIN [acs].[detailed].[variables] AS [vari]
-            ON [val].[variable] = [vari].[variable]
-            AND [val].[table_id] = [vari].[table_id]
-        LEFT JOIN [acs].[detailed].[tables] AS [tbls]
-            ON [val].[table_id] = [tbls].[table_id]
-        WHERE 
-            [tbls].[name] = 'B25024'
-            AND [tbls].[year] = @year
-            AND [tbls].[product] = '5Y'
+        FROM [acs].[detailed].[values]
+        LEFT JOIN [acs].[detailed].[geography]
+            ON [values].[geography_id] = [geography].[geography_id]
+        LEFT JOIN [acs].[detailed].[variables]
+            ON [values].[variable] = [variables].[variable]
+            AND [values].[table_id] = [variables].[table_id]
+        LEFT JOIN [acs].[detailed].[tables]
+            ON [values].[table_id] = [tables].[table_id]
+        WHERE [tables].[name] = 'B25024'
+            AND [tables].[year] = @year
+            AND [tables].[product] = '5Y'
+
+        UNION ALL
+
+        SELECT
+            [tract],
+            'Mobile Home' AS [structure_type],
+            [value]
+        FROM [acs].[detailed].[values]
+        LEFT JOIN [acs].[detailed].[geography]
+            ON [values].[geography_id] = [geography].[geography_id]
+        LEFT JOIN [acs].[detailed].[variables]
+            ON [values].[variable] = [variables].[variable]
+            AND [values].[table_id] = [variables].[table_id]
+        LEFT JOIN [acs].[detailed].[tables]
+            ON [values].[table_id] = [tables].[table_id]
+        WHERE [tables].[name] = 'B25024'
+            AND [tables].[year] = @year
+            AND [tables].[product] = '5Y'
+            AND [label] IN (
+                'Estimate!!Total:!!Boat, RV, van, etc.',
+                'Estimate!!Total:!!Mobile home')
     ) AS [b25024]
     WHERE
         [structure_type] IS NOT NULL
@@ -160,18 +176,40 @@ BEGIN
                 ELSE NULL  -- NULL values for Margin of Error fields removed in subsequent WHERE clause
             END AS [structure_type],
             [value]
-        FROM [acs].[detailed].[values] AS [val]
-        LEFT JOIN [acs].[detailed].[geography] AS [geo]
-            ON [val].[geography_id] = [geo].[geography_id]
-        LEFT JOIN [acs].[detailed].[variables] AS [vari]
-            ON [val].[variable] = [vari].[variable]
-            AND [val].[table_id] = [vari].[table_id]
-        LEFT JOIN [acs].[detailed].[tables] AS [tbls]
-            ON [val].[table_id] = [tbls].[table_id]
-        WHERE 
-            [tbls].[name] = 'B25032'
-            AND [tbls].[year] = @year
-            AND [tbls].[product] = '5Y'
+        FROM [acs].[detailed].[values]
+        LEFT JOIN [acs].[detailed].[geography]
+            ON [values].[geography_id] = [geography].[geography_id]
+        LEFT JOIN [acs].[detailed].[variables]
+            ON [values].[variable] = [variables].[variable]
+            AND [values].[table_id] = [variables].[table_id]
+        LEFT JOIN [acs].[detailed].[tables]
+            ON [values].[table_id] = [tables].[table_id]
+        WHERE [tables].[name] = 'B25032'
+            AND [tables].[year] = @year
+            AND [tables].[product] = '5Y'
+
+        UNION ALL
+
+        SELECT
+            [tract],
+            'Mobile Home' AS [structure_type],
+            [value]
+        FROM [acs].[detailed].[values]
+        LEFT JOIN [acs].[detailed].[geography]
+            ON [values].[geography_id] = [geography].[geography_id]
+        LEFT JOIN [acs].[detailed].[variables]
+            ON [values].[variable] = [variables].[variable]
+            AND [values].[table_id] = [variables].[table_id]
+        LEFT JOIN [acs].[detailed].[tables]
+            ON [values].[table_id] = [tables].[table_id]
+        WHERE [tables].[name] = 'B25032'
+            AND [tables].[year] = @year
+            AND [tables].[product] = '5Y'
+            AND [label] IN (
+                'Estimate!!Total:!!Owner-occupied housing units:!!Boat, RV, van, etc.',
+                'Estimate!!Total:!!Owner-occupied housing units:!!Mobile home',
+                'Estimate!!Total:!!Renter-occupied housing units:!!Boat, RV, van, etc.',
+                'Estimate!!Total:!!Renter-occupied housing units:!!Mobile home')
     ) AS [b25032]
     WHERE
         [structure_type] IS NOT NULL
