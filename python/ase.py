@@ -14,6 +14,7 @@ import sqlalchemy as sql
 import python.tests as tests
 import python.utils as utils
 
+generator = np.random.default_rng(utils.RANDOM_SEED)
 logger = logging.getLogger(__name__)
 
 
@@ -165,6 +166,7 @@ def _create_controls(controls_inputs: dict[str, pd.DataFrame]) -> pd.DataFrame:
     region_ase_total["population"] = utils.integerize_1d(
         data=region_ase_total["population"].astype(float),
         control=region_pop_type["value"].sum(),
+        generator=generator,
     )
 
     # Calculate the group quarters age/sex/ethnicity population
@@ -203,6 +205,7 @@ def _create_controls(controls_inputs: dict[str, pd.DataFrame]) -> pd.DataFrame:
         row_ctrls=row_ctrls,
         col_ctrls=col_ctrls,
         condition="less than",
+        generator=generator,
     )
 
     # Assign results back to DataFrame
@@ -568,6 +571,7 @@ def _create_ase(
             col_ctrls=col_ctrls,
             condition="exact",
             nearest_neighbors=list(range(5, 55, 5)),
+            generator=generator,
         )
 
         # Assign results back to DataFrame

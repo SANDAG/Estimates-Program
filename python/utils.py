@@ -114,6 +114,8 @@ logger.info(
 # UTILITY LISTS AND MAPPINGS #
 ##############################
 
+RANDOM_SEED = 42  # Seed for random number generation
+
 HOUSEHOLD_SIZES = list(range(1, 8))
 
 INCOME_CATEGORIES = [
@@ -173,8 +175,8 @@ def display_ascii_art(filename: str) -> None:
 def integerize_1d(
     data: np.ndarray | list | pd.Series,
     control: int | float | None = None,
-    methodology: str = "largest_difference",
-    generator: np.random.Generator = None,
+    methodology: str = "weighted_random",
+    generator: np.random.Generator | None = None,
 ) -> np.ndarray:
     """Safe rounding of 1-dimensional array-like structures.
 
@@ -207,7 +209,7 @@ def integerize_1d(
             * "weighted_random": Adjust rounding error by decreasing the rounded values
               randomly, with more weight given to those that had a larger change. This
               methodology requires the "generator" parameter to be provided
-        generator (np.random.Generator): A seeded random generator used to select values
+        generator (np.random.Generator | None): A seeded random generator used to select values
             to change. This is intentionally required from outside the function, as if
             this function created a new seeded generator upon every call, it could
             consistently choose the same categories due to the same random state
@@ -351,6 +353,7 @@ def integerize_2d(
     condition: str = "exact",
     nearest_neighbors: list[int] | None = None,
     suppress_warnings: bool = False,
+    generator: np.random.Generator | None = None,
 ) -> np.ndarray:
     """Safe rounding of 2-dimensional array-like structures.
 
@@ -389,6 +392,7 @@ def integerize_2d(
             neighborhood for 'Nearest Neighbors' relaxation. Defaults to [1].
         suppress_warnings (bool, optional): If True, suppresses warnings about
             relaxing the skip condition. Defaults to False.
+        generator (np.random.Generator | None): See `integerize_1d` for details.
     Returns:
         np.ndarray: Integerized data preserving control values
     """
@@ -432,7 +436,9 @@ def integerize_2d(
 
     # Round columns of the input data array to match marginal controls
     for col_idx in range(array_2d.shape[1]):
-        array_2d[:, col_idx] = integerize_1d(array_2d[:, col_idx], col_ctrls[col_idx])
+        array_2d[:, col_idx] = integerize_1d(
+            array_2d[:, col_idx], col_ctrls[col_idx], generator=generator
+        )
 
     # Calculate deviations from row marginal controls
     deviations = np.sum(array_2d, axis=1) - row_ctrls

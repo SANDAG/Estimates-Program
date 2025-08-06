@@ -2,11 +2,14 @@
 # page for more details:
 # https://github.com/SANDAG/Estimates-Program/wiki/Household-Characteristics
 
+import numpy as np
 import pandas as pd
 import sqlalchemy as sql
 
 import python.utils as utils
 import python.tests as tests
+
+generator = np.random.default_rng(utils.RANDOM_SEED)
 
 
 def run_hh_characteristics(year: int) -> None:
@@ -212,17 +215,25 @@ def _create_hh_income(
     controlled_groups = []
     for tract, group in hh_income.groupby("tract"):
         seed_data = group[utils.INCOME_CATEGORIES].to_numpy()
+
         row_controls = (
             group[utils.INCOME_CATEGORIES].sum(axis=1).to_numpy().round(0).astype(int)
         )
-        col_controls = utils.integerize_1d(group[utils.INCOME_CATEGORIES].sum(axis=0))
+
+        col_controls = utils.integerize_1d(
+            group[utils.INCOME_CATEGORIES].sum(axis=0), generator=generator
+        )
+
         controlled_data = utils.integerize_2d(
             data=seed_data,
             row_ctrls=row_controls,
             col_ctrls=col_controls,
             condition="exact",
             suppress_warnings=True,
+            generator=generator,
         )
+
+        # Assign the controlled data back to the tract
         group[utils.INCOME_CATEGORIES] = controlled_data
         controlled_groups.append(group)
 
@@ -291,17 +302,25 @@ def _create_hh_size(
     controlled_groups = []
     for tract, group in hh_size.groupby("tract"):
         seed_data = group[utils.HOUSEHOLD_SIZES].to_numpy()
+
         row_controls = (
             group[utils.HOUSEHOLD_SIZES].sum(axis=1).to_numpy().round(0).astype(int)
         )
-        col_controls = utils.integerize_1d(group[utils.HOUSEHOLD_SIZES].sum(axis=0))
+
+        col_controls = utils.integerize_1d(
+            group[utils.HOUSEHOLD_SIZES].sum(axis=0), generator=generator
+        )
+
         controlled_data = utils.integerize_2d(
             data=seed_data,
             row_ctrls=row_controls,
             col_ctrls=col_controls,
             condition="exact",
             suppress_warnings=True,
+            generator=generator,
         )
+
+        # Assign the controlled data back to the tract
         group[utils.HOUSEHOLD_SIZES] = controlled_data
         controlled_groups.append(group)
 
