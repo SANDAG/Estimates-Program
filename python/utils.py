@@ -174,6 +174,7 @@ def integerize_1d(
     data: np.ndarray | list | pd.Series,
     control: int | float | None = None,
     methodology: str = "largest_difference",
+    generator: np.random.Generator = None,
 ) -> np.ndarray:
     """Safe rounding of 1-dimensional array-like structures.
 
@@ -203,6 +204,13 @@ def integerize_1d(
             * "largest_difference": Adjust rounding error by decreasing the rounded
               values with the largest change from the original values until the control
               value is hit
+            * "weighted_random": Adjust rounding error by decreasing the rounded values
+              randomly, with more weight given to those that had a larger change. This
+              methodology requires the "generator" parameter to be provided
+        generator (np.random.Generator): A seeded random generator used to select values
+            to change. This is intentionally required from outside the function, as if
+            this function created a new seeded generator upon every call, it could
+            consistently choose the same categories due to the same random state
 
     Returns:
         np.ndarray: Integerized data preserving sum or control value
@@ -214,11 +222,29 @@ def integerize_1d(
             an integer
     """
     # Check rounding error methodology
-    allowed_methodology = ["largest", "smallest", "largest_difference"]
+    allowed_methodology = [
+        "largest",
+        "smallest",
+        "largest_difference",
+        "weighted_random",
+    ]
     if methodology not in allowed_methodology:
         raise ValueError(
             f"Input parameter 'methodology' must be one of {str(allowed_methodology)}"
         )
+
+    # Check a random generator is passed if we are doing "weighted_random"
+    if methodology == "weighted_random":
+        if generator is None:
+            raise ValueError(
+                f"Input parameter 'generator' must be provided when the 'methodology' "
+                f"is '{methodology}'"
+            )
+        if type(generator) != np.random.Generator:
+            raise ValueError(
+                f"Input parameter 'generator' must be of type 'np.random.Generator', "
+                f"not {type(generator)}"
+            )
 
     # Check class of input data. If not a np.ndarray, convert to one
     if not isinstance(data, (np.ndarray, list, pd.Series)):
@@ -295,6 +321,17 @@ def integerize_1d(
         elif methodology == "largest_difference":
             rounding_difference = rounded_data - unrounded_data
             to_decrease = np.argsort(rounding_difference, stable=True)[-diff:]
+
+        # Find n random index values weighted on which had the largest change after
+        # rounding
+        elif methodology == "weighted_random":
+            rounding_difference = rounded_data - unrounded_data
+            to_decrease = generator.choice(
+                a=rounding_difference.size,
+                size=diff,
+                replace=False,
+                p=rounding_difference / rounding_difference.sum(),
+            )
 
         # Decrease n-largest data points by one to match control
         np.add.at(rounded_data, to_decrease, -1)
