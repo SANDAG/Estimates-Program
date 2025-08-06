@@ -198,7 +198,7 @@ def integerize_1d(
             such that the final sum of the elements exactly the control value. If not
             value is provided, then the sum of the input data will be preserved
         methodology (str): How to adjust for rounding error. Defaults to
-            "largest_difference". Valid inputs are:
+            "weighted_random". Valid inputs are:
             * "largest": Adjust rounding error by decreasing the largest values until
               the control value is hit
             * "smallest": Adjust rounding error by decreasing the smallest non-zero
@@ -209,10 +209,11 @@ def integerize_1d(
             * "weighted_random": Adjust rounding error by decreasing the rounded values
               randomly, with more weight given to those that had a larger change. This
               methodology requires the "generator" parameter to be provided
-        generator (np.random.Generator | None): A seeded random generator used to select values
-            to change. This is intentionally required from outside the function, as if
-            this function created a new seeded generator upon every call, it could
-            consistently choose the same categories due to the same random state
+        generator (np.random.Generator | None): A seeded random generator used to
+            select values to change. This is intentionally required from outside the
+            function, as if this function created a new seeded generator upon every
+            call, it could consistently choose the same categories due to the same
+            random state.
 
     Returns:
         np.ndarray: Integerized data preserving sum or control value
