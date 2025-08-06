@@ -2,11 +2,14 @@
 # page for more details:
 # https://github.com/SANDAG/Estimates-Program/wiki/Housing-and-Households
 
+import numpy as np
 import pandas as pd
 import sqlalchemy as sql
 
 import python.utils as utils
 import python.tests as tests
+
+generator = np.random.default_rng(utils.RANDOM_SEED)
 
 
 def run_hs_hh(year: int) -> None:
@@ -168,7 +171,7 @@ def _create_hs_hh(hs_hh_inputs: dict[str, pd.DataFrame]) -> dict[str, pd.DataFra
 
         # Integerize households preserving total
         hh["value_hh"] *= round(hh["value_hh"].sum()) / hh["value_hh"].sum()
-        hh["value_hh"] = utils.integerize_1d(hh["value_hh"])
+        hh["value_hh"] = utils.integerize_1d(hh["value_hh"], generator=generator)
 
         # Reallocate households where households > housing stock or < 0
         # Add/remove households tracking total adjustment number

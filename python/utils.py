@@ -114,6 +114,8 @@ logger.info(
 # UTILITY LISTS AND MAPPINGS #
 ##############################
 
+RANDOM_SEED = 42  # Seed for random number generation
+
 HOUSEHOLD_SIZES = list(range(1, 8))
 
 INCOME_CATEGORIES = [
@@ -173,7 +175,8 @@ def display_ascii_art(filename: str) -> None:
 def integerize_1d(
     data: np.ndarray | list | pd.Series,
     control: int | float | None = None,
-    methodology: str = "largest_difference",
+    methodology: str = "weighted_random",
+    generator: np.random.Generator | None = None,
 ) -> np.ndarray:
     """Safe rounding of 1-dimensional array-like structures.
 
@@ -195,7 +198,7 @@ def integerize_1d(
             such that the final sum of the elements exactly the control value. If not
             value is provided, then the sum of the input data will be preserved
         methodology (str): How to adjust for rounding error. Defaults to
-            "largest_difference". Valid inputs are:
+            "weighted_random". Valid inputs are:
             * "largest": Adjust rounding error by decreasing the largest values until
               the control value is hit
             * "smallest": Adjust rounding error by decreasing the smallest non-zero
@@ -203,6 +206,14 @@ def integerize_1d(
             * "largest_difference": Adjust rounding error by decreasing the rounded
               values with the largest change from the original values until the control
               value is hit
+            * "weighted_random": Adjust rounding error by decreasing the rounded values
+              randomly, with more weight given to those that had a larger change. This
+              methodology requires the "generator" parameter to be provided
+        generator (np.random.Generator | None): A seeded random generator used to
+            select values to change. This is intentionally required from outside the
+            function, as if this function created a new seeded generator upon every
+            call, it could consistently choose the same categories due to the same
+            random state.
 
     Returns:
         np.ndarray: Integerized data preserving sum or control value
@@ -214,11 +225,29 @@ def integerize_1d(
             an integer
     """
     # Check rounding error methodology
-    allowed_methodology = ["largest", "smallest", "largest_difference"]
+    allowed_methodology = [
+        "largest",
+        "smallest",
+        "largest_difference",
+        "weighted_random",
+    ]
     if methodology not in allowed_methodology:
         raise ValueError(
             f"Input parameter 'methodology' must be one of {str(allowed_methodology)}"
         )
+
+    # Check a random generator is passed if we are doing "weighted_random"
+    if methodology == "weighted_random":
+        if generator is None:
+            raise ValueError(
+                f"Input parameter 'generator' must be provided when the 'methodology' "
+                f"is '{methodology}'"
+            )
+        if type(generator) != np.random.Generator:
+            raise ValueError(
+                f"Input parameter 'generator' must be of type 'np.random.Generator', "
+                f"not {type(generator)}"
+            )
 
     # Check class of input data. If not a np.ndarray, convert to one
     if not isinstance(data, (np.ndarray, list, pd.Series)):
@@ -296,6 +325,17 @@ def integerize_1d(
             rounding_difference = rounded_data - unrounded_data
             to_decrease = np.argsort(rounding_difference, stable=True)[-diff:]
 
+        # Find n random index values weighted on which had the largest change after
+        # rounding
+        elif methodology == "weighted_random":
+            rounding_difference = rounded_data - unrounded_data
+            to_decrease = generator.choice(
+                a=rounding_difference.size,
+                size=diff,
+                replace=False,
+                p=rounding_difference / rounding_difference.sum(),
+            )
+
         # Decrease n-largest data points by one to match control
         np.add.at(rounded_data, to_decrease, -1)
 
@@ -314,6 +354,7 @@ def integerize_2d(
     condition: str = "exact",
     nearest_neighbors: list[int] | None = None,
     suppress_warnings: bool = False,
+    generator: np.random.Generator | None = None,
 ) -> np.ndarray:
     """Safe rounding of 2-dimensional array-like structures.
 
@@ -352,6 +393,7 @@ def integerize_2d(
             neighborhood for 'Nearest Neighbors' relaxation. Defaults to [1].
         suppress_warnings (bool, optional): If True, suppresses warnings about
             relaxing the skip condition. Defaults to False.
+        generator (np.random.Generator | None): See `integerize_1d` for details.
     Returns:
         np.ndarray: Integerized data preserving control values
     """
@@ -395,7 +437,9 @@ def integerize_2d(
 
     # Round columns of the input data array to match marginal controls
     for col_idx in range(array_2d.shape[1]):
-        array_2d[:, col_idx] = integerize_1d(array_2d[:, col_idx], col_ctrls[col_idx])
+        array_2d[:, col_idx] = integerize_1d(
+            array_2d[:, col_idx], col_ctrls[col_idx], generator=generator
+        )
 
     # Calculate deviations from row marginal controls
     deviations = np.sum(array_2d, axis=1) - row_ctrls

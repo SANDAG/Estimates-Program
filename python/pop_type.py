@@ -1,11 +1,14 @@
 # Container for the Population by Type module. See the Estimates-Program wiki page for
 # more details: https://github.com/SANDAG/Estimates-Program/wiki/Population-by-Type
 
+import numpy as np
 import pandas as pd
 import sqlalchemy as sql
 
 import python.utils as utils
 import python.tests as tests
+
+generator = np.random.default_rng(utils.RANDOM_SEED)
 
 
 def run_pop(year: int):
@@ -134,7 +137,9 @@ def _create_gq_outputs(gq_inputs: dict[str, pd.DataFrame]) -> dict[str, pd.DataF
         if city_control > 0:
             multiplier = city_control / city_gq["value"].sum()
             city_gq["value"] *= multiplier
-            city_gq["value"] = utils.integerize_1d(city_gq["value"])
+            city_gq["value"] = utils.integerize_1d(
+                city_gq["value"], generator=generator
+            )
         else:
             city_gq["value"] = 0
 
@@ -302,7 +307,7 @@ def _create_hhp_outputs(hhp_inputs: dict[str, pd.DataFrame]) -> dict[str, pd.Dat
         hhp["value_hhp"] *= multiplier
 
         # Integerize household population while preserving the total amount
-        hhp["value_hhp"] = utils.integerize_1d(hhp["value_hhp"])
+        hhp["value_hhp"] = utils.integerize_1d(hhp["value_hhp"], generator=generator)
 
         # Reallocate household population which contradicts the number of households.
         # See the _calculate_hhp_adjustment() function for exact situations
