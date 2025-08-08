@@ -162,7 +162,7 @@ def _create_controls(controls_inputs: dict[str, pd.DataFrame]) -> pd.DataFrame:
     # Scale the regional age/sex/ethnicity total controls to the regional population
     region_ase_total = region_ase_total.sort_values(
         by=["age_group", "sex", "ethnicity"]
-    )
+    ).reset_index(drop=True)
     region_ase_total["population"] = utils.integerize_1d(
         data=region_ase_total["population"].astype(float),
         control=region_pop_type["value"].sum(),
