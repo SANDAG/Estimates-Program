@@ -301,7 +301,7 @@ def _create_seed(seed_inputs: dict[str, pd.DataFrame]) -> pd.DataFrame:
 
     output = []
     # Within each census tract
-    for tract in seed_inputs["b01001_b_i"]["tract"].unique():
+    for tract in np.sort(seed_inputs["b01001_b_i"]["tract"].unique()):
         # Create inputs to IPF of numpy ndarrays
         ipf_inputs = {}
         for table, metadata in dimensions.items():
@@ -531,7 +531,7 @@ def _create_ase(
     # Integerize the IPF results
     result = {}
     # For each population type
-    for pop_type in ipf_result["pop_type"].unique():
+    for pop_type in np.sort(ipf_result["pop_type"].unique()):
         logger.info("Integerizing population for " + pop_type)
 
         # Pivot data into numpy array
@@ -632,7 +632,7 @@ def _create_ase(
             )
 
             # For each MGRA in the special MGRAs
-            for mgra in special_mgras["mgra"].unique():
+            for mgra in np.sort(special_mgras["mgra"].unique()):
                 # Store values of un-restricted categories for the MGRA
                 unrestricted_ase = special_ase.query(
                     "mgra == @mgra and not restricted"
