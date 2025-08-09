@@ -154,6 +154,10 @@ def _validate_controls_inputs(controls_inputs: dict[str, pd.DataFrame]) -> None:
 def _create_controls(controls_inputs: dict[str, pd.DataFrame]) -> pd.DataFrame:
     """Create regional age/sex/ethnicity controls by population type."""
 
+    # This function is called multiple times, so in order to have consistent output it
+    # needs to use it's very own random number generator
+    local_generator = np.random.default_rng(seed=utils.RANDOM_SEED)
+
     # Load input data into separate variables for cleaner manipulation
     region_ase_total = controls_inputs["region_ase_total"]
     region_gq_ase_dist = controls_inputs["region_gq_ase_dist"]
@@ -166,7 +170,7 @@ def _create_controls(controls_inputs: dict[str, pd.DataFrame]) -> pd.DataFrame:
     region_ase_total["population"] = utils.integerize_1d(
         data=region_ase_total["population"].astype(float),
         control=region_pop_type["value"].sum(),
-        generator=generator,
+        generator=local_generator,
     )
 
     # Calculate the group quarters age/sex/ethnicity population
@@ -188,14 +192,17 @@ def _create_controls(controls_inputs: dict[str, pd.DataFrame]) -> pd.DataFrame:
     )
 
     # Create row marginal controls for age/sex/ethnicity categories
-    row_ctrls = region_ase_total.sort_values(by=["age_group", "sex", "ethnicity"])[
-        "population"
-    ].to_numpy()
+    row_ctrls = (
+        region_ase_total.sort_values(by=["age_group", "sex", "ethnicity"])
+        .reset_index(drop=True)["population"]
+        .to_numpy()
+    )
 
     # Create column marginal controls for group quarters population by type
     col_ctrls = (
         region_pop_type[region_pop_type["pop_type"] != "Household Population"]
-        .sort_values(by=["pop_type"])["value"]
+        .sort_values(by=["pop_type"])
+        .reset_index(drop=True)["value"]
         .to_numpy()
     )
 
@@ -205,7 +212,7 @@ def _create_controls(controls_inputs: dict[str, pd.DataFrame]) -> pd.DataFrame:
         row_ctrls=row_ctrls,
         col_ctrls=col_ctrls,
         condition="less than",
-        generator=generator,
+        generator=local_generator,
     )
 
     # Assign results back to DataFrame
@@ -553,6 +560,7 @@ def _create_ase(
             ase_inputs["mgra_pop_type"]
             .query("pop_type == @pop_type")
             .sort_values(by=["mgra"])["value"]
+            .reset_index(drop=True)
             .to_numpy()
         )
 
@@ -560,7 +568,8 @@ def _create_ase(
         col_ctrls = (
             ase_inputs["controls_ase"]
             .query("pop_type == @pop_type")
-            .sort_values(by=["age_group", "sex", "ethnicity"])["value"]
+            .sort_values(by=["age_group", "sex", "ethnicity"])
+            .reset_index(drop=True)["value"]
             .to_numpy()
         )
 
