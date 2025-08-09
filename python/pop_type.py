@@ -125,11 +125,14 @@ def _create_gq_outputs(gq_inputs: dict[str, pd.DataFrame]) -> dict[str, pd.DataF
     results = []
 
     # Control and integerize group quarters data
-    for city in gq["city"].unique():
+    for city in np.sort(gq["city"].unique()):
 
         # Copy the necessary input data for this city
         city_gq = (
-            gq[gq["city"] == city].copy(deep=True).sort_values(by=["mgra", "gq_type"])
+            gq[gq["city"] == city]
+            .copy(deep=True)
+            .sort_values(by=["mgra", "gq_type"])
+            .reset_index(drop=True)
         )
         city_control = city_controls[city_controls["city"] == city]["value"].values[0]
 
@@ -286,7 +289,7 @@ def _create_hhp_outputs(hhp_inputs: dict[str, pd.DataFrame]) -> dict[str, pd.Dat
     # Control the household population in each city to DOF. Store results separately
     # and join together at the end for cleaner code
     results = []
-    for city in hh["city"].unique():
+    for city in np.sort(hh["city"].unique()):
 
         # Get an initial decimal estimate of the household population in each MGRA by
         # applying tract level household size to MGRA level households
@@ -297,6 +300,7 @@ def _create_hhp_outputs(hhp_inputs: dict[str, pd.DataFrame]) -> dict[str, pd.Dat
             .assign(value_hhp=lambda df: df["value_hh"] * df["value_hhs"])
             .drop(columns=["tract", "value_hhs"])
             .sort_values(by=["mgra"])
+            .reset_index(drop=True)
         )
 
         # Compute the difference between our initial estimate of HHP and the control

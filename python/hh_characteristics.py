@@ -206,6 +206,7 @@ def _create_hh_income(
         )
         .reset_index(drop=False)
         .sort_values(by="mgra")
+        .reset_index(drop=True)
     )
 
     # To ensure that we pretty much exactly match ACS distributions, we will do two
@@ -293,6 +294,7 @@ def _create_hh_size(
         )
         .reset_index(drop=False)
         .sort_values(by="mgra")
+        .reset_index(drop=True)
     )
 
     # To ensure that we pretty much exactly match ACS distributions, we will do two
