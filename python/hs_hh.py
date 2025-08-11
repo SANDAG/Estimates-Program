@@ -150,7 +150,7 @@ def _create_hs_hh(hs_hh_inputs: dict[str, pd.DataFrame]) -> dict[str, pd.DataFra
 
     # Create, control, and integerize total households by MGRA for each city
     result = []
-    for city in hs["city"].unique():
+    for city in np.sort(hs["city"].unique()):
         # Apply tract-level occupancy controls by structure type
         hh = (
             hs[hs["city"] == city]
@@ -162,6 +162,7 @@ def _create_hs_hh(hs_hh_inputs: dict[str, pd.DataFrame]) -> dict[str, pd.DataFra
             .assign(value_hh=lambda x: x["value_hs"] * x["value_rate"])
             .drop(columns=["tract", "value_rate"])
             .sort_values(by=["mgra", "structure_type"])
+            .reset_index(drop=True)
         )
 
         # Compute overall occupancy rate and apply city occupancy control
@@ -206,7 +207,7 @@ def _create_hs_hh(hs_hh_inputs: dict[str, pd.DataFrame]) -> dict[str, pd.DataFra
             if records > 0:
                 indices = (
                     hh[condition]
-                    .sort_values(by="value_hh", ascending=False)
+                    .sort_values(by="value_hh", ascending=False, kind="stable")
                     .head(records)
                     .index
                 )
