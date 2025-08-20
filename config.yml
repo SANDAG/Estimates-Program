@@ -9,7 +9,7 @@ run:
   mgra: mgra15
   start_year: 2020
   end_year: 2024
-  version: 1.1.0
+  version: 1.1.1-dev
   comments: Example comment
 
 # The `debug` section contains configuration for running a subset of modules of the
@@ -21,7 +21,7 @@ debug:
   run_id: null
   start_year: 2022
   end_year: 2023
-  version: 1.1.0
+  version: 1.1.1-dev
   comments: null
   startup: False
   housing_and_households: False
