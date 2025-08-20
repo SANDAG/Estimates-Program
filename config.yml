@@ -21,7 +21,7 @@ debug:
   run_id: null
   start_year: 2022
   end_year: 2023
-  version: 1.0.0
+  version: 1.1.0
   comments: null
   startup: False
   housing_and_households: False
