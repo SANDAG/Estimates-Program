@@ -333,7 +333,7 @@ class InputParser:
                                 [start_year], 
                                 [end_year],
                                 [user], 
-                                [date], 
+                                [start_date],
                                 [version], 
                                 [comments], 
                                 [complete]
