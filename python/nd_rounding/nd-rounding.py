@@ -1,4 +1,4 @@
-# Testing various N-Dimensional controlling routines using primarily numpy
+# Testing space for various n-dimensional rounding algorithms
 
 import string
 import pulp
@@ -7,7 +7,20 @@ import numpy as np
 import random_data
 
 
-def check_input_validity(data: np.ndarray, marginals: np.ndarray):
+def check_input_validity(data: np.ndarray, marginals: list[np.ndarray]):
+    """Ensure that input data and marginals are valid
+
+    Args:
+        data: The data to check
+        marginals: The marginals to check
+
+    Returns:
+        None
+
+    Raises:
+        ValueError: If the data and marginals have different shapes
+        ValueError: If the marginals don't sum to the same value
+    """
     # Check seed and marginals match
     if len(data.shape) != len(marginals):
         raise ValueError(
@@ -31,6 +44,7 @@ def check_input_validity(data: np.ndarray, marginals: np.ndarray):
 def compute_rounding_error(
     actual: np.ndarray, control: list[np.ndarray]
 ) -> list[np.ndarray]:
+    """Compute the rounding error between actual data and control marginals"""
     rounding_error = []
     for dim in range(len(marginals)):
         missing_dim = tuple(d for d in range(len(marginals)) if d != dim)
@@ -44,6 +58,21 @@ def nd_controlling_fuzzy(
     seed: int = 42,
     frac: float = 0.5,
 ) -> np.array:
+    """Round the input data such that marginals exact match, using a stochastic method
+
+    Args:
+        data: The data to be rounded. This should be the output of an IPF procedure
+        marginals: The marginals to control to
+        seed: A random seed to ensure reproducibility of the stochastic procedure
+        frac: The fraction of total rounding error to correct in each iteration
+
+    Returns:
+        The data rounded to match the marginals
+
+    Raises:
+        ValueError: If the stochastic procedure runs into a dead end when attempting to
+            solve the rounding error
+    """
 
     check_input_validity(data, marginals)
 
@@ -58,11 +87,12 @@ def nd_controlling_fuzzy(
     rounding_error = compute_rounding_error(rounded_data, marginals)
     total_rounding_error = int(np.sum(rounding_error[0]))
 
-    # Save values for analysis
-    np.savetxt("rounded_data.csv", rounded_data, delimiter=",", fmt="%d")
-    with open("rounding_error.txt", "w") as f:
-        for dim_error in rounding_error:
-            f.write(f"{dim_error}\n")
+    # Save values for analysis. Only works if the data is 2-D
+    # if n_dims == 2:
+    #     np.savetxt("rounded_data.csv", rounded_data, delimiter=",", fmt="%d")
+    #     with open("rounding_error.txt", "w") as f:
+    #         for dim_error in rounding_error:
+    #             f.write(f"{dim_error}\n")
 
     # Repeat the fuzzy rounding procedure until all rounding error is gone
     while total_rounding_error > 0:
@@ -180,14 +210,14 @@ def nd_controlling_fuzzy(
 def nd_controlling_pulp_solver(
     data: np.ndarray, marginals: list[np.ndarray]
 ) -> np.ndarray:
-    """
+    """Round the input data such that marginals exact match, using the PuLP solver
 
     Args:
-        data:
-        marginals:
+        data: The data to be rounded. This should be the output of an IPF procedure
+        marginals: The marginals to control to
 
     Returns:
-
+        The rounded data
     """
     check_input_validity(data, marginals)
 
@@ -199,17 +229,27 @@ def nd_controlling_pulp_solver(
     rounding_error = compute_rounding_error(rounded_data, marginals)
 
     # Construct the system of equations to plug into PuLP. This is basically impossible
-    # to do with the built in PuLP functions, so we have to construct the model using
+    # to do with the built-in PuLP functions, so we have to construct the model using
     # raw JSON :(
     model = pulp.LpProblem("nd_controlling_pulp_solver", pulp.LpMinimize).to_dict()
 
-    # First, create the parameters (variables) by iterating though all data
+    # First, create the parameters (variables) by iterating though all data. The
+    # variable name is just the index of the data point in string form. The "cat" or
+    # category is "Binary" since the variable can only be zero or one. Zero indicates
+    # no change, and one indicates a correction of -1 to the rounded data
     iterator = np.nditer(rounded_data, flags=["multi_index"])
-    for value in iterator:
+    for _ in iterator:
         var_name = str(iterator.multi_index)
         model["variables"].append({"name": var_name, "cat": "Binary"})
 
     # Then, create the equations to solve for the correct amount of rounding error
+
+    # First, set up one equation for every non-zero rounding error along each axis.
+    # "coefficients" is where we will store the variables which are part of the
+    # equation. "constant" is the negative of the rounding error, since PuLP expects
+    # the equation to be in the form of "Ax + By + Cz ... = D", where D is the
+    # constant. "sense" is 0 since we want an exact match. "pi" is unused and
+    # can be set to None
     equations = {}
     for dim in range(n_dims):
         for index in range(data.shape[dim]):
@@ -219,6 +259,11 @@ def nd_controlling_pulp_solver(
                 "pi": None,
                 "sense": 0,
             }
+
+    # Then, iterate through all the data again. Each data point is associated with
+    # n_dims equations, one for each axis. There are no weights associated with the
+    # variables, since we just want to minimize the total number of corrections without
+    # any preference for which data points to correct. Thus, the value is one
     iterator = np.nditer(rounded_data, flags=["multi_index"])
     for value in iterator:
         if value > 0:
@@ -227,7 +272,7 @@ def nd_controlling_pulp_solver(
                     "coefficients"
                 ].append({"name": str(iterator.multi_index), "value": 1})
 
-    # Transform the equations dictionary into an actual list of the constraints
+    # Finally, transofrm the equations dictionary into an actual list of the constraints
     for key, value in equations.items():
         value["name"] = key
         model["constraints"].append(value)
@@ -236,7 +281,7 @@ def nd_controlling_pulp_solver(
     variables, problem = pulp.LpProblem.from_dict(model)
     problem.solve()
 
-    # Take the solution and convert it back into an ndarray
+    # Take the solution and convert it from the PuLP format into a Numpy array
     corrections = np.zeros(shape=data.shape)
     for coordinate, variable in variables.items():
         if variable.varValue != 1:
@@ -263,7 +308,7 @@ def nd_controlling_pulp_solver(
 # data, marginals = random_data.low_skewed(shape=[10, 5])
 # rounded_data = nd_controlling_fuzzy(data, marginals)
 
-# data, marginals = random_data.sparse(shape=[3, 4])
+# data, marginals = random_data.sparse(shape=[3, 4, 5])
 # rounded_data = nd_controlling_fuzzy(data, marginals)
 
 data, marginals = random_data.sparse(shape=[500, 10, 10])
