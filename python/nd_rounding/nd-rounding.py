@@ -2,6 +2,7 @@
 
 import string
 import pulp
+import time
 import numpy as np
 
 import random_data
@@ -52,6 +53,111 @@ def compute_rounding_error(
     return rounding_error
 
 
+def _nd_controlling_fuzzy_step(
+    rounded_data: np.ndarray,
+    rounding_error: list[np.ndarray],
+    gen: np.random.Generator,
+    frac: float,
+):
+
+    # Very useful constant in this function
+    n_dims = len(rounding_error)
+
+    # First compute the weights for random choice
+
+    # The weights used to select indicies are the product of the rounding error
+    # along each axis. This ensures that the random choice is more likely to choose
+    # indicies that need more adjustment, when accounting for all axes
+    # The cursed "dim_string"/"subscripts" variable are instructions for the
+    # "np.einsum()" function. For example, in three dimensions, it would look like
+    # "a,b,c->abc". The string means data from each of "a", "b", and "c" are
+    # transformed ("->") to the product of the three ("abc")
+    dim_string = string.ascii_lowercase[:n_dims]
+    subscripts = f"{','.join(dim_string)}->{dim_string}"
+    weights = np.einsum(
+        subscripts,
+        *rounding_error,
+    )
+
+    # Zero out the weights where data is already zero
+    zero_data = np.where(rounded_data == 0, 0, 1)
+    weights = weights * zero_data
+
+    # Weights must sum to one so we normalize. Additionally, gen.choice only works
+    # on one dimensional data, so it must be flattened. Fortunately, Numpy has a
+    # ton of functionality for flattening and unflattening ndarrays
+    weights = weights / np.sum(weights)
+    flat_weight = weights.flatten(order="C")
+
+    # Stop for analysis in case we can't solve
+    if np.any(np.isnan(flat_weight)):
+        raise ValueError()
+
+    # Select some percentage of indicies to adjust (see function parameters)
+    flat_indicies = gen.choice(
+        np.prod(data.shape),
+        size=int(np.ceil(int(np.sum(rounding_error[0])) * frac)),
+        replace=False,
+        p=flat_weight,
+    )
+    ndarry_indicies = np.unravel_index(flat_indicies, data.shape, order="C")
+
+    # Get the actual corrections to be made
+    corrections = np.zeros(data.shape)
+    np.add.at(corrections, ndarry_indicies, -1)
+
+    # Check the corrections for anything invalid. AKA check for any corrections
+    # which overshoot the total amount of rounding error
+    for dim in range(n_dims):
+        missing_dim = tuple(d for d in range(n_dims) if d != dim)
+        overshoot = corrections.sum(axis=missing_dim) + rounding_error[dim]
+
+        if np.any(overshoot < 0):
+            # When we randomly overshoot, we get into a somewhat complex routine :(
+            for overshoot_index in np.where(overshoot < 0)[0]:
+
+                # The amount to adjust, a helper variable
+                to_adj = abs(int(overshoot[overshoot_index]))
+
+                # Slice both weights and corrections along the dimension/index
+                # that an overshoot has occurred
+                weights_slice = weights.take(indices=overshoot_index, axis=dim)
+                corrections_slice = corrections.take(indices=overshoot_index, axis=dim)
+
+                # Get the weights where there are corrections. Since the corrections
+                # slice is zero unless there are corrections, multiplying then
+                # making it positive functionally finds weights with corrections
+                weights_slice = np.abs(corrections_slice * weights_slice)
+
+                # Get the largest weights were there are corrections. Again, we have
+                # a Numpy function which only works on flat objects (np.argsort()).
+                # Thankfully, Numpy makes working with flat/boxy objects pretty easy
+                weights_slice_adj_indicies = weights_slice.flatten(order="C").argsort(
+                    kind="stable"
+                )[-to_adj:]
+
+                # Transform the flat indicies of the weight slice into ND indicies
+                # of the slice
+                corrections_slice_adj_indicies = np.unravel_index(
+                    weights_slice_adj_indicies, corrections_slice.shape, order="C"
+                )
+
+                # Transform the sliced coordinates into indicies in the non-sliced
+                # data
+                corrections_adj_indicies = (
+                    corrections_slice_adj_indicies[:dim]
+                    + (np.repeat(overshoot_index, to_adj),)
+                    + corrections_slice_adj_indicies[dim:]
+                )
+
+                # Execute the adjustment of the corrections
+                np.add.at(corrections, corrections_adj_indicies, 1)
+
+    # Apply the corrections and return the data
+    rounded_data += corrections
+    return rounded_data
+
+
 def nd_controlling_fuzzy(
     data: np.ndarray,
     marginals: list[np.ndarray],
@@ -76,9 +182,6 @@ def nd_controlling_fuzzy(
 
     check_input_validity(data, marginals)
 
-    # Very useful constant in this function
-    n_dims = len(marginals)
-
     # The random generator for controlling
     gen = np.random.default_rng(seed)
 
@@ -87,112 +190,13 @@ def nd_controlling_fuzzy(
     rounding_error = compute_rounding_error(rounded_data, marginals)
     total_rounding_error = int(np.sum(rounding_error[0]))
 
-    # Save values for analysis. Only works if the data is 2-D
-    # if n_dims == 2:
-    #     np.savetxt("rounded_data.csv", rounded_data, delimiter=",", fmt="%d")
-    #     with open("rounding_error.txt", "w") as f:
-    #         for dim_error in rounding_error:
-    #             f.write(f"{dim_error}\n")
-
     # Repeat the fuzzy rounding procedure until all rounding error is gone
     while total_rounding_error > 0:
-
-        # First compute the weights for random choice
-
-        # The weights used to select indicies are the product of the rounding error
-        # along each axis. This ensures that the random choice is more likely to choose
-        # indicies that need more adjustment, when accounting for all axes
-        # The cursed "dim_string"/"subscripts" variable are instructions for the
-        # "np.einsum()" function. For example, in three dimensions, it would look like
-        # "a,b,c->abc". The string means data from each of "a", "b", and "c" are
-        # transformed ("->") to the product of the three ("abc")
-        dim_string = string.ascii_lowercase[:n_dims]
-        subscripts = f"{','.join(dim_string)}->{dim_string}"
-        weights = np.einsum(
-            subscripts,
-            *rounding_error,
+        rounded_data = _nd_controlling_fuzzy_step(
+            rounded_data, rounding_error, gen, frac
         )
 
-        # Zero out the weights where data is already zero
-        zero_data = np.where(rounded_data == 0, 0, 1)
-        weights = weights * zero_data
-
-        # Weights must sum to one so we normalize. Additionally, gen.choice only works
-        # on one dimensional data, so it must be flattened. Fortunately, Numpy has a
-        # ton of functionality for flattening and unflattening ndarrays
-        weights = weights / np.sum(weights)
-        flat_weight = weights.flatten(order="C")
-
-        # Stop for analysis in case we can't solve
-        if np.any(np.isnan(flat_weight)):
-            raise ValueError()
-
-        # Select some percentage of indicies to adjust (see function parameters)
-        flat_indicies = gen.choice(
-            np.prod(data.shape),
-            size=int(np.ceil(total_rounding_error * frac)),
-            replace=False,
-            p=flat_weight,
-        )
-        ndarry_indicies = np.unravel_index(flat_indicies, data.shape, order="C")
-
-        # Get the actual corrections to be made
-        corrections = np.zeros(data.shape)
-        np.add.at(corrections, ndarry_indicies, -1)
-
-        # Check the corrections for anything invalid. AKA check for any corrections
-        # which overshoot the total amount of rounding error
-        for dim in range(n_dims):
-            missing_dim = tuple(d for d in range(n_dims) if d != dim)
-            overshoot = corrections.sum(axis=missing_dim) + rounding_error[dim]
-
-            if np.any(overshoot < 0):
-                # When we randomly overshoot, we get into a somewhat complex routine :(
-                for overshoot_index in np.where(overshoot < 0)[0]:
-
-                    # The amount to adjust, a helper variable
-                    to_adj = abs(int(overshoot[overshoot_index]))
-
-                    # Slice both weights and corrections along the dimension/index
-                    # that an overshoot has occurred
-                    weights_slice = weights.take(indices=overshoot_index, axis=dim)
-                    corrections_slice = corrections.take(
-                        indices=overshoot_index, axis=dim
-                    )
-
-                    # Get the weights where there are corrections. Since the corrections
-                    # slice is zero unless there are corrections, multiplying then
-                    # making it positive functionally finds weights with corrections
-                    weights_slice = np.abs(corrections_slice * weights_slice)
-
-                    # Get the largest weights were there are corrections. Again, we have
-                    # a Numpy function which only works on flat objects (np.argsort()).
-                    # Thankfully, Numpy makes working with flat/boxy objects pretty easy
-                    weights_slice_adj_indicies = weights_slice.flatten(
-                        order="C"
-                    ).argsort(kind="stable")[-to_adj:]
-
-                    # Transform the flat indicies of the weight slice into ND indicies
-                    # of the slice
-                    corrections_slice_adj_indicies = np.unravel_index(
-                        weights_slice_adj_indicies, corrections_slice.shape, order="C"
-                    )
-
-                    # Transform the sliced coordinates into indicies in the non-sliced
-                    # data
-                    corrections_adj_indicies = (
-                        corrections_slice_adj_indicies[:dim]
-                        + (np.repeat(overshoot_index, to_adj),)
-                        + corrections_slice_adj_indicies[dim:]
-                    )
-
-                    # Execute the adjustment of the corrections
-                    np.add.at(corrections, corrections_adj_indicies, 1)
-
-        # Apply the corrections
-        rounded_data += corrections
-
-        # Re-compute rounding error
+        # Recompute rounding error
         rounding_error = compute_rounding_error(rounded_data, marginals)
         total_rounding_error = int(np.sum(rounding_error[0]))
 
@@ -301,17 +305,72 @@ def nd_controlling_pulp_solver(
     return rounded_data
 
 
+def nd_controlling_mixed(
+    data: np.ndarray,
+    marginals: list[np.ndarray],
+    seed: int = 42,
+    frac: float = 0.5,
+    threshold: int = 5000,
+) -> np.ndarray:
+    """Round the input data to exactly match marginals, using both fuzzy and PuLP
+
+    Functionally, we use fuzzy methodology until the total rounding error is below
+    "threshold", as the fuzzy methodology is extremely fast. After we are below the
+    input "threshold", we plug the remaining rounding error and equations into the
+    PuLP solver, to hopefully get a complete solution
+
+    Args:
+        data: The data to be rounded. This should be the output of an IPF procedure
+        marginals: The marginals to control to
+        seed: A random seed to ensure reproducibility of the stochastic procedure
+        frac: The fraction of total rounding error to correct in each iteration
+        threshold: A value of total rounding error below which we switch from using
+            the stochastic method to the PuLP solver
+
+    Returns:
+        The rounded data which exactly matches marginals
+    """
+
+    check_input_validity(data, marginals)
+
+    # The random generator for controlling
+    gen = np.random.default_rng(seed)
+
+    # Round all values up and compute various residuals
+    rounded_data = np.ceil(data)
+    rounding_error = compute_rounding_error(rounded_data, marginals)
+    total_rounding_error = int(np.sum(rounding_error[0]))
+
+    # Repeat the fuzzy rounding procedure until we hit the threshold
+    while total_rounding_error > threshold:
+        rounded_data = _nd_controlling_fuzzy_step(
+            rounded_data, rounding_error, gen, frac
+        )
+
+        # Recompute rounding error
+        rounding_error = compute_rounding_error(rounded_data, marginals)
+        total_rounding_error = int(np.sum(rounding_error[0]))
+
+    # Then plug the data into the PuLP solver to finish it off
+    rounded_data = nd_controlling_pulp_solver(rounded_data, marginals)
+
+    # Return the rounded data
+    return rounded_data
+
+
 # Testing
-# data, marginals = random_data.uniform(shape=[4, 5, 6])
-# rounded_data = nd_controlling_fuzzy(data, marginals)
+shape = [5000, 10, 10]
 
-# data, marginals = random_data.low_skewed(shape=[10, 5])
-# rounded_data = nd_controlling_fuzzy(data, marginals)
-
-# data, marginals = random_data.sparse(shape=[3, 4, 5])
-# rounded_data = nd_controlling_fuzzy(data, marginals)
-
-data, marginals = random_data.sparse(shape=[500, 10, 10])
+start_time = time.time()
+data, marginals = random_data.sparse(shape=shape)
 rounded_data = nd_controlling_pulp_solver(data, marginals)
+end_time = time.time()
+print(f"PuLP solver took {end_time - start_time} seconds")
+
+start_time = time.time()
+data, marginals = random_data.sparse(shape=shape)
+rounded_data = nd_controlling_mixed(data, marginals)
+end_time = time.time()
+print(f"Mixed sovler took {end_time - start_time} seconds")
 
 pass
