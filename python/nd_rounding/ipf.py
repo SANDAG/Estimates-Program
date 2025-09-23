@@ -47,7 +47,12 @@ def ipf_numpy(
             current_sum = seed.sum(axis=tuple(np.delete(axes, np.where(axes == dim))))
 
             # Compare the sum with the marginal controls, adjust accordingly
-            adjustment_factor = np.nan_to_num(marginals[dim] / current_sum)
+            adjustment_factor = np.divide(
+                marginals[dim],
+                current_sum,
+                out=np.ones_like(current_sum),  # Replace divide by zero with one
+                where=current_sum != 0,
+            )
             slicer = [None for _ in range(len(axes))]
             slicer[dim] = slice(None, None, None)
             seed = seed * adjustment_factor[tuple(slicer)]
