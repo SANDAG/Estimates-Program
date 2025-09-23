@@ -170,3 +170,6 @@ cython_debug/
 
 # VSCode settings
 .vscode
+
+# NumPy binary format used to save ndarrays
+.npy

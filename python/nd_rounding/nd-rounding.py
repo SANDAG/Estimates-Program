@@ -1,6 +1,7 @@
 # Testing space for various n-dimensional rounding algorithms
 
 import string
+import pathlib
 import pulp
 import time
 import numpy as np
@@ -51,6 +52,32 @@ def compute_rounding_error(
         missing_dim = tuple(d for d in range(len(marginals)) if d != dim)
         rounding_error.append(actual.sum(axis=missing_dim) - control[dim])
     return rounding_error
+
+
+def check_output_validity(data: np.ndarray, marginals: list[np.ndarray]):
+    """
+
+    Args:
+        data:
+        marginals:
+
+    Returns:
+
+    """
+    # Check all rounding error is zero
+    rounding_error = np.array(
+        [error.sum() for error in compute_rounding_error(data, marginals)]
+    )
+    if np.any(rounding_error != 0):
+        raise ValueError
+
+    # Check for invalid (aka negative, null, or non-integer) values
+    if np.any(data < 0):
+        raise ValueError
+    if np.sum(np.isnan(data)) > 0:
+        raise ValueError
+    if not np.all(data == np.floor(data)):
+        raise ValueError
 
 
 def _nd_controlling_fuzzy_step(
@@ -288,6 +315,10 @@ def nd_controlling_pulp_solver(
     variables, problem = pulp.LpProblem.from_dict(model)
     problem.solve(pulp.PULP_CBC_CMD(msg=False))
 
+    # Check the status
+    if pulp.LpStatus[problem.status] != "Optimal":
+        raise ValueError
+
     # Take the solution and convert it from the PuLP format into a Numpy array
     corrections = np.zeros(shape=data.shape)
     for coordinate, variable in variables.items():
@@ -313,7 +344,7 @@ def nd_controlling_mixed(
     marginals: list[np.ndarray],
     seed: int = 42,
     frac: float = 0.5,
-    threshold: int = 5000,
+    threshold: int = 1000,
 ) -> np.ndarray:
     """Round the input data to exactly match marginals, using both fuzzy and PuLP
 
@@ -361,19 +392,109 @@ def nd_controlling_mixed(
     return rounded_data
 
 
+def nd_controlling_mixed_safe(
+    data: np.ndarray,
+    marginals: list[np.ndarray],
+    seed: int = 42,
+    frac: float = 0.5,
+    threshold: int = 1000,
+) -> np.ndarray:
+    """
+
+    Args:
+        data:
+        marginals:
+        seed:
+        frac:
+        threshold:
+
+    Returns:
+
+    """
+
+    check_input_validity(data, marginals)
+
+    # Some file I/O stuff for temporary files
+    THIS_FOLDER = pathlib.Path(__file__).parent.resolve()
+    TEMP_DATA_FOLDER = THIS_FOLDER / "temp_data"
+    TEMP_DATA_FOLDER.mkdir(parents=False, exist_ok=True)
+
+    # The random generator for controlling
+    gen = np.random.default_rng(seed)
+
+    # Round all values up and compute various residuals
+    rounded_data = np.ceil(data)
+    rounding_error = compute_rounding_error(rounded_data, marginals)
+    total_rounding_error = int(np.sum(rounding_error[0]))
+
+    # Repeat the fuzzy rounding procedure until we either fully solve the integerization
+    # or fail
+    step = 0
+    while total_rounding_error > threshold:
+
+        # Save the data before rounding
+        file_path = TEMP_DATA_FOLDER / f"step_{str(step).zfill(2)}.npy"
+        np.save(file_path, rounded_data)
+
+        # Attempt to round the data. If it fails, we move on to using the PuLP solver
+        try:
+            rounded_data = _nd_controlling_fuzzy_step(
+                rounded_data, rounding_error, gen, frac
+            )
+        except ValueError:
+            break
+
+        # Recompute rounding error
+        rounding_error = compute_rounding_error(rounded_data, marginals)
+        total_rounding_error = int(np.sum(rounding_error[0]))
+
+        # Next step
+        step += 1
+
+    # If the rounding error is not zero, then the fuzzy controlling didn't work and we
+    # need to delegate to PuLP
+    if total_rounding_error != 0:
+        for back_step in range(step - 1, -1, -1):
+
+            # Get the data associated with this fuzzy step
+            file_path = TEMP_DATA_FOLDER / f"step_{str(back_step).zfill(2)}.npy"
+            rounded_data = np.load(file_path)
+
+            # See if the PuLP solver can solve the current step
+            try:
+                rounded_data = nd_controlling_pulp_solver(rounded_data, marginals)
+            except ValueError:
+                continue
+
+            # The solver worked, so stop looping
+            break
+
+    # Final checks
+    check_output_validity(rounded_data, marginals)
+
+    # Return the rounded data
+    return rounded_data
+
+
 # Testing
 shape = [5000, 10, 10]
 
-start_time = time.time()
-data, marginals = random_data.sparse(shape=shape)
-rounded_data = nd_controlling_pulp_solver(data, marginals)
-end_time = time.time()
-print(f"PuLP solver took {end_time - start_time} seconds")
+# start_time = time.time()
+# data, marginals = random_data.sparse(shape=shape)
+# rounded_data = nd_controlling_pulp_solver(data, marginals)
+# end_time = time.time()
+# print(f"PuLP solver took {end_time - start_time} seconds")
 
 start_time = time.time()
 data, marginals = random_data.sparse(shape=shape)
 rounded_data = nd_controlling_mixed(data, marginals)
 end_time = time.time()
 print(f"Mixed sovler took {end_time - start_time} seconds")
+
+start_time = time.time()
+data, marginals = random_data.sparse(shape=shape)
+rounded_data = nd_controlling_mixed_safe(data, marginals)
+end_time = time.time()
+print(f"Mixed Safe sovler took {end_time - start_time} seconds")
 
 pass
