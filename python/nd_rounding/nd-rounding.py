@@ -477,7 +477,7 @@ def nd_controlling_mixed_safe(
 
 
 # Testing
-shape = [5000, 10, 10]
+shape = [24321, 20, 2, 7]
 
 # start_time = time.time()
 # data, marginals = random_data.sparse(shape=shape)
@@ -487,7 +487,7 @@ shape = [5000, 10, 10]
 
 start_time = time.time()
 data, marginals = random_data.sparse(shape=shape)
-rounded_data = nd_controlling_mixed(data, marginals)
+rounded_data = nd_controlling_mixed(data, marginals, threshold=5000)
 end_time = time.time()
 print(f"Mixed sovler took {end_time - start_time} seconds")
 
