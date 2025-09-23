@@ -281,9 +281,12 @@ def nd_controlling_pulp_solver(
         value["name"] = key
         model["constraints"].append(value)
 
-    # Create the model and solve
+    # Create the model and solve. Note, the PULP_CDC_CMD is the default solver included
+    # in the library. No other solvers have been installed or tested, but you can
+    # easily do so yourself via:
+    # https://coin-or.github.io/pulp/main/includeme.html#installing-solvers
     variables, problem = pulp.LpProblem.from_dict(model)
-    problem.solve()
+    problem.solve(pulp.PULP_CBC_CMD(msg=False))
 
     # Take the solution and convert it from the PuLP format into a Numpy array
     corrections = np.zeros(shape=data.shape)
