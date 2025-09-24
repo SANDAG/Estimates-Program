@@ -28,7 +28,7 @@ logger = logging.getLogger(__name__)
 # is run outside the main year loop
 if utils.RUN_INSTRUCTIONS["startup"]:
     utils.display_ascii_art("data/welcome.txt")
-    logger.info("Running Startup module...")
+    logger.info("Running Startup module...\n")
     startup.run_startup()
 
 # Loop through the years first
@@ -39,26 +39,26 @@ for year in utils.RUN_INSTRUCTIONS["years"]:
 
     # Housing and Households module
     if utils.RUN_INSTRUCTIONS["housing_and_households"]:
-        logger.info("\tRunning Housing and Households module...")
+        logger.info("Running Housing and Households module...")
         hs_hh.run_hs_hh(year)
 
     # Population module
     if utils.RUN_INSTRUCTIONS["population"]:
-        logger.info("\tRunning Population module...")
+        logger.info("Running Population module...")
         pop.run_pop(year)
 
     # Population by Age/Sex/Ethnicity module
     if utils.RUN_INSTRUCTIONS["population_by_ase"]:
-        logger.info("\tRunning Population by Age/Sex/Ethnicity module...")
+        logger.info("Running Population by Age/Sex/Ethnicity module...")
         ase.run_ase(year)
 
     # Household Characteristics module
     if utils.RUN_INSTRUCTIONS["household_characteristics"]:
-        logger.info("\tRunning Household Characteristics module...")
+        logger.info("Running Household Characteristics module...")
         hh_characteristics.run_hh_characteristics(year)
 
     # Diagnostic print for this year
-    logger.info(f"\tFinished running {year}\n")
+    logger.info(f"Finished running {year}\n")
 
 # Staging module. For now, all this does is mark this run as completed in the
 # [metadata].[run] table

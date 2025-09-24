@@ -17,8 +17,8 @@ IF NOT EXISTS (
     FROM [acs].[detailed].[tables]
     WHERE 
         [name] = 'B03002'
-	    AND [year] = @year
-	    AND [product] = '5Y'
+        AND [year] = @year
+        AND [product] = '5Y'
 )
 SELECT @msg AS [msg]
 ELSE

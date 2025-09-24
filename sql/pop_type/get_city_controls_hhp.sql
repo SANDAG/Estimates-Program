@@ -25,10 +25,10 @@ with [dof] AS (
     -- E-5 Estimates - 2020+
     SELECT
         [year],
-		CASE
+    	CASE
             WHEN [area_name] = 'Balance of County' THEN 'Unincorporated'
             WHEN [area_name] = 'National City' THEN 'National City'
-			ELSE REPLACE([area_name], ' City', '')
+    		ELSE REPLACE([area_name], ' City', '')
         END AS [city],
         [household_population]
     FROM [socioec_data].[ca_dof].[estimates_e5]

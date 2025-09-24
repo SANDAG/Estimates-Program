@@ -924,7 +924,8 @@ def _insert_ase(ase_outputs: dict[str, pd.DataFrame]) -> None:
                         TABLOCK,
                         MAXERRORS=0,
                         FIELDTERMINATOR = '|',
-                        ROWTERMINATOR = '0x0A'
+                        ROWTERMINATOR = '0x0A',
+                        CHECK_CONSTRAINTS
                     )
                 """
             )

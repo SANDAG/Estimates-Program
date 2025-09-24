@@ -26,8 +26,8 @@ DECLARE @rows integer = (
     FROM [acs].[detailed].[tables]
     WHERE 
         [name] IN ('B01001', 'B01001B', 'B01001C', 'B01001D', 'B01001E', 'B01001G', 'B01001H', 'B01001I')
-	    AND [year] = @year
-	    AND [product] = '5Y'
+        AND [year] = @year
+        AND [product] = '5Y'
 );
 
 IF @rows = 0
