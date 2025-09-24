@@ -10,7 +10,7 @@ DECLARE @run_id INTEGER = :run_id;
 DECLARE @year INTEGER = :year;
 DECLARE @mgra_version NVARCHAR(10) = :mgra_version;
 DECLARE @gis_server NVARCHAR(20) = :gis_server;
-DECLARE @override_date DATE = (SELECT CONVERT(DATE, [date]) FROM [metadata].[run] WHERE [run_id] = @run_id);
+DECLARE @override_date DATE = (SELECT CONVERT(DATE, [start_date]) FROM [metadata].[run] WHERE [run_id] = @run_id);
 
 -- Build the expected return table MGRA x Structure Type
 DROP TABLE IF EXISTS [#tt_shell];

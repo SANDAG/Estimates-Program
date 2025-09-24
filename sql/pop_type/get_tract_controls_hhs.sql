@@ -27,8 +27,8 @@ DECLARE @rows integer = (
     FROM [acs].[detailed].[tables]
     WHERE 
         [name] IN ('B25032', 'B09019')
-	    AND [year] = @year
-	    AND [product] = '5Y'
+        AND [year] = @year
+        AND [product] = '5Y'
 )
 
 IF @rows = 0

@@ -333,7 +333,8 @@ class InputParser:
                                 [start_year], 
                                 [end_year],
                                 [user], 
-                                [date], 
+                                [start_date],
+                                [end_date],
                                 [version], 
                                 [comments], 
                                 [complete]
@@ -344,6 +345,7 @@ class InputParser:
                                 :end_year, 
                                 USER_NAME(),
                                 GETDATE(), 
+                                NULL,
                                 :version, 
                                 :comments, 
                                 0
