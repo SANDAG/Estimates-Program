@@ -33,6 +33,13 @@ def ipf_numpy(
                 f"Marginals don't sum to the same value (0 marginal sums to {first_sum}, {dim} marginal sums to {marginals[dim].sum()})"
             )
 
+    # Check that every non-zero marginal is associated with data that is also non-zero
+    for dim in range(len(marginals)):
+        missing_dim = tuple(d for d in range(len(marginals)) if d != dim)
+        sum_along_axis = seed.sum(axis=missing_dim)
+        if np.any((marginals[dim] != 0) & (sum_along_axis == 0)):
+            raise ValueError()
+
     # Run IPF
     axes = np.arange(len(seed.shape))
     for _ in range(max_iters):
@@ -50,7 +57,7 @@ def ipf_numpy(
             adjustment_factor = np.divide(
                 marginals[dim],
                 current_sum,
-                out=np.ones_like(current_sum),  # Replace divide by zero with one
+                out=np.ones_like(current_sum),
                 where=current_sum != 0,
             )
             slicer = [None for _ in range(len(axes))]

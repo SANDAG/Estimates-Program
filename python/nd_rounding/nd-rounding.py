@@ -5,8 +5,17 @@ import pathlib
 import pulp
 import time
 import numpy as np
+import pandas as pd
 
+import ipf
 import random_data
+
+
+# Some file I/O stuff
+THIS_FOLDER = pathlib.Path(__file__).parent.resolve()
+TEMP_DATA_FOLDER = THIS_FOLDER / "temp_data"
+TEMP_DATA_FOLDER.mkdir(parents=False, exist_ok=True)
+ACTUAL_DATA_FOLDER = THIS_FOLDER / "post_ipf_actual_data"
 
 
 def check_input_validity(data: np.ndarray, marginals: list[np.ndarray]):
@@ -48,8 +57,8 @@ def compute_rounding_error(
 ) -> list[np.ndarray]:
     """Compute the rounding error between actual data and control marginals"""
     rounding_error = []
-    for dim in range(len(marginals)):
-        missing_dim = tuple(d for d in range(len(marginals)) if d != dim)
+    for dim in range(len(control)):
+        missing_dim = tuple(d for d in range(len(control)) if d != dim)
         rounding_error.append(actual.sum(axis=missing_dim) - control[dim])
     return rounding_error
 
@@ -122,15 +131,15 @@ def _nd_controlling_fuzzy_step(
 
     # Select some percentage of indicies to adjust (see function parameters)
     flat_indicies = gen.choice(
-        np.prod(data.shape),
+        np.prod(rounded_data.shape),
         size=int(np.ceil(int(np.sum(rounding_error[0])) * frac)),
         replace=False,
         p=flat_weight,
     )
-    ndarry_indicies = np.unravel_index(flat_indicies, data.shape, order="C")
+    ndarry_indicies = np.unravel_index(flat_indicies, rounded_data.shape, order="C")
 
     # Get the actual corrections to be made
-    corrections = np.zeros(data.shape)
+    corrections = np.zeros(rounded_data.shape)
     np.add.at(corrections, ndarry_indicies, -1)
 
     # Check the corrections for anything invalid. AKA check for any corrections
@@ -414,11 +423,6 @@ def nd_controlling_mixed_safe(
 
     check_input_validity(data, marginals)
 
-    # Some file I/O stuff for temporary files
-    THIS_FOLDER = pathlib.Path(__file__).parent.resolve()
-    TEMP_DATA_FOLDER = THIS_FOLDER / "temp_data"
-    TEMP_DATA_FOLDER.mkdir(parents=False, exist_ok=True)
-
     # The random generator for controlling
     gen = np.random.default_rng(seed)
 
@@ -426,6 +430,11 @@ def nd_controlling_mixed_safe(
     rounded_data = np.ceil(data)
     rounding_error = compute_rounding_error(rounded_data, marginals)
     total_rounding_error = int(np.sum(rounding_error[0]))
+
+    # If the total rounding error is already less than the threshold, just plug into the
+    # PuLP solver
+    if total_rounding_error < threshold:
+        return nd_controlling_pulp_solver(data, marginals)
 
     # Repeat the fuzzy rounding procedure until we either fully solve the integerization
     # or fail
@@ -477,24 +486,59 @@ def nd_controlling_mixed_safe(
 
 
 # Testing
-shape = [24321, 20, 2, 7]
+if __name__ == "__main__":
+    shape = [24321, 20 * 2 * 7]
 
-# start_time = time.time()
-# data, marginals = random_data.sparse(shape=shape)
-# rounded_data = nd_controlling_pulp_solver(data, marginals)
-# end_time = time.time()
-# print(f"PuLP solver took {end_time - start_time} seconds")
+    # start_time = time.time()
+    # data, marginals = random_data.sparse(shape=shape)
+    # rounded_data = nd_controlling_pulp_solver(data, marginals)
+    # end_time = time.time()
+    # print(f"PuLP solver took {end_time - start_time} seconds")
 
-start_time = time.time()
-data, marginals = random_data.sparse(shape=shape)
-rounded_data = nd_controlling_mixed(data, marginals, threshold=5000)
-end_time = time.time()
-print(f"Mixed sovler took {end_time - start_time} seconds")
+    # # Running on the AVD using shape = [24321, 20 * 2 * 7] takes 225 seconds
+    # start_time = time.time()
+    # data, marginals = random_data.sparse(shape=shape)
+    # rounded_data = nd_controlling_mixed(data, marginals, threshold=5000)
+    # end_time = time.time()
+    # print(f"Mixed solver took {end_time - start_time} seconds")
+    #
+    # # Running on the AVD using shape = [24321, 20 * 2 * 7] takes 271 seconds
+    # start_time = time.time()
+    # data, marginals = random_data.sparse(shape=shape)
+    # rounded_data = nd_controlling_mixed_safe(data, marginals)
+    # end_time = time.time()
+    # print(f"Mixed Safe solver took {end_time - start_time} seconds")
 
-start_time = time.time()
-data, marginals = random_data.sparse(shape=shape)
-rounded_data = nd_controlling_mixed_safe(data, marginals)
-end_time = time.time()
-print(f"Mixed Safe sovler took {end_time - start_time} seconds")
+    for pop_type in [
+        # "Group Quarters - College",
+        # "Group Quarters - Military",
+        # "Group Quarters - Institutional Correctional Facilities",
+        # "Group Quarters - Other",
+        "Household Population",
+    ]:
+        # Testing on real data
+        data = pd.read_csv(
+            ACTUAL_DATA_FOLDER / f"{pop_type}_data.csv",
+            index_col=0,
+            header=[0, 1, 2],
+        ).to_numpy()
+        row_controls = pd.read_csv(ACTUAL_DATA_FOLDER / f"{pop_type}_row_controls.csv")[
+            "value"
+        ].to_numpy()
+        column_controls = pd.read_csv(
+            ACTUAL_DATA_FOLDER / f"{pop_type}_column_controls.csv"
+        )["value"].to_numpy()
+        marginals = [row_controls, column_controls]
+
+        # Run through IPF just in case
+        post_ipf_data = ipf.ipf_numpy(data, marginals)
+
+        # Run the data through the rounding procedure
+        start_time = time.time()
+        rounded_data = nd_controlling_fuzzy(post_ipf_data, marginals)
+        end_time = time.time()
+        print(f"{pop_type} took {end_time - start_time} seconds")
+
+        pass
 
 pass
