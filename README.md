@@ -106,6 +106,8 @@ sql:
 ### Production Database Schema
 ```mermaid
 erDiagram
+direction TB
+
     metadata_run {
         run_id INT PK
         mgra NVARCHAR(10)
