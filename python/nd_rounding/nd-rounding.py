@@ -512,9 +512,9 @@ if __name__ == "__main__":
     for pop_type in [
         # "Group Quarters - College",
         # "Group Quarters - Military",
-        # "Group Quarters - Institutional Correctional Facilities",
+        "Group Quarters - Institutional Correctional Facilities",
         # "Group Quarters - Other",
-        "Household Population",
+        # "Household Population",
     ]:
         # Testing on real data
         data = pd.read_csv(
@@ -535,7 +535,7 @@ if __name__ == "__main__":
 
         # Run the data through the rounding procedure
         start_time = time.time()
-        rounded_data = nd_controlling_fuzzy(post_ipf_data, marginals)
+        rounded_data = nd_controlling_mixed_safe(post_ipf_data, marginals)
         end_time = time.time()
         print(f"{pop_type} took {end_time - start_time} seconds")
 
