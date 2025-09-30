@@ -6,6 +6,7 @@ import pulp
 import time
 import numpy as np
 import pandas as pd
+from unicodedata import category
 
 import ipf
 import random_data
@@ -268,72 +269,74 @@ def nd_controlling_pulp_solver(
     rounded_data = np.ceil(data)
     rounding_error = compute_rounding_error(rounded_data, marginals)
 
-    # Construct the system of equations to plug into PuLP. This is basically impossible
-    # to do with the built-in PuLP functions, so we have to construct the model using
-    # raw JSON :(
-    model = pulp.LpProblem("nd_controlling_pulp_solver", pulp.LpMinimize).to_dict()
+    # Construct the system of equations (aka the problem) to plug into PuLP
+    problem = pulp.LpProblem("test", pulp.LpMinimize)
 
-    # First, create the parameters (variables) by iterating though all data. The
-    # variable name is just the index of the data point in string form. The "cat" or
-    # category is "Binary" since the variable can only be zero or one. Zero indicates
-    # no change, and one indicates a correction of -1 to the rounded data
-    iterator = np.nditer(rounded_data, flags=["multi_index"])
-    for _ in iterator:
-        var_name = str(iterator.multi_index)
-        model["variables"].append({"name": var_name, "cat": "Binary"})
-
-    # Then, create the equations to solve for the correct amount of rounding error
-
-    # First, set up one equation for every non-zero rounding error along each axis.
-    # "coefficients" is where we will store the variables which are part of the
-    # equation. "constant" is the negative of the rounding error, since PuLP expects
-    # the equation to be in the form of "Ax + By + Cz ... = D", where D is the
-    # constant. "sense" is 0 since we want an exact match. "pi" is unused and
-    # can be set to None
-    equations = {}
-    for dim in range(n_dims):
-        for index in range(data.shape[dim]):
-            equations[f"dim:{dim},index:{index}"] = {
-                "coefficients": [],
-                "constant": -1 * rounding_error[dim][index],
-                "pi": None,
-                "sense": 0,
-            }
-
-    # Then, iterate through all the data again. Each data point is associated with
-    # n_dims equations, one for each axis. There are no weights associated with the
-    # variables, since we just want to minimize the total number of corrections without
-    # any preference for which data points to correct. Thus, the value is one
+    # First, loop over all the data, creating PuLP variables for every non-zero data
+    # point. Essentially, this will tell the model that these are the data points which
+    # are allowed to be adjusted
+    variables_matrix = np.empty_like(rounded_data, dtype=pulp.pulp.LpVariable)
     iterator = np.nditer(rounded_data, flags=["multi_index"])
     for value in iterator:
         if value > 0:
-            for dim in range(n_dims):
-                equations[f"dim:{dim},index:{iterator.multi_index[dim]}"][
-                    "coefficients"
-                ].append({"name": str(iterator.multi_index), "value": 1})
+            # According to a test (run only once), using LpBinary is more or less the
+            # same for military/prison, but four times slower compared to
+            # [0, min(3, value)] on other (214 seconds vs 55 seconds)
 
-    # Finally, transofrm the equations dictionary into an actual list of the constraints
-    for key, value in equations.items():
-        value["name"] = key
-        model["constraints"].append(value)
+            # # Create a variable under the constraint of LpBinary, which means in the
+            # # solution, the variable can only equal zero or one
+            # variables_matrix[iterator.multi_index] = pulp.LpVariable(
+            #     name=str(iterator.multi_index),
+            #     cat=pulp.LpBinary,
+            # )
 
-    # Create the model and solve. Note, the PULP_CDC_CMD is the default solver included
-    # in the library. No other solvers have been installed or tested, but you can
-    # easily do so yourself via:
+            # Create a variable under the constraint of LpInteger, which means in the
+            # solution, the variable can only be an integer. Additionally, lower bound
+            # to zero and upper bound to min(3, value). The logic is that a variable
+            # with a small value won't be missed if it's set to zero, but we don't want
+            # to accidentally zero out large values, so we cap the change at three
+            variables_matrix[iterator.multi_index] = pulp.LpVariable(
+                name=str(iterator.multi_index),
+                lowBound=0,
+                upBound=int(np.min((3, value.item()))),
+                cat=pulp.LpInteger,
+            )
+
+    # Now, loop over the marginals, creating equations for each
+    for dim in range(n_dims):
+        for index in range(len(marginals[dim])):
+
+            # If the marginal is non-zero, then this slice of data has variables which
+            # are also non-zero
+            if marginals[dim][index] > 0:
+                variables_slice = np.take(variables_matrix, indices=index, axis=dim)
+                non_zero_variables = variables_slice[variables_slice != None]
+
+                # The sum of the variables must equal to the rounding error of this
+                # particular marginal
+                equation = (
+                    pulp.LpAffineExpression({v: 1 for v in non_zero_variables})
+                    == rounding_error[dim][index]
+                )
+
+                # Add the equation to the problem
+                problem += equation
+
+    # Solve the problem. We use the default built in solver, as some testing has shown
+    # that the model construction is the slow part, not the solving. In case you want
+    # to test other solvers, take a look at:
     # https://coin-or.github.io/pulp/main/includeme.html#installing-solvers
-    variables, problem = pulp.LpProblem.from_dict(model)
     problem.solve(pulp.PULP_CBC_CMD(msg=False))
 
     # Check the status
     if pulp.LpStatus[problem.status] != "Optimal":
         raise ValueError
 
-    # Take the solution and convert it from the PuLP format into a Numpy array
-    corrections = np.zeros(shape=data.shape)
-    for coordinate, variable in variables.items():
-        if variable.varValue != 1:
-            continue
-        corrections[tuple(map(int, coordinate[1:-1].split(", ")))] = variable.varValue
+    # The solution to the problem is stored in the original variables matrix. Convert
+    # to a format we can use
+    corrections = np.vectorize(lambda var: var.varValue if var is not None else 0)(
+        variables_matrix
+    )
 
     # Apply the corrections
     rounded_data = rounded_data - corrections
@@ -509,11 +512,13 @@ if __name__ == "__main__":
     # end_time = time.time()
     # print(f"Mixed Safe solver took {end_time - start_time} seconds")
 
+    # Note, College has an issue where there is at least one marginal greater than zero
+    # assoicated with data that is only zero
     for pop_type in [
         # "Group Quarters - College",
-        # "Group Quarters - Military",
+        "Group Quarters - Military",
         "Group Quarters - Institutional Correctional Facilities",
-        # "Group Quarters - Other",
+        "Group Quarters - Other",
         # "Household Population",
     ]:
         # Testing on real data
@@ -535,10 +540,16 @@ if __name__ == "__main__":
 
         # Run the data through the rounding procedure
         start_time = time.time()
-        rounded_data = nd_controlling_mixed_safe(post_ipf_data, marginals)
+        # rounded_data = nd_controlling_mixed_safe(post_ipf_data, marginals)
+        rounded_data = nd_controlling_pulp_solver(post_ipf_data, marginals)
         end_time = time.time()
         print(f"{pop_type} took {end_time - start_time} seconds")
 
-        pass
+        # Current approx test times on the AVD
+        # Military: 17 seconds
+        # Prison: 20 seconds
+        # Other: 61 seconds
+        # HHP: > 492 seconds
+
 
 pass
