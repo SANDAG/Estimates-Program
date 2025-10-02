@@ -1,5 +1,6 @@
 # Testing space for various n-dimensional rounding algorithms
 
+import functools
 import string
 import pathlib
 import pulp
@@ -272,16 +273,39 @@ def nd_controlling_pulp_solver(
     # Construct the system of equations (aka the problem) to plug into PuLP
     problem = pulp.LpProblem("test", pulp.LpMinimize)
 
-    # First, loop over all the data, creating PuLP variables for every non-zero data
-    # point. Essentially, this will tell the model that these are the data points which
-    # are allowed to be adjusted
+    # First, loop over all the data, creating PuLP variables for every data point where
+    # the following conditions are true:
+    # 1. The data point must be non-zero. If the data point is zero, we could decrease
+    #    it to a negative value
+    # 2. Any rounding error associated with the data point is also non-zero. If all
+    #    rounding error is zero, then there is no situation where the data point should
+    #    be decreased, so we also shouldn't make a variable
+
+    # WRT point #2, create an ndarray of the same shape of our data that is True if and
+    # only if any rounding error is non-zero
+    rounding_error_expanded_dim = []
+    for dim in range(n_dims):
+        missing_dim = tuple(d for d in range(n_dims) if d != dim)
+        rounding_error_expanded_dim.append(
+            np.expand_dims(rounding_error[dim] != 0, missing_dim)
+        )
+    has_non_zero_rounding_error = functools.reduce(
+        np.logical_or, rounding_error_expanded_dim
+    )
+
+    # Combine the result from #2 with the non-zero data points for an ndarray of all
+    # valid variables
+    valid_variables = has_non_zero_rounding_error & (rounded_data > 0)
+
+    # Now, actually create the variables
     variables_matrix = np.empty_like(rounded_data, dtype=pulp.pulp.LpVariable)
-    iterator = np.nditer(rounded_data, flags=["multi_index"])
-    for value in iterator:
-        if value > 0:
+    iterator = np.nditer(valid_variables, flags=["multi_index"])
+    for is_valid in iterator:
+        if is_valid:
             # According to a test (run only once), using LpBinary is more or less the
-            # same for military/prison, but four times slower compared to
-            # [0, min(3, value)] on other (214 seconds vs 55 seconds)
+            # same for military/prison, but four times slower compared to using
+            # LpInteger bounded by [0, min(3, value)] on Other (214 seconds vs 55
+            # seconds)
 
             # # Create a variable under the constraint of LpBinary, which means in the
             # # solution, the variable can only equal zero or one
@@ -298,7 +322,7 @@ def nd_controlling_pulp_solver(
             variables_matrix[iterator.multi_index] = pulp.LpVariable(
                 name=str(iterator.multi_index),
                 lowBound=0,
-                upBound=int(np.min((3, value.item()))),
+                upBound=int(np.min((3, rounded_data[iterator.multi_index]))),
                 cat=pulp.LpInteger,
             )
 
@@ -321,6 +345,140 @@ def nd_controlling_pulp_solver(
 
                 # Add the equation to the problem
                 problem += equation
+
+    # Solve the problem. We use the default built in solver, as some testing has shown
+    # that the model construction is the slow part, not the solving. In case you want
+    # to test other solvers, take a look at:
+    # https://coin-or.github.io/pulp/main/includeme.html#installing-solvers
+    problem.solve(pulp.PULP_CBC_CMD(msg=False))
+
+    # Check the status
+    if pulp.LpStatus[problem.status] != "Optimal":
+        raise ValueError
+
+    # The solution to the problem is stored in the original variables matrix. Convert
+    # to a format we can use
+    corrections = np.vectorize(lambda var: var.varValue if var is not None else 0)(
+        variables_matrix
+    )
+
+    # Apply the corrections
+    rounded_data = rounded_data - corrections
+
+    # Double check everything worked
+    rounding_error = compute_rounding_error(rounded_data, marginals)
+    for dim_error in rounding_error:
+        if np.sum(dim_error) != 0:
+            raise ValueError
+
+    # Return the rounded data
+    return rounded_data
+
+
+def nd_controlling_pulp_solver_2d(
+    data: np.ndarray, marginals: list[np.ndarray]
+) -> np.ndarray:
+    """Round the input data such that marginals exact match, using the PuLP solver
+
+    This function has the additional restriction that data must be exactly two
+    dimensional. This reduces the amount of processing necessary in order to create the
+    PuLP model, greatly speeding up execution
+
+    Args:
+        data: The data to be rounded. This should be the output of an IPF procedure
+        marginals: The marginals to control to
+
+    Returns:
+        The rounded data
+    """
+    check_input_validity(data, marginals)
+
+    # Additionally ensure that the input data is two dimensional
+    if len(data.shape) != 2:
+        raise ValueError
+
+    # Very useful constant in this function
+    n_dims = len(marginals)
+
+    # Round all values up and compute error
+    rounded_data = np.ceil(data)
+    rounding_error = compute_rounding_error(rounded_data, marginals)
+
+    # Construct the system of equations (aka the problem) to plug into PuLP
+    problem = pulp.LpProblem("test", pulp.LpMinimize)
+
+    # First, loop over all the data, creating PuLP variables for every data point where
+    # the following conditions are true:
+    # 1. The data point must be non-zero. If the data point is zero, we could decrease
+    #    it to a negative value
+    # 2. Any rounding error associated with the data point is also non-zero. If all
+    #    rounding error is zero, then there is no situation where the data point should
+    #    be decreased, so we also shouldn't make a variable
+
+    # WRT point #2, create an ndarray of the same shape of our data that is True if and
+    # only if any rounding error is non-zero
+    rounding_error_expanded_dim = []
+    for dim in range(n_dims):
+        missing_dim = tuple(d for d in range(n_dims) if d != dim)
+        rounding_error_expanded_dim.append(
+            np.expand_dims(rounding_error[dim] != 0, missing_dim)
+        )
+    has_non_zero_rounding_error = functools.reduce(
+        np.logical_or, rounding_error_expanded_dim
+    )
+
+    # Combine the result from #2 with the non-zero data points for an ndarray of all
+    # valid variables
+    valid_variables = has_non_zero_rounding_error & (rounded_data > 0)
+
+    # Now, actually create the variables
+    variables_matrix = np.empty_like(rounded_data, dtype=pulp.pulp.LpVariable)
+    iterator = np.nditer(valid_variables, flags=["multi_index"])
+    for is_valid in iterator:
+        if is_valid:
+            # According to a test (run only once), using LpBinary is more or less the
+            # same for military/prison, but four times slower compared to using
+            # LpInteger bounded by [0, min(3, value)] on Other (214 seconds vs 55
+            # seconds)
+
+            # Create a variable under the constraint of LpBinary, which means in the
+            # solution, the variable can only equal zero or one
+            # variables_matrix[iterator.multi_index] = pulp.LpVariable(
+            #     name=str(iterator.multi_index),
+            #     cat=pulp.LpBinary,
+            # )
+
+            # Create a variable under the constraint of LpInteger, which means in the
+            # solution, the variable can only be an integer. Additionally, lower bound
+            # to zero and upper bound to min(3, value). The logic is that a variable
+            # with a small value won't be missed if it's set to zero, but we don't want
+            # to accidentally zero out large values, so we cap the change at three
+            variables_matrix[iterator.multi_index] = pulp.LpVariable(
+                name=str(iterator.multi_index),
+                lowBound=0,
+                upBound=int(np.min((3, rounded_data[iterator.multi_index]))),
+                cat=pulp.LpInteger,
+            )
+
+    # Now, loop over the marginals, creating equations for each
+    for index in range(len(marginals[0])):
+        if marginals[0][index] == 0:
+            continue
+        variables_slice = variables_matrix[index, :]
+        non_zero_variables = variables_slice[variables_slice != None]
+        problem += (
+            pulp.LpAffineExpression({v: 1 for v in non_zero_variables})
+            == rounding_error[0][index]
+        )
+    for index in range(len(marginals[1])):      
+        if marginals[1][index] == 0:
+            continue
+        variables_slice = variables_matrix[:, index]
+        non_zero_variables = variables_slice[variables_slice != None]
+        problem += (
+            pulp.LpAffineExpression({v: 1 for v in non_zero_variables})
+            == rounding_error[1][index]
+        )
 
     # Solve the problem. We use the default built in solver, as some testing has shown
     # that the model construction is the slow part, not the solving. In case you want
@@ -493,8 +651,8 @@ if __name__ == "__main__":
     shape = [24321, 20 * 2 * 7]
 
     # start_time = time.time()
-    # data, marginals = random_data.sparse(shape=shape)
-    # rounded_data = nd_controlling_pulp_solver(data, marginals)
+    # data, marginals = random_data.sparse(shape=[10, 4])
+    # rounded_data = nd_controlling_pulp_solver_2d(data, marginals)
     # end_time = time.time()
     # print(f"PuLP solver took {end_time - start_time} seconds")
 
@@ -519,7 +677,7 @@ if __name__ == "__main__":
         "Group Quarters - Military",
         "Group Quarters - Institutional Correctional Facilities",
         "Group Quarters - Other",
-        # "Household Population",
+        "Household Population",
     ]:
         # Testing on real data
         data = pd.read_csv(
@@ -541,7 +699,8 @@ if __name__ == "__main__":
         # Run the data through the rounding procedure
         start_time = time.time()
         # rounded_data = nd_controlling_mixed_safe(post_ipf_data, marginals)
-        rounded_data = nd_controlling_pulp_solver(post_ipf_data, marginals)
+        # rounded_data = nd_controlling_pulp_solver(post_ipf_data, marginals)
+        rounded_data = nd_controlling_pulp_solver_2d(post_ipf_data, marginals)
         end_time = time.time()
         print(f"{pop_type} took {end_time - start_time} seconds")
 
