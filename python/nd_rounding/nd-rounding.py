@@ -376,7 +376,10 @@ def nd_controlling_pulp_solver(
 
 
 def nd_controlling_pulp_solver_2d(
-    data: np.ndarray, marginals: list[np.ndarray], solver: str = "PULP_CBC_CMD"
+    data: np.ndarray,
+    marginals: list[np.ndarray],
+    solver: str = "PULP_CBC_CMD",
+    status_reports: bool = False,
 ) -> np.ndarray:
     """Round the input data such that marginals exact match, using the PuLP solver
 
@@ -388,10 +391,16 @@ def nd_controlling_pulp_solver_2d(
         data: The data to be rounded. This should be the output of an IPF procedure
         marginals: The marginals to control to
         solver: TODO
+        status_reports: TODO
 
     Returns:
         The rounded data
     """
+    if status_reports:
+        start_time = time.time()
+        old_time = start_time
+        print("Starting PuLP solver...")
+
     check_input_validity(data, marginals)
 
     # Additionally ensure that the input data is two dimensional
@@ -421,6 +430,10 @@ def nd_controlling_pulp_solver_2d(
     rounded_data = np.ceil(data)
     rounding_error = compute_rounding_error(rounded_data, marginals)
 
+    if status_reports:
+        print(f"Data rounded and error computed (time={time.time()-old_time})")
+        old_time = time.time()
+
     # Construct the system of equations (aka the problem) to plug into PuLP
     problem = pulp.LpProblem("test", pulp.LpMinimize)
 
@@ -447,6 +460,10 @@ def nd_controlling_pulp_solver_2d(
     # Combine the result from #2 with the non-zero data points for an ndarray of all
     # valid variables
     valid_variables = has_non_zero_rounding_error & (rounded_data > 0)
+
+    if status_reports:
+        print(f"Filtered variables (time={time.time()-old_time})")
+        old_time = time.time()
 
     # Now, actually create the variables
     variables_matrix = np.empty_like(rounded_data, dtype=pulp.pulp.LpVariable)
@@ -477,6 +494,10 @@ def nd_controlling_pulp_solver_2d(
                 cat=pulp.LpInteger,
             )
 
+    if status_reports:
+        print(f"Variables created (time={time.time()-old_time})")
+        old_time = time.time()
+
     # Now, loop over the marginals, creating equations for each
     for index in range(len(marginals[0])):
         if marginals[0][index] == 0:
@@ -497,16 +518,23 @@ def nd_controlling_pulp_solver_2d(
             == rounding_error[1][index]
         )
 
+    if status_reports:
+        print(f"Equations created (time={time.time()-old_time})")
+        old_time = time.time()
+
     # Solve the problem. We use the default built in solver, as some testing has shown
     # that the model construction is the slow part, not the solving. In case you want
     # to test other solvers, take a look at:
     # https://coin-or.github.io/pulp/main/includeme.html#installing-solvers
     problem.solve(solver)
 
+    if status_reports:
+        print(f"Problem solved (time={time.time()-old_time})")
+        old_time = time.time()
+
     # Check the status
-    # if pulp.LpStatus[problem.status] != "Optimal":
-    #     # raise ValueError
-    #     pass
+    if pulp.LpStatus[problem.status] != "Optimal":
+        raise ValueError
 
     # The solution to the problem is stored in the original variables matrix. Convert
     # to a format we can use
@@ -517,11 +545,17 @@ def nd_controlling_pulp_solver_2d(
     # Apply the corrections
     rounded_data = rounded_data - corrections
 
+    if status_reports:
+        print(f"Corrections applied (time={time.time()-old_time})")
+
     # Double check everything worked
     rounding_error = compute_rounding_error(rounded_data, marginals)
     for dim_error in rounding_error:
         if np.sum(dim_error) != 0:
             raise ValueError
+
+    if status_reports:
+        print(f"Finished solving (total time={time.time()-start_time})")
 
     # Return the rounded data
     return rounded_data
@@ -694,8 +728,8 @@ if __name__ == "__main__":
         # "Group Quarters - College",
         # "Group Quarters - Military",
         # "Group Quarters - Institutional Correctional Facilities",
-        "Group Quarters - Other",
-        # "Household Population",
+        # "Group Quarters - Other",
+        "Household Population",
     ]:
         # Testing on real data
         data = pd.read_csv(
@@ -716,8 +750,8 @@ if __name__ == "__main__":
 
         # Run the data through the rounding procedure
         for solver in [
-            "CyLP",
-            "PULP_CBC_CMD",
+            # "CyLP",
+            # "PULP_CBC_CMD",
             # "SCIP_PY",
             "HiGHS",
         ]:
@@ -725,7 +759,7 @@ if __name__ == "__main__":
             # rounded_data = nd_controlling_mixed_safe(post_ipf_data, marginals)
             # rounded_data = nd_controlling_pulp_solver(post_ipf_data, marginals)
             rounded_data = nd_controlling_pulp_solver_2d(
-                post_ipf_data, marginals, solver=solver
+                post_ipf_data, marginals, solver=solver, status_reports=True
             )
             end_time = time.time()
             print(f"{pop_type} using {solver} took {end_time - start_time} seconds")
