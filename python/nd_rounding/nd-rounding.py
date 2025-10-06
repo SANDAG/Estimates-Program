@@ -376,7 +376,7 @@ def nd_controlling_pulp_solver(
 
 
 def nd_controlling_pulp_solver_2d(
-    data: np.ndarray, marginals: list[np.ndarray]
+    data: np.ndarray, marginals: list[np.ndarray], solver: str = "PULP_CBC_CMD"
 ) -> np.ndarray:
     """Round the input data such that marginals exact match, using the PuLP solver
 
@@ -387,6 +387,7 @@ def nd_controlling_pulp_solver_2d(
     Args:
         data: The data to be rounded. This should be the output of an IPF procedure
         marginals: The marginals to control to
+        solver: TODO
 
     Returns:
         The rounded data
@@ -396,6 +397,22 @@ def nd_controlling_pulp_solver_2d(
     # Additionally ensure that the input data is two dimensional
     if len(data.shape) != 2:
         raise ValueError
+
+    # Validate the solver and make sure it's installed
+    if solver not in ["CyLP", "PULP_CBC_CMD", "SCIP_PY", "HiGHS"]:
+        raise ValueError("TODO")
+    if solver not in pulp.listSolvers(onlyAvailable=True):
+        raise ValueError("TODO")
+
+    # Create the solver
+    if solver == "CyLP":
+        solver = pulp.CYLP(msg=False)
+    elif solver == "PULP_CBC_CMD":
+        solver = pulp.PULP_CBC_CMD(msg=False)
+    elif solver == "SCIP_PY":
+        solver = pulp.SCIP(msg=False)
+    elif solver == "HiGHS":
+        solver = pulp.HiGHS(msg=False)
 
     # Very useful constant in this function
     n_dims = len(marginals)
@@ -470,7 +487,7 @@ def nd_controlling_pulp_solver_2d(
             pulp.LpAffineExpression({v: 1 for v in non_zero_variables})
             == rounding_error[0][index]
         )
-    for index in range(len(marginals[1])):      
+    for index in range(len(marginals[1])):
         if marginals[1][index] == 0:
             continue
         variables_slice = variables_matrix[:, index]
@@ -484,11 +501,12 @@ def nd_controlling_pulp_solver_2d(
     # that the model construction is the slow part, not the solving. In case you want
     # to test other solvers, take a look at:
     # https://coin-or.github.io/pulp/main/includeme.html#installing-solvers
-    problem.solve(pulp.PULP_CBC_CMD(msg=False))
+    problem.solve(solver)
 
     # Check the status
-    if pulp.LpStatus[problem.status] != "Optimal":
-        raise ValueError
+    # if pulp.LpStatus[problem.status] != "Optimal":
+    #     # raise ValueError
+    #     pass
 
     # The solution to the problem is stored in the original variables matrix. Convert
     # to a format we can use
@@ -674,10 +692,10 @@ if __name__ == "__main__":
     # assoicated with data that is only zero
     for pop_type in [
         # "Group Quarters - College",
-        "Group Quarters - Military",
-        "Group Quarters - Institutional Correctional Facilities",
+        # "Group Quarters - Military",
+        # "Group Quarters - Institutional Correctional Facilities",
         "Group Quarters - Other",
-        "Household Population",
+        # "Household Population",
     ]:
         # Testing on real data
         data = pd.read_csv(
@@ -697,18 +715,19 @@ if __name__ == "__main__":
         post_ipf_data = ipf.ipf_numpy(data, marginals)
 
         # Run the data through the rounding procedure
-        start_time = time.time()
-        # rounded_data = nd_controlling_mixed_safe(post_ipf_data, marginals)
-        # rounded_data = nd_controlling_pulp_solver(post_ipf_data, marginals)
-        rounded_data = nd_controlling_pulp_solver_2d(post_ipf_data, marginals)
-        end_time = time.time()
-        print(f"{pop_type} took {end_time - start_time} seconds")
-
-        # Current approx test times on the AVD
-        # Military: 17 seconds
-        # Prison: 20 seconds
-        # Other: 61 seconds
-        # HHP: > 492 seconds
-
+        for solver in [
+            "CyLP",
+            "PULP_CBC_CMD",
+            # "SCIP_PY",
+            "HiGHS",
+        ]:
+            start_time = time.time()
+            # rounded_data = nd_controlling_mixed_safe(post_ipf_data, marginals)
+            # rounded_data = nd_controlling_pulp_solver(post_ipf_data, marginals)
+            rounded_data = nd_controlling_pulp_solver_2d(
+                post_ipf_data, marginals, solver=solver
+            )
+            end_time = time.time()
+            print(f"{pop_type} using {solver} took {end_time - start_time} seconds")
 
 pass

@@ -45,6 +45,7 @@ dependencies:
       - git+https://github.com/SANDAG/ipfn@master
       - polars==1.30.0
       - pulp==3.3.0
+      - pulp[open_py]==3.3.0
       - pyaml==25.1.0
       - pyodbc==5.2.0
       - pyyaml==6.0.2
