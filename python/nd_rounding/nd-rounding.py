@@ -441,9 +441,8 @@ def nd_controlling_pulp_solver_2d(
     # the following conditions are true:
     # 1. The data point must be non-zero. If the data point is zero, we could decrease
     #    it to a negative value
-    # 2. Any rounding error associated with the data point is also non-zero. If all
-    #    rounding error is zero, then there is no situation where the data point should
-    #    be decreased, so we also shouldn't make a variable
+    # 2. All rounding error associated with this data point is non-zero. If rounding
+    #    error is zero along any axis, that implies that all variables must also be zero
 
     # WRT point #2, create an ndarray of the same shape of our data that is True if and
     # only if any rounding error is non-zero
@@ -454,7 +453,7 @@ def nd_controlling_pulp_solver_2d(
             np.expand_dims(rounding_error[dim] != 0, missing_dim)
         )
     has_non_zero_rounding_error = functools.reduce(
-        np.logical_or, rounding_error_expanded_dim
+        np.logical_and, rounding_error_expanded_dim
     )
 
     # Combine the result from #2 with the non-zero data points for an ndarray of all
@@ -498,9 +497,11 @@ def nd_controlling_pulp_solver_2d(
         print(f"Variables created (time={time.time()-old_time})")
         old_time = time.time()
 
-    # Now, loop over the marginals, creating equations for each
+    # Now, loop over the marginals, creating equations for each. If the rounding error
+    # is already zero, there can't be any further deviations for this axis/index, so
+    # we skip
     for index in range(len(marginals[0])):
-        if marginals[0][index] == 0:
+        if rounding_error[0][index] == 0:
             continue
         variables_slice = variables_matrix[index, :]
         non_zero_variables = variables_slice[variables_slice != None]
@@ -509,7 +510,7 @@ def nd_controlling_pulp_solver_2d(
             == rounding_error[0][index]
         )
     for index in range(len(marginals[1])):
-        if marginals[1][index] == 0:
+        if rounding_error[1][index] == 0:
             continue
         variables_slice = variables_matrix[:, index]
         non_zero_variables = variables_slice[variables_slice != None]
@@ -702,11 +703,11 @@ def nd_controlling_mixed_safe(
 if __name__ == "__main__":
     shape = [24321, 20 * 2 * 7]
 
-    # start_time = time.time()
-    # data, marginals = random_data.sparse(shape=[10, 4])
-    # rounded_data = nd_controlling_pulp_solver_2d(data, marginals)
-    # end_time = time.time()
-    # print(f"PuLP solver took {end_time - start_time} seconds")
+    start_time = time.time()
+    data, marginals = random_data.sparse(shape=[10, 4])
+    rounded_data = nd_controlling_pulp_solver_2d(data, marginals)
+    end_time = time.time()
+    print(f"PuLP solver took {end_time - start_time} seconds")
 
     # # Running on the AVD using shape = [24321, 20 * 2 * 7] takes 225 seconds
     # start_time = time.time()
