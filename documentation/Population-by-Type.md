@@ -13,10 +13,10 @@
 | City household population controls         | External (DOF)         | Adjust household population to match household population by city          |
 
 ### MGRA cross-reference (`[inputs].[mgra]`)
-See [Startup](https://github.com/SANDAG/Estimates-Program/wiki/Startup).
+See [Startup](/documentation/Startup.md#mgra-geography-and-cross-reference-inputsmgra).
 
 ### Special MGRAs (`[inputs].[special_mgras]`)
-See [Startup](https://github.com/SANDAG/Estimates-Program/wiki/Startup).
+See [Startup](/documentation/Startup.md#special-mgras-inputsspecial_mgras).
 
 ### Point geometry group quarters by type
 MGRA group quarters by type is aggregated from SANDAG's point geometry group quarters dataset to the MGRA-level. To ensure that group quarters by type is assigned to the correct MGRA, a spatial join is used to match the group quarters point geometries to MGRA polygons. The special MGRAs table (`[inputs].[special_mgras]`) is used to identify instances of "Group Quarters - Other" that should be mapped to "Group Quarters - Institutional Correctional Facilities".
@@ -26,7 +26,7 @@ MGRA group quarters by type is aggregated from SANDAG's point geometry group qua
 City-level total group quarters controls are directly pulled from the [California Department of Finance (DOF) Estimates](https://dof.ca.gov/forecasting/demographics/estimates/). For years 2010-2019, data is pulled from the most recent E-8 product at the time. For years 2020+, data is pulled from the most recent E-5 product at the time.
 
 ### Households in each MGRA (`[outputs].[hh]`)
-See [Housing and Households](https://github.com/SANDAG/Estimates-Program/wiki/Housing-and-Households).
+See [Housing and Households](/documentation/Housing-and-Households.md#households-by-structure-type-in-each-mgra-outputshh).
 
 ### Census tract average household size
 

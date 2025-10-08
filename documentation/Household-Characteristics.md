@@ -11,13 +11,13 @@
 | Census tract households by size distribution          | External (ACS)         | Apply to households to create households by size categories       |
 
 ### MGRA cross-reference (`[inputs].[mgra]`)
-See [Startup](https://github.com/SANDAG/Estimates-Program/wiki/Startup).
+See [Startup](/documentation/Startup.md#mgra-geography-and-cross-reference-inputsmgra).
 
 ### Households in each MGRA (`[outputs].[hh]`)
-See [Housing and Households](https://github.com/SANDAG/Estimates-Program/wiki/Housing-and-Households).
+See [Housing and Households](/documentation/Housing-and-Households.md#households-by-structure-type-in-each-mgra-outputshh).
 
 ### Household population in each MGRA (`[outputs].[hhp]`)
-See [Housing and Households](https://github.com/SANDAG/Estimates-Program/wiki/Housing-and-Households).
+See [Population by Type](/documentation/Population-by-Type.md#household-population-in-each-mgra-outputshhp).
 
 ### Census tract household income distribution
 

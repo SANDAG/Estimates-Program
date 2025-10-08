@@ -10,7 +10,7 @@
 | City total occupancy rate controls             | External (DOF)  | Adjust households to match overall occupancy rate by city                      |
 
 ### MGRA cross-reference (`[inputs].[mgra]`)
-See [Startup](https://github.com/SANDAG/Estimates-Program/wiki/Startup).
+See [Startup](/documentation/Startup.md#mgra-geography-and-cross-reference-inputsmgra).
 
 ### Point geometry housing stock by land use
 
