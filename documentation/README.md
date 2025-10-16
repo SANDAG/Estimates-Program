@@ -35,3 +35,16 @@ graph TD;
 ```
 
 Additionally, shared functionalities across modules are stored in the [Utility](/documentation/Utility.md) module. This module contains software configurations specified in the `config.yml`, helper functions for rounding and integerization, as well as a handler allowing the program to use earlier ACS 5-year releases if the current year release is unavailable.
+
+# Navigation
+
+* Home Page
+* [Startup](Startup.md)
+* [Housing and Households](Housing-and-Households.md)
+* [Population by Type](Population-by-Type.md)
+* [Population by Age/Sex/Ethnicity](Population-by-Age-Sex-Ethnicity.md)
+    * [Regional Age/Sex/Ethnicity Controls by Housing Type](ase/Regional-Age-Sex-Ethnicity-Controls-By-Housing-Type.md)
+    * [Census Tract Age/Sex/Ethnicity Seed](ase/Census-Tract-Age-Sex-Ethnicity-Seed.md)
+* [Household Characteristics](Household-Characteristics.md)
+* [Staging](Staging.md)
+* [Utility](Utility.md)
