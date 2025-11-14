@@ -1,16 +1,14 @@
-# Housing and Households Module
-
 # Inputs
 
-| Input                                          | Module Source   | Usage                                                                          |
-|------------------------------------------------|-----------------|--------------------------------------------------------------------------------| 
-| MGRA cross-reference (`[inputs].[mgra]`)       | Startup         | Used to merge MGRA values with census tract rates and city controls            |
-| Point geometry housing stock by land use       | External (LUDU) | Generate counts of housing units by structure type within each MGRA            |
-| Census tract occupancy rates by structure type | External (ACS)  | Apply to housing units to create households by structure type within each MGRA |
-| City total occupancy rate controls             | External (DOF)  | Adjust households to match overall occupancy rate by city                      |
+| Input                                          | Module Source  | Usage                                                                              |
+|------------------------------------------------|----------------|------------------------------------------------------------------------------------| 
+| MGRA cross-reference (`[inputs].[mgra]`)       | Startup        | Used to merge MGRA values with census tract rates and city controls                |
+| Point geometry housing stock by land use       | External (LUDU)| Generate counts of housing units by structure type within each MGRA                |
+| Census tract occupancy rates by structure type | External (ACS) | Apply to housing units to create households by structure type within each MGRA     |
+| City total occupancy rate controls             | External (DOF) | Adjust households to match overall occupancy rate by city                          |
 
 ## MGRA cross-reference (`[inputs].[mgra]`)
-See [Startup](/documentation/Startup.md#mgra-geography-and-cross-reference-inputsmgra).
+See [Startup](https://github.com/SANDAG/Estimates-Program/wiki/Startup).
 
 ## Point geometry housing stock by land use
 
@@ -60,7 +58,6 @@ City-level total occupancy controls are directly pulled from the [California Dep
 ```
 
 # Outputs
-
 ## Housing by structure type in each MGRA (`[outputs].[hs]`)
 MGRA housing stock by structure type. Generated from SANDAG's LUDU point layer, mapping land use codes to structure types.
 
@@ -86,16 +83,3 @@ Each row of this table contains the following information:
 | `[mgra]`           | The Master Geographic Reference Area (MGRA)                      |
 | `[structure_type]` | Housing unit structure type household resides in                 |
 | `[value]`          | Number of households                                             |
-
-# Navigation
-
-* [Home Page](README.md)
-* [Startup](Startup.md)
-* Housing and Households
-* [Population by Type](Population-by-Type.md)
-* [Population by Age/Sex/Ethnicity](Population-by-Age-Sex-Ethnicity.md)
-    * [Regional Age/Sex/Ethnicity Controls by Housing Type](ase/Regional-Age-Sex-Ethnicity-Controls-By-Housing-Type.md)
-    * [Census Tract Age/Sex/Ethnicity Seed](ase/Census-Tract-Age-Sex-Ethnicity-Seed.md)
-* [Household Characteristics](Household-Characteristics.md)
-* [Staging](Staging.md)
-* [Utility](Utility.md)

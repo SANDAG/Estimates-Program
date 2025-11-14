@@ -1,40 +1,37 @@
-# Population by Age/Sex/Ethnicity Module
-
 # Inputs
 The population by age/sex/ethnicity by housing type module is the most complex module in SANDAG's Estimates Program. As such, it is broken down into three separate components, the first two feeding into the final calculation. The first two components are briefly mentioned on this page, with their sub-pages linked in this section.
 
-| Input                                                                            | Module Source                   | Usage                                                                                                                                                  |
-|----------------------------------------------------------------------------------|---------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------| 
-| Regional age/sex/ethnicity controls by housing type                              | Population by Age/Sex/Ethnicity | Regional controls used in IPF procedure to generate MGRA-level population by age/sex/ethnicity by housing type                                         |
-| Census tract age/sex/ethnicity seed data                                         | Population by Age/Sex/Ethnicity | Census tract age/sex/ethnicity distributions used as seed data in IPF procedure to generate MGRA-level population by age/sex/ethnicity by housing type |
-| MGRA cross-reference (`[inputs].[mgra]`)                                         | Startup                         | Used to merge MGRA-level values with census tract seed data                                                                                            |
-| Special MGRAs (`[inputs].[special_mgras]`)                                       | Startup                         | Used to restrict age/sex categories in identified housing types                                                                                        |
-| Households in each MGRA (`[outputs].[hh]`)                                       | Housing and Households          | Used to balance the number of householders (age 15+) in each MGRA                                                                                      |
-| Population by housing type in each MGRA (`[outputs].[gq]` and `[outputs].[hhp]`) | Population by Type              | MGRA controls used in IPF procedure to generate MGRA-level population by age/sex/ethnicity by housing type                                             |
+| Input                                      | Module Source          | Usage                                                               |
+|--------------------------------------------|------------------------|---------------------------------------------------------------------| 
+| Regional age/sex/ethnicity controls by housing type | Population by Age/Sex/Ethnicity | Regional controls used in IPF procedure to generate MGRA-level population by age/sex/ethnicity by housing type |
+| Census tract age/sex/ethnicity seed data | Population by Age/Sex/Ethnicity | Census tract age/sex/ethnicity distributions used as seed data in IPF procedure to generate MGRA-level population by age/sex/ethnicity by housing type |
+| MGRA cross-reference (`[inputs].[mgra]`)   | Startup                | Used to merge MGRA-level values with census tract seed data |
+| Special MGRAs (`[inputs].[special_mgras]`) | Startup                | Used to restrict age/sex categories in identified housing types |
+| Households in each MGRA (`[outputs].[hh]`) | Housing and Households | Used to balance the number of householders (age 15+) in each MGRA |
+| Population by housing type in each MGRA (`[outputs].[gq]` and `[outputs].[hhp]`) | Population by Type | MGRA controls used in IPF procedure to generate MGRA-level population by age/sex/ethnicity by housing type |
 
 ## Regional age/sex/ethnicity controls by housing type
-See the sub-page [Regional Age/Sex/Ethnicity Controls By Housing Type](/documentation/ase/Regional-Age-Sex-Ethnicity-Controls-By-Housing-Type.md).
+See the sub-page [Regional age/sex/ethnicity controls by housing type](https://github.com/SANDAG/Estimates-Program/wiki/Regional-Age-Sex-Ethnicity-Controls).
 
 ## Census tract age/sex/ethnicity seed data
-See the sub-page [Census Tract Age/Sex/Ethnicity Seed](/documentation/ase/Census-Tract-Age-Sex-Ethnicity-Seed.md).
+See the sub-page [Census tract age/sex/ethnicity seed data](https://github.com/SANDAG/Estimates-Program/wiki/Census-Tract-Age-Sex-Ethnicity-Seed).
 
 ## MGRA cross-reference (`[inputs].[mgra]`)
-See [Startup](/documentation/Startup.md#mgra-geography-and-cross-reference-inputsmgra).
+See [Startup](https://github.com/SANDAG/Estimates-Program/wiki/Startup).
 
 ## Special MGRAs (`[inputs].[special_mgras]`)
-See [Startup](/documentation/Startup.md#special-mgras-inputsspecial_mgras).
+See [Startup](https://github.com/SANDAG/Estimates-Program/wiki/Startup).
 
 ## Households in each MGRA (`[outputs].[hh]`)
-See [Housing and Households](/documentation/Housing-and-Households.md#households-by-structure-type-in-each-mgra-outputshh).
+See [Housing and Households](https://github.com/SANDAG/Estimates-Program/wiki/Housing-and-Households).
 
 ## Population by housing type in each MGRA (`[outputs].[gq]` and `[outputs].[hhp]`)
-See [Household Population](/documentation/Population-by-Type.md#household-population-in-each-mgra-outputshhp) and [Group Quarters Population](/documentation/Population-by-Type.md#group-quarters-population-by-housing-type-in-each-mgra-outputsgq) from the [Population by Type](/documentation/Population-by-Type.md) module
+See [Population by Type](https://github.com/SANDAG/Estimates-Program/wiki/Population-by-Type).
 
 # Outputs
-
 ## Population by Age/Sex/Ethnicity by Housing Type (`[outputs].[ase]`)
 
-Creates regional age/sex/ethnicity controls by housing type (see [sub-page](/documentation/ase/Regional-Age-Sex-Ethnicity-Controls-By-Housing-Type.md)). Then calculates MGRA-level age/sex/ethnicity population by type using these regional controls, synthesized census tract-level seed data (see [sub-page](/documentation/ase/Census-Tract-Age-Sex-Ethnicity-Seed.md)), and MGRA-level population by type generated by the "Population by Type" module.
+Creates regional age/sex/ethnicity controls by housing type (see [sub-page](https://github.com/SANDAG/Estimates-Program/wiki/Regional-Age-Sex-Ethnicity-Controls)). Then calculates MGRA-level age/sex/ethnicity population by type using these regional controls, synthesized census tract-level seed data (see [sub-page](https://github.com/SANDAG/Estimates-Program/wiki/Census-Tract-Age-Sex-Ethnicity-Seed)), and MGRA-level population by type generated by the "Population by Type" module.
 
 The main portion of the "Population by Age Sex Ethnicity" module first adjusts the synthesized census tract-level seed data using the special MGRAs, setting age/sex restricted categories to zero. It then runs an [iterative proportional fitting](https://en.wikipedia.org/wiki/Iterative_proportional_fitting) (IPF) procedure using the regional age/sex/ethnicity controls by population type and the MGRA-level population by type as controls. The results are then balanced, ensuring the special MGRA restrictions are respected and that, within each MGRA, the number of householders (persons aged 15+) is greater than or equal to the number of households.
 
@@ -50,16 +47,3 @@ Each row of this table contains the following information:
 | `[sex]`            | Sex                                                              |
 | `[ethnicity]`      | Ethnicity                                                        |
 | `[value]`          | Number of persons                                                |
-
-# Navigation
-
-* [Home Page](README.md)
-* [Startup](Startup.md)
-* [Housing and Households](Housing-and-Households.md)
-* [Population by Type](Population-by-Type.md)
-* Population by Age/Sex/Ethnicity
-    * [Regional Age/Sex/Ethnicity Controls by Housing Type](ase/Regional-Age-Sex-Ethnicity-Controls-By-Housing-Type.md)
-    * [Census Tract Age/Sex/Ethnicity Seed](ase/Census-Tract-Age-Sex-Ethnicity-Seed.md)
-* [Household Characteristics](Household-Characteristics.md)
-* [Staging](Staging.md)
-* [Utility](Utility.md)

@@ -1,12 +1,10 @@
-# Census Tract Age/Sex/Ethnicity Seed
-
 # Inputs
 
-| Input                                        | Module Source  | Usage                                                                                             |
-|----------------------------------------------|----------------|---------------------------------------------------------------------------------------------------| 
-| Census tract population by age/sex/ethnicity | External (ACS) | Used as seed data in IPF procedure to generate census tract population by age/sex/ethnicity       |
-| Census tract population by age/sex           | External (ACS) | Age/sex controls used in IPF procedure to generate census tract population by age/sex/ethnicity   |
-| Census tract population by ethnicity         | External (ACS) | Ethnicity controls used in IPF procedure to generate census tract population by age/sex/ethnicity |
+| Input                                        | Module Source  | Usage                                                             |
+|----------------------------------------------|----------------|-------------------------------------------------------------------| 
+| Census tract population by age/sex/ethnicity | External (ACS) | Used as seed data in IPF procedure to generate census tract population by age/sex/ethnicity |
+| Census tract population by age/sex | External (ACS) | Age/sex controls used in IPF procedure to generate census tract population by age/sex/ethnicity |
+| Census tract population by ethnicity | External (ACS) | Ethnicity controls used in IPF procedure to generate census tract population by age/sex/ethnicity |
 
 ## Census tract population by age/sex/ethnicity
 Initial seed data for the [iterative proportional fitting](https://en.wikipedia.org/wiki/Iterative_proportional_fitting) (IPF) procedure is provided by a combination of eight 5-year American Community Survey (ACS) tables. These are not used directly for census tract population by age/sex/ethnicity as each race category includes both Hispanic and Non-Hispanic unless otherwise noted. Additionally, age categories for the ethnicity tables are reported at too aggregate a level for direct use in SANDAG's Estimates Program, so the B01001 table is used to naively split aggregate categories into more granular groups. These shortcomings make the data unfit for direct use but adequate enough to serve as initial seed data in an IPF procedure.
@@ -27,16 +25,3 @@ The [B03002 | SEX BY AGE](https://data.census.gov/table/ACSDT5Y2020.B03002?q=B03
 
 # Outputs
 This process has no direct outputs. Census tract seed data by age/sex/ethnicity is generated using an IPF procedure and fed directly to the next step in the process of generating population by age/sex/ethnicity by housing type in each MGRA.
-
-# Navigation
-
-* [Home Page](../README.md)
-* [Startup](../Startup.md)
-* [Housing and Households](../Housing-and-Households.md)
-* [Population by Type](../Population-by-Type.md)
-* [Population by Age/Sex/Ethnicity](../Population-by-Age-Sex-Ethnicity.md)
-    * [Regional Age/Sex/Ethnicity Controls by Housing Type](Regional-Age-Sex-Ethnicity-Controls-By-Housing-Type.md)
-    * Census Tract Age/Sex/Ethnicity Seed
-* [Household Characteristics](../Household-Characteristics.md)
-* [Staging](../Staging.md)
-* [Utility](../Utility.md)

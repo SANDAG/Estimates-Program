@@ -1,5 +1,3 @@
-# Household Characteristics Module
-
 # Inputs
 
 | Input                                                 | Module Source          | Usage                                                             |
@@ -11,13 +9,13 @@
 | Census tract households by size distribution          | External (ACS)         | Apply to households to create households by size categories       |
 
 ## MGRA cross-reference (`[inputs].[mgra]`)
-See [Startup](/documentation/Startup.md#mgra-geography-and-cross-reference-inputsmgra).
+See [Startup](https://github.com/SANDAG/Estimates-Program/wiki/Startup).
 
 ## Households in each MGRA (`[outputs].[hh]`)
-See [Housing and Households](/documentation/Housing-and-Households.md#households-by-structure-type-in-each-mgra-outputshh).
+See [Housing and Households](https://github.com/SANDAG/Estimates-Program/wiki/Housing-and-Households).
 
 ## Household population in each MGRA (`[outputs].[hhp]`)
-See [Population by Type](/documentation/Population-by-Type.md#household-population-in-each-mgra-outputshhp).
+See [Housing and Households](https://github.com/SANDAG/Estimates-Program/wiki/Housing-and-Households).
 
 ## Census tract household income distribution
 
@@ -66,16 +64,3 @@ MGRA households by income category. Calculated by applying census tract distribu
 MGRA households by size category. Calculated by applying census tract distributions to households. Adjusts size categories within MGRAs such that the implied household population range (min-max) contains the actual MGRA household population value.
 
 For example, within a MGRA with 10 households of size one, 10 households of size two, ..., 10 households of size 7+, the minimum amount of household population would be 1x10 + 2x20 + ... + 7x10 = 280. The maximum amount of household population, assuming the 7+ category all average 11 people (see [issue #112](https://github.com/SANDAG/Estimates-Program/issues/112)), would be 1x10 + 2x20 + ... + 11x10 = 320. The actual amount of household population in this MGRA must be between these two values. If it is not, the households in size categories are adjusted until the condition is satisfied.
-
-# Navigation
-
-* [Home Page](README.md)
-* [Startup](Startup.md)
-* [Housing and Households](Housing-and-Households.md)
-* [Population by Type](Population-by-Type.md)
-* [Population by Age/Sex/Ethnicity](Population-by-Age-Sex-Ethnicity.md)
-    * [Regional Age/Sex/Ethnicity Controls by Housing Type](ase/Regional-Age-Sex-Ethnicity-Controls-By-Housing-Type.md)
-    * [Census Tract Age/Sex/Ethnicity Seed](ase/Census-Tract-Age-Sex-Ethnicity-Seed.md)
-* Household Characteristics
-* [Staging](Staging.md)
-* [Utility](Utility.md)

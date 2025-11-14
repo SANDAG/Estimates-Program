@@ -1,5 +1,3 @@
-# Startup Module
-
 # Inputs
 
 The Startup module has no inputs.
@@ -26,16 +24,3 @@ Each row of this table contains the following information:
 | `[sex]`        | (Optional) The sex the population must be                        |
 | `[min_age]`    | (Optional) The minimum age inclusive the population can be       |
 | `[max_age]`    | (Optional) The maximum age inclusive the population can be       |
-
-# Navigation
-
-* [Home Page](README.md)
-* Startup
-* [Housing and Households](Housing-and-Households.md)
-* [Population by Type](Population-by-Type.md)
-* [Population by Age/Sex/Ethnicity](Population-by-Age-Sex-Ethnicity.md)
-    * [Regional Age/Sex/Ethnicity Controls by Housing Type](ase/Regional-Age-Sex-Ethnicity-Controls-By-Housing-Type.md)
-    * [Census Tract Age/Sex/Ethnicity Seed](ase/Census-Tract-Age-Sex-Ethnicity-Seed.md)
-* [Household Characteristics](Household-Characteristics.md)
-* [Staging](Staging.md)
-* [Utility](Utility.md)

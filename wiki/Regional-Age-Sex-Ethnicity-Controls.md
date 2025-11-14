@@ -1,15 +1,13 @@
-# Regional Age/Sex/Ethnicity Controls By Housing Type
-
 # Inputs
 
-| Input                                                                        | Module Source      | Usage                                                                                                                  |
-|------------------------------------------------------------------------------|--------------------|------------------------------------------------------------------------------------------------------------------------| 
+| Input                                                   | Module Source          | Usage                                                             |
+|---------------------------------------------------------|------------------------|-------------------------------------------------------------------| 
 | Regional population by housing type (`[outputs].[gq]` and `[outputs].[hhp]`) | Population by Type | Used to calculate group quarters age/sex/ethnicity by type and the household population age/sex/ethnicity as remainder |
-| Regional age/sex/ethnicity distributions for group quarters by type          | External (ACS)     | Applied to group quarters population by type to get group quarters age/sex/ethnicity by type                           |
-| Regional age/sex/ethnicity controls for total population                     | External (DOF)     | Used to calculate household population age/sex/ethnicity as remainder                                                  |
+| Regional age/sex/ethnicity distributions for group quarters by type | External (ACS) | Applied to group quarters population by type to get group quarters age/sex/ethnicity by type |
+| Regional age/sex/ethnicity controls for total population | External (DOF) | Used to calculate household population age/sex/ethnicity as remainder |
 
 ## Regional population by housing type (`[outputs].[gq]` and `[outputs].[hhp]`)
-See the Population by Type module for [Group Quarters Population](/documentation/Population-by-Type.md#group-quarters-population-by-housing-type-in-each-mgra-outputsgq) and [Household Population](/documentation/Population-by-Type.md#household-population-in-each-mgra-outputshhp)
+See [Population by Type](https://github.com/SANDAG/Estimates-Program/wiki/Population-by-Type).
 
 ## Regional age/sex/ethnicity distributions for group quarters by type
 The regional age/sex/ethnicity distributions for group quarters by type are calculated using the 5-year American Community Survey (ACS) Public Use Microdata Sample (PUMS) for the given estimates year (e.g., 2020 uses the 2016-2020 PUMS, 2021 the 2017-2021 PUMS, ...). For documentation, including field definitions, see the [PUMS Documentation](https://www.census.gov/programs-surveys/acs/microdata/documentation.html).
@@ -51,19 +49,6 @@ Further filtering is done to identify specific GQ types:
 The regional age/sex/ethnicity controls for total population are derived from the most recent [California Department of Finance (DOF) Projections](https://dof.ca.gov/forecasting/demographics/projections/) P-3 product available at the time. 
 
 # Outputs
-The regional age/sex/ethnicity controls for total population from the DOF are scaled to match the total population, derived from the estimates output of regional population by housing type (see from the Population by Type module [Household Population](/documentation/Population-by-Type.md#household-population-in-each-mgra-outputshhp) and [Group Quarters Population](/documentation/Population-by-Type.md#group-quarters-population-by-housing-type-in-each-mgra-outputsgq)). Subsequently, regional group quarters age/sex/ethnicity population by type is calculated by applying the distributions from the 5-year ACS PUMS to the regional population by housing type. Finally, regional household age/sex/ethnicity population is calculated as the remainder of the scaled regional age/sex/ethnicity controls for total population and the regional group quarters age/sex/ethnicity population by type.
+The regional age/sex/ethnicity controls for total population from the DOF are scaled to match the total population, derived from the estimates output of regional population by housing type ([see Population by Type](https://github.com/SANDAG/Estimates-Program/wiki/Population-by-Type)). Subsequently, regional group quarters age/sex/ethnicity population by type is calculated by applying the distributions from the 5-year ACS PUMS to the regional population by housing type. Finally, regional household age/sex/ethnicity population is calculated as the remainder of the scaled regional age/sex/ethnicity controls for total population and the regional group quarters age/sex/ethnicity population by type.
 
 While not an official output of the module, the regional age/sex/ethnicity controls by housing type are stored in the `[inputs].[controls_ase]` table for review and debugging purposes.
-
-# Navigation
-
-* [Home Page](../README.md)
-* [Startup](../Startup.md)
-* [Housing and Households](../Housing-and-Households.md)
-* [Population by Type](../Population-by-Type.md)
-* [Population by Age/Sex/Ethnicity](../Population-by-Age-Sex-Ethnicity.md)
-    * Regional Age/Sex/Ethnicity Controls by Housing Type
-    * [Census Tract Age/Sex/Ethnicity Seed](Census-Tract-Age-Sex-Ethnicity-Seed.md)
-* [Household Characteristics](../Household-Characteristics.md)
-* [Staging](../Staging.md)
-* [Utility](../Utility.md)
