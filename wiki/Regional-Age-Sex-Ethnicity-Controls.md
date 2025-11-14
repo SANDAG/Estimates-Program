@@ -18,7 +18,7 @@ Group quarters population is identified as follows:
 | Estimates year(s) | Definition                  |
 |:-----------------:|-----------------------------|
 | 2010              | `[RELP] IN ('14','15')`     |
-| 2011              | `[RELP] IN ('13',14')`      |
+| 2011              | `[RELP] IN ('13','14')`     |
 | 2012-2018         | `[RELP] IN ('16','17')`     |
 | 2016-2023         | `[RELSHIPP] IN ('37','38')` |
 
