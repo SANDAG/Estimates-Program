@@ -12,12 +12,25 @@ from unicodedata import category
 import ipf
 import random_data
 
+import sqlalchemy as sql
 
 # Some file I/O stuff
 THIS_FOLDER = pathlib.Path(__file__).parent.resolve()
 TEMP_DATA_FOLDER = THIS_FOLDER / "temp_data"
 TEMP_DATA_FOLDER.mkdir(parents=False, exist_ok=True)
 ACTUAL_DATA_FOLDER = THIS_FOLDER / "post_ipf_actual_data"
+
+# SQL stuff. Yes, I'm sorry that you have to manually enter in values and also be
+# careful not to commit the values, but 🤷
+ESTIMATES_ENGINE = sql.create_engine(
+    "mssql+pyodbc://@"
+    + ""  # SERVER
+    + "/"
+    + ""  # DATABASE
+    + "?trusted_connection=yes&driver="
+    + "ODBC Driver 17 for SQL Server",
+    fast_executemany=True,
+)
 
 
 def check_input_validity(data: np.ndarray, marginals: list[np.ndarray]):
@@ -703,41 +716,21 @@ def nd_controlling_mixed_safe(
 if __name__ == "__main__":
     shape = [24321, 20 * 2 * 7]
 
-    start_time = time.time()
-    data, marginals = random_data.sparse(shape=[10, 4])
-    rounded_data = nd_controlling_pulp_solver_2d(data, marginals)
-    end_time = time.time()
-    print(f"PuLP solver took {end_time - start_time} seconds")
-
-    # # Running on the AVD using shape = [24321, 20 * 2 * 7] takes 225 seconds
-    # start_time = time.time()
-    # data, marginals = random_data.sparse(shape=shape)
-    # rounded_data = nd_controlling_mixed(data, marginals, threshold=5000)
-    # end_time = time.time()
-    # print(f"Mixed solver took {end_time - start_time} seconds")
-    #
-    # # Running on the AVD using shape = [24321, 20 * 2 * 7] takes 271 seconds
-    # start_time = time.time()
-    # data, marginals = random_data.sparse(shape=shape)
-    # rounded_data = nd_controlling_mixed_safe(data, marginals)
-    # end_time = time.time()
-    # print(f"Mixed Safe solver took {end_time - start_time} seconds")
-
     # Note, College has an issue where there is at least one marginal greater than zero
     # assoicated with data that is only zero
     for pop_type in [
         # "Group Quarters - College",
         # "Group Quarters - Military",
-        # "Group Quarters - Institutional Correctional Facilities",
+        "Group Quarters - Institutional Correctional Facilities",
         # "Group Quarters - Other",
-        "Household Population",
+        # "Household Population",
     ]:
         # Testing on real data
         data = pd.read_csv(
             ACTUAL_DATA_FOLDER / f"{pop_type}_data.csv",
             index_col=0,
             header=[0, 1, 2],
-        ).to_numpy()
+        )
         row_controls = pd.read_csv(ACTUAL_DATA_FOLDER / f"{pop_type}_row_controls.csv")[
             "value"
         ].to_numpy()
@@ -747,14 +740,14 @@ if __name__ == "__main__":
         marginals = [row_controls, column_controls]
 
         # Run through IPF just in case
-        post_ipf_data = ipf.ipf_numpy(data, marginals)
+        post_ipf_data = ipf.ipf_numpy(data.to_numpy(), marginals)
 
         # Run the data through the rounding procedure
         for solver in [
             # "CyLP",
-            # "PULP_CBC_CMD",
+            "PULP_CBC_CMD",
             # "SCIP_PY",
-            "HiGHS",
+            # "HiGHS",
         ]:
             start_time = time.time()
             # rounded_data = nd_controlling_mixed_safe(post_ipf_data, marginals)
@@ -764,5 +757,24 @@ if __name__ == "__main__":
             )
             end_time = time.time()
             print(f"{pop_type} using {solver} took {end_time - start_time} seconds")
+
+            # Export data
+            data.loc[:] = rounded_data
+            data.astype(int)
+            data = (
+                data.melt(ignore_index=False)
+                .reset_index(drop=False)
+                .sort_values(by=["mgra", "age_group", "sex", "ethnicity"])
+            )
+            with ESTIMATES_ENGINE.connect() as con:
+                data.to_sql(
+                    name=f"{pop_type}_{solver}".replace("-", "")
+                    .replace("  ", " ")
+                    .replace(" ", "_"),
+                    con=con,
+                    schema="dbo",
+                    if_exists="replace",
+                    index=False,
+                )
 
 pass
