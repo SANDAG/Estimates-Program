@@ -99,16 +99,16 @@ except IOError:
 # Initialize input parser
 # Parse the configuration YAML file and validate its contents
 input_parser = parsers.InputParser(config=config, engine=ESTIMATES_ENGINE)
-input_parser.parse_config()
+# input_parser.parse_config()
 
 # Get data from the parsed and validated configuration file
-RUN_INSTRUCTIONS = input_parser.run_instructions
-RUN_ID = input_parser.run_id
-MGRA_VERSION = input_parser.mgra_version
-
-logger.info(
-    f"RUN_ID: {RUN_ID}, MGRA_VERSION: {MGRA_VERSION}, YEARS: {RUN_INSTRUCTIONS["years"]}"
-)
+# RUN_INSTRUCTIONS = input_parser.run_instructions
+# RUN_ID = input_parser.run_id
+# MGRA_VERSION = input_parser.mgra_version
+#
+# logger.info(
+#     f"RUN_ID: {RUN_ID}, MGRA_VERSION: {MGRA_VERSION}, YEARS: {RUN_INSTRUCTIONS["years"]}"
+# )
 
 ##############################
 # UTILITY LISTS AND MAPPINGS #
@@ -170,6 +170,84 @@ def display_ascii_art(filename: str) -> None:
             print()  # Ensure a newline after the ASCII art
     except FileNotFoundError:
         print(f"Error: File '{filename}' not found.")
+
+
+def ipf(
+    data: np.ndarray,
+    marginals: list[np.ndarray],
+    break_threshold: float = 0.01,
+    max_iters: int = 10000,
+) -> np.ndarray:
+    """Run IPF on the input data and marginals until various benchmarks are met
+
+    Args:
+        data: TODO
+        marginals: TODO
+        break_threshold: TODO
+        max_iters: TODO
+
+    Returns:
+        TODO
+    """
+    # Check seed and marginals match
+    if len(data.shape) != len(marginals):
+        raise ValueError(
+            f"Each dimension of 'data' must have an associated marginal control ({len(data.shape)} expected, {len(marginals)} actual)"
+        )
+    for dim, size in zip(range(len(data.shape)), data.shape):
+        if len(marginals[dim]) != size:
+            raise ValueError(
+                f"The '{dim}' dimension of 'data' is length {size} but the associated marginal control is length {len(marginals[dim])}"
+            )
+
+    # Check marginals all sum to the exact same value
+    first_sum = marginals[0].sum()
+    for dim in range(1, len(marginals)):
+        if first_sum != marginals[dim].sum():
+            raise ValueError(
+                f"Marginals don't sum to the same value (0 marginal sums to {first_sum}, {dim} marginal sums to {marginals[dim].sum()})"
+            )
+
+    # Check that every non-zero marginal is associated with data that is also non-zero
+    for dim in range(len(marginals)):
+        missing_dim = tuple(d for d in range(len(marginals)) if d != dim)
+        sum_along_axis = data.sum(axis=missing_dim)
+        if np.any((marginals[dim] != 0) & (sum_along_axis == 0)):
+            raise ValueError()
+
+    # Run IPF
+    axes = np.arange(len(data.shape))
+    for _ in range(max_iters):
+
+        # In this interation of IPF, store the maximum adjustment amount along each
+        # dimension
+        max_adjustment_factor = np.zeros(len(axes))
+
+        for dim in axes:
+
+            # Compute the current sum of seed data along this dimension
+            current_sum = data.sum(axis=tuple(np.delete(axes, np.where(axes == dim))))
+
+            # Compare the sum with the marginal controls, adjust accordingly
+            adjustment_factor = np.divide(
+                marginals[dim],
+                current_sum,
+                out=np.ones_like(current_sum),
+                where=current_sum != 0,
+            )
+            slicer = [None] * len(axes)
+            slicer[dim] = slice(None, None, None)
+            data = data * adjustment_factor[tuple(slicer)]
+
+            # Store the adjustment factor so we can break early
+            max_adjustment_factor[dim] = np.abs(adjustment_factor - 1).max()
+
+        # If the adjustment factor threshold is passed, stop execution
+        if max_adjustment_factor.max() < break_threshold:
+            break
+
+    # Return the IPF controlled data
+    return data
 
 
 def integerize_1d(
@@ -610,3 +688,56 @@ def read_sql_query_acs(**kwargs: dict) -> pd.DataFrame:
             raise ValueError(f"SQL query returned a message: {msg}.")
 
     return df
+
+
+if __name__ == "__main__":
+
+    # # Test invalid number of dimensions
+    # ipf(np.zeros((3,)), [np.zeros(3), np.zeros(4)])
+    # ipf(np.zeros((3, 4)), [np.zeros(3)])
+    #
+    # # Test invalid shapes
+    # ipf(np.zeros((3, 4)), [np.zeros(3), np.zeros(5)])
+    #
+    # # Test invalid marginal sums
+    # ipf(np.ones((3, 4)), [np.ones(3), np.zeros(4)])
+    #
+    # # Test valid marginals and associated data
+    # ipf(np.array([[1, 2, 3], [4, 5, 6]]), [np.array([6, 15]), np.array([5, 7, 9])])
+    #
+    # # Test invalid marginals and associated data
+    # ipf(np.array([[0, 2, 3], [0, 5, 6]]), [np.array([6, 11]), np.array([1, 7, 9])])
+
+    def uniform(
+        shape: list[int], seed: int = 42
+    ) -> tuple[np.ndarray, list[np.ndarray]]:
+        """Creates uniform random data of the specified shape and associated marginals
+
+        Args:
+            shape: The shape of the output data
+            seed: The seed for the random number generator. Default value of 42 for
+                consistent outputs
+
+        Returns:
+            (1) The uniform random data of the specified shape
+            (2) The marginals associated with the data
+        """
+        generator = np.random.default_rng(seed)
+
+        # Create our random data
+        data = generator.uniform(low=0.25, high=1, size=shape)
+
+        # Assuming the average value of every cell is 10, create random marginals
+        total = 10 * np.prod(shape)
+        marginals = []
+        for size in shape:
+            marginal = generator.uniform(0.5, 1, size)
+            marginal = (marginal * total / marginal.sum()).round(0).astype(int)
+            marginal[0] = total - marginal[1:].sum()
+            marginals.append(marginal)
+        return data, marginals
+
+    d, m = uniform([5, 10])
+    post_ipf = ipf(d, m)
+
+    pass
