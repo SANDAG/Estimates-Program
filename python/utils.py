@@ -99,16 +99,16 @@ except IOError:
 # Initialize input parser
 # Parse the configuration YAML file and validate its contents
 input_parser = parsers.InputParser(config=config, engine=ESTIMATES_ENGINE)
-# input_parser.parse_config()
+input_parser.parse_config()
 
 # Get data from the parsed and validated configuration file
-# RUN_INSTRUCTIONS = input_parser.run_instructions
-# RUN_ID = input_parser.run_id
-# MGRA_VERSION = input_parser.mgra_version
-#
-# logger.info(
-#     f"RUN_ID: {RUN_ID}, MGRA_VERSION: {MGRA_VERSION}, YEARS: {RUN_INSTRUCTIONS["years"]}"
-# )
+RUN_INSTRUCTIONS = input_parser.run_instructions
+RUN_ID = input_parser.run_id
+MGRA_VERSION = input_parser.mgra_version
+
+logger.info(
+    f"RUN_ID: {RUN_ID}, MGRA_VERSION: {MGRA_VERSION}, YEARS: {RUN_INSTRUCTIONS["years"]}"
+)
 
 ##############################
 # UTILITY LISTS AND MAPPINGS #
