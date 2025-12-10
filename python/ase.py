@@ -296,56 +296,85 @@ def _get_seed_inputs(year: int) -> dict[str, pd.DataFrame]:
 
 def _create_seed(seed_inputs: dict[str, pd.DataFrame]) -> pd.DataFrame:
     """Create census tract age/sex/ethnicity seed data."""
-    # Create dictionary of DataFrames and their dimensions to be used in IPF
-    dimensions = {
-        "b01001": {"labels": ["age_group", "sex"], "values": [0, 1]},
-        "b03002": {"labels": ["ethnicity"], "values": [2]},
-        "b01001_b_i": {
-            "labels": ["age_group", "sex", "ethnicity"],
-            "values": [0, 1, 2],
-        },
-    }
 
+    # Some integerization must be done, so we need the random generator
+    gen = np.random.default_rng(seed=utils.RANDOM_SEED)
+
+    # Unfortunately, our B01001B-I table is intentionally missing B01001F, which means
+    # some pre-processing is necessary to account for the missing data. In particular,
+    # it means that within a tract, B01001 and B03002 controls may not agree on the
+    # total population. Additionally, B01001B-I may have all zero data along a dimension
+    # with a non-zero control. Both these issues will be resolved here
+
+    # Processing is easiest on a tract by tract basis, so we'll store the result from
+    # each tract separately then combine at the end
     output = []
-    # Within each census tract
     for tract in np.sort(seed_inputs["b01001_b_i"]["tract"].unique()):
-        # Create inputs to IPF of numpy ndarrays
-        ipf_inputs = {}
-        for table, metadata in dimensions.items():
-            frame = (
-                seed_inputs[table][seed_inputs[table]["tract"] == tract]
-                .groupby(metadata["labels"])["value"]
-                .sum()
+
+        # Collect the data for IPF. This means the raw seed data, row controls, and
+        # column controls.
+        seed = (
+            seed_inputs["b01001_b_i"]
+            .loc[lambda df: df["tract"] == tract]
+            .sort_values(by=utils.ASE)
+            .drop(columns=["tract"])
+            .pivot_table(
+                values="value", index="ethnicity", columns=["age_group", "sex"]
+            )
+        )
+
+        # But, since we are dealing with tract specific ASE data, it's not entirely
+        # clear what constitutes "rows" and "columns". Arbitrarily, we set B03002, which
+        # contains ethnicity data per tract, as our row controls. Similarly, we set
+        # B01001, which contains age/sex data per tract, as our column controls
+        row_controls = (
+            seed_inputs["b03002"]
+            .loc[lambda df: df["tract"] == tract]
+            .sort_values(by="ethnicity")["value"]
+            .to_numpy()
+        )
+        col_controls = (
+            seed_inputs["b01001"]
+            .loc[lambda df: df["tract"] == tract]
+            .sort_values(by=["age_group", "sex"])["value"]
+            .to_numpy()
+        )
+
+        # Finally, due to the removal of the "Some other race alone" category, it may be
+        # the case that row and column controls sum to different values, which naturally
+        # raises in error in IPF. We assume that all population in "Some other race
+        # alone" gets proportionally distributed to all other race/eth
+        if row_controls.sum() != col_controls.sum():
+            row_controls = utils.integerize_1d(
+                row_controls,
+                col_controls.sum(),
+                methodology="weighted_random",
+                generator=gen,
             )
 
-            if len(metadata["labels"]) == 1:
-                ipf_inputs[table] = frame.to_numpy()
-            else:
-                ipf_inputs[table] = np.reshape(
-                    frame.to_numpy(), tuple(map(len, frame.index.levels))
-                )
+        # Haha, JK, not finally, there's one more thing to fix. Due to the removal of
+        # B01001F from the seed data, we could have a non-zero marginal associated with
+        # all zero seed data. We'll resolve by just seeding with a tiny value. Note this
+        # can only occur with the column controls (B01001)
+        if np.any((col_controls > 0) & (seed.sum(axis=0) == 0)):
+            col_idx_to_adjust = np.where(
+                (col_controls > 0) & (seed.sum(axis=0).to_numpy() == 0)
+            )
+            for col_idx in col_idx_to_adjust:
+                seed[seed.columns[col_idx]] = 0.001
 
-        # Run IPF
-        ipf = ipfn.ipfn.ipfn(
-            ipf_inputs["b01001_b_i"],
-            aggregates=[ipf_inputs["b01001"], ipf_inputs["b03002"]],
-            dimensions=[
-                dimensions["b01001"]["values"],
-                dimensions["b03002"]["values"],
-            ],
-            max_iteration=10000,
+        # Plug the data into IPF
+        post_ipf_data = utils.ipf(
+            seed.to_numpy(),
+            [row_controls, col_controls],
         )
 
-        # Transform result back to DataFrame
-        result = (
-            seed_inputs["b01001_b_i"][dimensions["b01001_b_i"]["labels"]]
-            .drop_duplicates()
-            .sort_values(by=dimensions["b01001_b_i"]["labels"])  # type: ignore
-            .assign(tract=tract, value=ipf.iteration().flatten())  # type: ignore
-        )
+        # Restore the metadata and original table structure
+        seed[:] = post_ipf_data
+        seed = seed.melt(ignore_index=False).reset_index(drop=False).assign(tract=tract)
 
         # Append to output list
-        output.append(result)
+        output.append(seed)
 
     return pd.concat(output, ignore_index=True)
 

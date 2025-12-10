@@ -118,6 +118,8 @@ RANDOM_SEED = 42  # Seed for random number generation
 
 HOUSEHOLD_SIZES = list(range(1, 8))
 
+ASE = ["age_group", "sex", "ethnicity"]
+
 INCOME_CATEGORIES = [
     "Less than $15,000",
     "$15,000 to $29,999",
