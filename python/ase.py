@@ -3,7 +3,6 @@
 # https://github.com/SANDAG/Estimates-Program/wiki/Population-by-Age-Sex-Ethnicity
 
 import functools
-import ipfn
 import logging
 
 import numpy as np
