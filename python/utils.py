@@ -221,7 +221,7 @@ def ipf(
     axes = np.arange(len(data.shape))
     for _ in range(max_iters):
 
-        # In this interation of IPF, store the maximum adjustment amount along each
+        # In this iteration of IPF, store the maximum adjustment amount along each
         # dimension
         max_adjustment_factor = np.zeros(len(axes))
 
