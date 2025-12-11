@@ -183,13 +183,24 @@ def ipf(
     """Run IPF on the input data and marginals until various benchmarks are met
 
     Args:
-        data: TODO
-        marginals: TODO
-        break_threshold: TODO
-        max_iters: TODO
+        data: The initial seed data to be adjusted. This can only contain non-negative
+            values
+        marginals: The marginals to use for IPF. This can only contain non-negative
+            values. Additionally, the dimensions must align with data.shape. For
+            example, if data.shape == [4, 5, 6], then marginals must contain a list of
+            np.ndarray with shapes [4,], [5,], and [6,] in that exact order
+        break_threshold: A threshold used to stop IPF iterations early. If in the most
+            recent IPF iteration, the maximum adjustment factor is less than this value,
+            then execution stops
+        max_iters: The maximum number of iterations of IPF. After this value is
+            exceeded, execution automatically stops, even if the break_threshold has not
+            been hit
 
     Returns:
-        TODO
+        The adjusted np.ndarray after IPF, after either the break_threshold has been hit
+        or the maximum number of iterations exceeded. Assuming you use the default value
+        of break_threshold, that implies that when data is aggregated, it should match
+        marginals to within 1%
     """
     # Check seed and marginals match
     if len(data.shape) != len(marginals):
@@ -201,6 +212,13 @@ def ipf(
             raise ValueError(
                 f"The '{dim}' dimension of 'data' is length {size} but the associated marginal control is length {len(marginals[dim])}"
             )
+
+    # Ensure all data and marginals are non-negative
+    if np.any(data < 0):
+        raise ValueError("The input 'data' contains negative values")
+    for dim in range(len(marginals)):
+        if np.any(marginals[dim] < 0):
+            raise ValueError(f"The input {dim} 'marginal' contains negative values")
 
     # Check marginals all sum to the exact same value
     first_sum = marginals[0].sum()
@@ -215,7 +233,9 @@ def ipf(
         missing_dim = tuple(d for d in range(len(marginals)) if d != dim)
         sum_along_axis = data.sum(axis=missing_dim)
         if np.any((marginals[dim] != 0) & (sum_along_axis == 0)):
-            raise ValueError()
+            raise ValueError(
+                f"The {dim} marginal is non-zero but is only associated with zero data"
+            )
 
     # Run IPF
     axes = np.arange(len(data.shape))
@@ -690,56 +710,3 @@ def read_sql_query_acs(**kwargs: dict) -> pd.DataFrame:
             raise ValueError(f"SQL query returned a message: {msg}.")
 
     return df
-
-
-if __name__ == "__main__":
-
-    # # Test invalid number of dimensions
-    # ipf(np.zeros((3,)), [np.zeros(3), np.zeros(4)])
-    # ipf(np.zeros((3, 4)), [np.zeros(3)])
-    #
-    # # Test invalid shapes
-    # ipf(np.zeros((3, 4)), [np.zeros(3), np.zeros(5)])
-    #
-    # # Test invalid marginal sums
-    # ipf(np.ones((3, 4)), [np.ones(3), np.zeros(4)])
-    #
-    # # Test valid marginals and associated data
-    # ipf(np.array([[1, 2, 3], [4, 5, 6]]), [np.array([6, 15]), np.array([5, 7, 9])])
-    #
-    # # Test invalid marginals and associated data
-    # ipf(np.array([[0, 2, 3], [0, 5, 6]]), [np.array([6, 11]), np.array([1, 7, 9])])
-
-    def uniform(
-        shape: list[int], seed: int = 42
-    ) -> tuple[np.ndarray, list[np.ndarray]]:
-        """Creates uniform random data of the specified shape and associated marginals
-
-        Args:
-            shape: The shape of the output data
-            seed: The seed for the random number generator. Default value of 42 for
-                consistent outputs
-
-        Returns:
-            (1) The uniform random data of the specified shape
-            (2) The marginals associated with the data
-        """
-        generator = np.random.default_rng(seed)
-
-        # Create our random data
-        data = generator.uniform(low=0.25, high=1, size=shape)
-
-        # Assuming the average value of every cell is 10, create random marginals
-        total = 10 * np.prod(shape)
-        marginals = []
-        for size in shape:
-            marginal = generator.uniform(0.5, 1, size)
-            marginal = (marginal * total / marginal.sum()).round(0).astype(int)
-            marginal[0] = total - marginal[1:].sum()
-            marginals.append(marginal)
-        return data, marginals
-
-    d, m = uniform([5, 10])
-    post_ipf = ipf(d, m)
-
-    pass

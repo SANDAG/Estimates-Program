@@ -555,12 +555,14 @@ def _create_ase(
         # Restore the original index/columns
         pop_type_seed.loc[:] = pop_type_post_ipf_data
 
-        # Reshape, add back some metadata columns and store
+        # Reshape, add back some metadata columns and store. No joke, "value" is not a
+        # valid name of the "value_name" column, so it's named "temp" and immediately
+        # changed to "value"
         post_ipf_data.append(
             pop_type_seed.reset_index(drop=False)
-            .melt(id_vars=[("mgra", "", "", "")], value_name="test", ignore_index=False)
+            .melt(id_vars=[("mgra", "", "", "")], value_name="temp", ignore_index=False)
             .drop(columns=[None])
-            .rename(columns={("mgra", "", "", ""): "mgra", "test": "value"})
+            .rename(columns={("mgra", "", "", ""): "mgra", "temp": "value"})
             .sort_values(by=["mgra", "age_group", "sex", "ethnicity"])
             .assign(pop_type=pop_type)
         )
