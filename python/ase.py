@@ -296,9 +296,6 @@ def _get_seed_inputs(year: int) -> dict[str, pd.DataFrame]:
 def _create_seed(seed_inputs: dict[str, pd.DataFrame]) -> pd.DataFrame:
     """Create census tract age/sex/ethnicity seed data."""
 
-    # Some integerization must be done, so we need the random generator
-    gen = np.random.default_rng(seed=utils.RANDOM_SEED)
-
     # Unfortunately, our B01001B-I table is intentionally missing B01001F, which means
     # some pre-processing is necessary to account for the missing data. In particular,
     # it means that within a tract, B01001 and B03002 controls may not agree on the
@@ -322,10 +319,8 @@ def _create_seed(seed_inputs: dict[str, pd.DataFrame]) -> pd.DataFrame:
             )
         )
 
-        # But, since we are dealing with tract specific ASE data, it's not entirely
-        # clear what constitutes "rows" and "columns". Arbitrarily, we set B03002, which
-        # contains ethnicity data per tract, as our row controls. Similarly, we set
-        # B01001, which contains age/sex data per tract, as our column controls
+        # Somewhat arbitrarily, we set B03002 (ethnicity data) as row controls and
+        # B01001 (age/sex data) as column controls
         row_controls = (
             seed_inputs["b03002"]
             .loc[lambda df: df["tract"] == tract]
@@ -339,22 +334,25 @@ def _create_seed(seed_inputs: dict[str, pd.DataFrame]) -> pd.DataFrame:
             .to_numpy()
         )
 
-        # Finally, due to the removal of the "Some other race alone" category, it may be
-        # the case that row and column controls sum to different values, which naturally
-        # raises in error in IPF. We assume that all population in "Some other race
-        # alone" gets proportionally distributed to all other race/eth
+        # Finally, there's one more thing to fix. The ACS category of "Some other
+        # race alone`" is excluded from Estimates, and has been removed from B01001B-I
+        # (via the exclusion of B01001F) and removed from the B03002 marginal control.
+        # But it can`'t be removed from B01001, which means that:
+        # 1: Marginal controls may sum to different values, in which case we set the
+        #    rows to the column value and...
         if row_controls.sum() != col_controls.sum():
             row_controls = utils.integerize_1d(
                 row_controls,
                 col_controls.sum(),
                 methodology="weighted_random",
-                generator=gen,
+                generator=generator,
             )
 
-        # Haha, JK, not finally, there's one more thing to fix. Due to the removal of
-        # B01001F from the seed data, we could have a non-zero marginal associated with
-        # all zero seed data. We'll resolve by just seeding with a tiny value. Note this
-        # can only occur with the column controls (B01001)
+        # 2: A B01001 marginal control may be non-zero, but be associated with all zero
+        #    data, in which case we assume that the missing "Some other race alone" is
+        #    evenly distributed between all other race/eth categories. To prevent this
+        #    distribution from effecting other race/eth categories, it's set to the
+        #    tiny value of .001
         if np.any((col_controls > 0) & (seed.sum(axis=0) == 0)):
             col_idx_to_adjust = np.where(
                 (col_controls > 0) & (seed.sum(axis=0).to_numpy() == 0)
