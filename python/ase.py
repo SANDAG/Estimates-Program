@@ -3,7 +3,6 @@
 # https://github.com/SANDAG/Estimates-Program/wiki/Population-by-Age-Sex-Ethnicity
 
 import functools
-import ipfn
 import logging
 
 import numpy as np
@@ -296,56 +295,83 @@ def _get_seed_inputs(year: int) -> dict[str, pd.DataFrame]:
 
 def _create_seed(seed_inputs: dict[str, pd.DataFrame]) -> pd.DataFrame:
     """Create census tract age/sex/ethnicity seed data."""
-    # Create dictionary of DataFrames and their dimensions to be used in IPF
-    dimensions = {
-        "b01001": {"labels": ["age_group", "sex"], "values": [0, 1]},
-        "b03002": {"labels": ["ethnicity"], "values": [2]},
-        "b01001_b_i": {
-            "labels": ["age_group", "sex", "ethnicity"],
-            "values": [0, 1, 2],
-        },
-    }
 
+    # Unfortunately, our B01001B-I table is intentionally missing B01001F, which means
+    # some pre-processing is necessary to account for the missing data. In particular,
+    # it means that within a tract, B01001 and B03002 controls may not agree on the
+    # total population. Additionally, B01001B-I may have all zero data along a dimension
+    # with a non-zero control. Both these issues will be resolved here
+
+    # Processing is easiest on a tract by tract basis, so we'll store the result from
+    # each tract separately then combine at the end
     output = []
-    # Within each census tract
     for tract in np.sort(seed_inputs["b01001_b_i"]["tract"].unique()):
-        # Create inputs to IPF of numpy ndarrays
-        ipf_inputs = {}
-        for table, metadata in dimensions.items():
-            frame = (
-                seed_inputs[table][seed_inputs[table]["tract"] == tract]
-                .groupby(metadata["labels"])["value"]
-                .sum()
+
+        # Collect the data for IPF. This means the raw seed data, row controls, and
+        # column controls.
+        seed = (
+            seed_inputs["b01001_b_i"]
+            .loc[lambda df: df["tract"] == tract]
+            .sort_values(by=utils.ASE)
+            .drop(columns=["tract"])
+            .pivot_table(
+                values="value", index="ethnicity", columns=["age_group", "sex"]
+            )
+        )
+
+        # Somewhat arbitrarily, we set B03002 (ethnicity data) as row controls and
+        # B01001 (age/sex data) as column controls
+        row_controls = (
+            seed_inputs["b03002"]
+            .loc[lambda df: df["tract"] == tract]
+            .sort_values(by="ethnicity")["value"]
+            .to_numpy()
+        )
+        col_controls = (
+            seed_inputs["b01001"]
+            .loc[lambda df: df["tract"] == tract]
+            .sort_values(by=["age_group", "sex"])["value"]
+            .to_numpy()
+        )
+
+        # Finally, there's one more thing to fix. The ACS category of "Some other
+        # race alone`" is excluded from Estimates, and has been removed from B01001B-I
+        # (via the exclusion of B01001F) and removed from the B03002 marginal control.
+        # But it can`'t be removed from B01001, which means that:
+        # 1: Marginal controls may sum to different values, in which case we set the
+        #    rows to the column value and...
+        if row_controls.sum() != col_controls.sum():
+            row_controls = utils.integerize_1d(
+                row_controls,
+                col_controls.sum(),
+                methodology="weighted_random",
+                generator=generator,
             )
 
-            if len(metadata["labels"]) == 1:
-                ipf_inputs[table] = frame.to_numpy()
-            else:
-                ipf_inputs[table] = np.reshape(
-                    frame.to_numpy(), tuple(map(len, frame.index.levels))
-                )
+        # 2: A B01001 marginal control may be non-zero, but be associated with all zero
+        #    data, in which case we assume that the missing "Some other race alone" is
+        #    evenly distributed between all other race/eth categories. To prevent this
+        #    distribution from effecting other race/eth categories, it's set to the
+        #    tiny value of .001
+        if np.any((col_controls > 0) & (seed.sum(axis=0) == 0)):
+            col_idx_to_adjust = np.where(
+                (col_controls > 0) & (seed.sum(axis=0).to_numpy() == 0)
+            )
+            for col_idx in col_idx_to_adjust:
+                seed[seed.columns[col_idx]] = 0.001
 
-        # Run IPF
-        ipf = ipfn.ipfn.ipfn(
-            ipf_inputs["b01001_b_i"],
-            aggregates=[ipf_inputs["b01001"], ipf_inputs["b03002"]],
-            dimensions=[
-                dimensions["b01001"]["values"],
-                dimensions["b03002"]["values"],
-            ],
-            max_iteration=10000,
+        # Plug the data into IPF
+        post_ipf_data = utils.ipf(
+            seed.to_numpy(),
+            [row_controls, col_controls],
         )
 
-        # Transform result back to DataFrame
-        result = (
-            seed_inputs["b01001_b_i"][dimensions["b01001_b_i"]["labels"]]
-            .drop_duplicates()
-            .sort_values(by=dimensions["b01001_b_i"]["labels"])  # type: ignore
-            .assign(tract=tract, value=ipf.iteration().flatten())  # type: ignore
-        )
+        # Restore the metadata and original table structure
+        seed[:] = post_ipf_data
+        seed = seed.melt(ignore_index=False).reset_index(drop=False).assign(tract=tract)
 
         # Append to output list
-        output.append(result)
+        output.append(seed)
 
     return pd.concat(output, ignore_index=True)
 
@@ -458,8 +484,8 @@ def _create_ase(
     )
 
     # Apply age/sex restrictions
-    # Set 0-valued seed data to 1 where special MGRA data exists
-    # To allow greater IPF flexibility within restricted categories
+    # Set 0-valued seed data to 1 where special MGRA data exists to allow greater IPF
+    # flexibility within restricted categories
     seed_mgras.loc[
         (seed_mgras["value"] == 0)
         & (
@@ -470,70 +496,77 @@ def _create_ase(
         "value",
     ] = 1
 
-    # Set the MGRA-level seed data to 0 for special MGRAs
-    # Where the age/sex restrictions are violated
-    # Seed data set to 0 remains 0 in an IPF process
+    # Set the MGRA-level seed data to 0 for special MGRAs where the age/sex restrictions
+    # are violated. Seed data set to 0 remains 0 in an IPF process
     seed_mgras.loc[
         (seed_mgras["sex"] != seed_mgras["sex_special"])
         & (seed_mgras["sex_special"].notna()),
         "value",
     ] = 0
-
     seed_mgras.loc[
         (seed_mgras["max"] < seed_mgras["min_age"])
         | (seed_mgras["min"] > seed_mgras["max_age"]),
         "value",
     ] = 0
 
-    # Add the MGRA seed data to the input dictionary of DataFrames
-    ase_inputs["seed_mgras"] = seed_mgras
+    # The way the IPF function works means it's easiest to process the data for every
+    # pop type, then combine back together
+    post_ipf_data = []
+    for pop_type in seed_mgras["pop_type"].unique():
 
-    # Create dictionary of DataFrames and their dimensions to be used in IPF
-    dimensions = {
-        "controls_ase": {
-            "labels": ["pop_type", "age_group", "sex", "ethnicity"],
-            "values": [1, 2, 3, 4],
-        },
-        "mgra_pop_type": {
-            "labels": ["mgra", "pop_type"],
-            "values": [0, 1],
-        },
-        "seed_mgras": {
-            "labels": ["mgra", "pop_type", "age_group", "sex", "ethnicity"],
-            "values": [0, 1, 2, 3, 4],
-        },
-    }
+        # Filter the data to this population type and transform into a 2D array
+        pop_type_seed = (
+            seed_mgras[seed_mgras["pop_type"] == pop_type]
+            # Take only a subset of the original data for speed
+            [["mgra", "age_group", "sex", "ethnicity", "value"]]
+            # Sort values to ensure a consistent ordering
+            .sort_values(by=["mgra", "age_group", "sex", "ethnicity"])
+            # Re-shape to 2D
+            .pivot(index="mgra", columns=["age_group", "sex", "ethnicity"])
+        )
 
-    # Create inputs to IPF of numpy ndarrays
-    ipf_inputs = {}
-    for table, metadata in dimensions.items():
-        frame = ase_inputs[table].groupby(metadata["labels"])["value"].sum()
+        # Get the row controls (aka MGRA population by type)
+        row_controls = (
+            ase_inputs["mgra_pop_type"]
+            .loc[lambda df: df["pop_type"] == pop_type][["mgra", "value"]]
+            .sort_values(by="mgra")
+        )
 
-        if len(metadata["labels"]) == 1:
-            ipf_inputs[table] = frame.to_numpy()
-        else:
-            ipf_inputs[table] = np.reshape(
-                frame.to_numpy(), tuple(map(len, frame.index.levels))
-            )
+        # Get the column controls (aka regional population by type and by ASE)
+        col_controls = (
+            ase_inputs["controls_ase"]
+            .loc[lambda df: df["pop_type"] == pop_type][
+                ["age_group", "sex", "ethnicity", "value"]
+            ]
+            .sort_values(by=["age_group", "sex", "ethnicity"])
+        )
 
-    # Run IPF
-    ipf = ipfn.ipfn.ipfn(
-        ipf_inputs["seed_mgras"],
-        aggregates=[ipf_inputs["controls_ase"], ipf_inputs["mgra_pop_type"]],
-        dimensions=[
-            dimensions["controls_ase"]["values"],
-            dimensions["mgra_pop_type"]["values"],
-        ],
-        max_iteration=10000,
-    )
+        # Run IPF
+        pop_type_post_ipf_data = utils.ipf(
+            data=pop_type_seed.to_numpy(),
+            marginals=[
+                row_controls["value"].to_numpy(),
+                col_controls["value"].to_numpy(),
+            ],
+        )
 
-    # Transform result back to DataFrame
-    ipf_result = (
-        ase_inputs["seed_mgras"][dimensions["seed_mgras"]["labels"]]
-        .drop_duplicates()
-        .sort_values(by=dimensions["seed_mgras"]["labels"])  # type: ignore
-        .assign(value=ipf.iteration().flatten())  # type: ignore
-    )
+        # Restore the original index/columns
+        pop_type_seed.loc[:] = pop_type_post_ipf_data
+
+        # Reshape, add back some metadata columns and store. No joke, "value" is not a
+        # valid name of the "value_name" column, so it's named "temp" and immediately
+        # changed to "value"
+        post_ipf_data.append(
+            pop_type_seed.reset_index(drop=False)
+            .melt(id_vars=[("mgra", "", "", "")], value_name="temp", ignore_index=False)
+            .drop(columns=[None])
+            .rename(columns={("mgra", "", "", ""): "mgra", "temp": "value"})
+            .sort_values(by=["mgra", "age_group", "sex", "ethnicity"])
+            .assign(pop_type=pop_type)
+        )
+
+    # Combine the IPF results from separate pop types back into one table
+    ipf_result = pd.concat(post_ipf_data)
 
     # Integerize the IPF results
     result = {}

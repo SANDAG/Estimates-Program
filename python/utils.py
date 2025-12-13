@@ -118,6 +118,8 @@ RANDOM_SEED = 42  # Seed for random number generation
 
 HOUSEHOLD_SIZES = list(range(1, 8))
 
+ASE = ["age_group", "sex", "ethnicity"]
+
 INCOME_CATEGORIES = [
     "Less than $15,000",
     "$15,000 to $29,999",
@@ -170,6 +172,109 @@ def display_ascii_art(filename: str) -> None:
             print()  # Ensure a newline after the ASCII art
     except FileNotFoundError:
         print(f"Error: File '{filename}' not found.")
+
+
+def ipf(
+    data: np.ndarray,
+    marginals: list[np.ndarray],
+    convergence_threshold: float = 0.01,
+    max_iterations: int = 10000,
+) -> np.ndarray:
+    """Run IPF on input data until the convergence threshold or max iterations is hit
+
+    Args:
+        data: The initial seed data to be adjusted. This can only contain non-negative
+            values
+        marginals: The marginals to use for IPF. This can only contain non-negative
+            values. Additionally:
+            * The dimensions must align with data.shape. For example, if
+              data.shape == [4, 5, 6], then marginals must contain a list of
+              np.ndarray with shapes [4,], [5,], and [6,] in that exact order
+            * All marginals must sum to the exact same value
+            * Every non-zero marginal must be associated with some non-zero data
+        convergence_threshold: A threshold used to stop IPF iterations early. If in the
+            most recent IPF iteration, the maximum adjustment factor is less than this
+            value, then execution stops. The default value of .01 represents a maximum
+            deviation of 1%, or in other words, the sum along any dimension will be at
+            worst, 1% off of the associated marginal
+        max_iterations: The maximum number of iterations of IPF. After this value is
+            exceeded, execution automatically stops, even if the break_threshold has not
+            been hit
+
+    Returns:
+        The adjusted np.ndarray after IPF, after either the break_threshold has been hit
+        or the maximum number of iterations exceeded. Assuming you use the default value
+        of break_threshold, that implies that when data is aggregated, it should match
+        marginals to within 1%
+    """
+    # Check seed and marginals match
+    if len(data.shape) != len(marginals):
+        raise ValueError(
+            f"Each dimension of 'data' must have an associated marginal control ({len(data.shape)} expected, {len(marginals)} actual)"
+        )
+    for dim, size in zip(range(len(data.shape)), data.shape):
+        if len(marginals[dim]) != size:
+            raise ValueError(
+                f"The '{dim}' dimension of 'data' is length {size} but the associated marginal control is length {len(marginals[dim])}"
+            )
+
+    # Ensure all data and marginals are non-negative
+    if np.any(data < 0):
+        raise ValueError("The input 'data' contains negative values")
+    for dim in range(len(marginals)):
+        if np.any(marginals[dim] < 0):
+            raise ValueError(f"The input {dim} 'marginal' contains negative values")
+
+    # Check marginals all sum to the exact same value
+    first_sum = marginals[0].sum()
+    for dim in range(1, len(marginals)):
+        if first_sum != marginals[dim].sum():
+            raise ValueError(
+                f"Marginals don't sum to the same value (0 marginal sums to {first_sum}, {dim} marginal sums to {marginals[dim].sum()})"
+            )
+
+    # Check that every non-zero marginal is associated with data that is also non-zero
+    for dim in range(len(marginals)):
+        missing_dim = tuple(d for d in range(len(marginals)) if d != dim)
+        sum_along_axis = data.sum(axis=missing_dim)
+        if np.any((marginals[dim] != 0) & (sum_along_axis == 0)):
+            raise ValueError(
+                f"The {dim} marginal is non-zero but is only associated with zero data"
+            )
+
+    # Run IPF
+    axes = np.arange(len(data.shape))
+    for _ in range(max_iterations):
+
+        # In this iteration of IPF, store the maximum adjustment amount along each
+        # dimension
+        max_adjustment_factor = np.zeros(len(axes))
+
+        for dim in axes:
+
+            # Compute the current sum of seed data along this dimension
+            current_sum = data.sum(axis=tuple(np.delete(axes, np.where(axes == dim))))
+
+            # Compare the sum with the marginal controls, adjust accordingly
+            adjustment_factor = np.divide(
+                marginals[dim],
+                current_sum,
+                out=np.ones_like(current_sum),
+                where=current_sum != 0,
+            )
+            slicer = [None] * len(axes)
+            slicer[dim] = slice(None, None, None)
+            data = data * adjustment_factor[tuple(slicer)]
+
+            # Store the adjustment factor so we can break early
+            max_adjustment_factor[dim] = np.abs(adjustment_factor - 1).max()
+
+        # If the adjustment factor threshold is passed, stop execution
+        if max_adjustment_factor.max() < convergence_threshold:
+            break
+
+    # Return the IPF controlled data
+    return data
 
 
 def integerize_1d(
