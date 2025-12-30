@@ -1,10 +1,28 @@
 ## Setup
 
-Clone the repository and ensure an installation of [Miniconda/Anaconda](https://docs.conda.io/projects/miniconda/en/latest/) exists. Use the **environment.yml** file in the root directory of the project to [create the Python virtual environment](https://docs.conda.io/projects/conda/en/4.6.1/user-guide/tasks/manage-environments.html#creating-an-environment-from-an-environment-yml-file) needed to run the project.
+Clone the repository and ensure an installation of [uv](https://docs.astral.sh/uv/getting-started/installation/) exists. Create a local virtual environment by running `uv venv` then `uv sync` in the command line. Ensure that a `secrets.yml` file exists
 
-Set the configuration file **config.yml** parameters specific to the run in the project root directory.
+### Configuration of Private Data in secrets.yml
+In order to avoid exposing certain data to the public this repository uses a secrets file to store sensitive configurations in addition to a standard configuration file. This file is stored in the root directory of the repository as `secrets.yml` and is included in the `.gitignore` intentionally to avoid it ever being committed to the repository.
 
-### Configuration File Settings
+The `secrets.yml` should mirror the following structure.
+
+```yaml
+sql:
+  estimates:
+    server: <SqlInstanceName>  # SQL instance containing estimates database
+    database: <SqlDatabaseName>  # database within SQL instance containing SQL build objects
+  gis:
+    server: <SqlInstanceName>  # SQL instance containing GIS database
+    database: <SqlDatabaseName>  # database within instance containing GIS datasets (GQ/LUDU)
+  staging: <FolderPath>  # unconditional network folder path visible to SQL instance for BULK INSERT
+```
+
+## Running
+
+Set the configuration file `config.yml` parameters specific to the run in the project root directory. Finally, simply execute `uv run main.py` in the main project directory
+
+### Configuration File Settings     
 
 The default version of the runtime configuration file is copied here, with comments explaining each and every key/value pair
 
@@ -85,22 +103,6 @@ debug:
   # Whether to run the 'staging' module. If enabled, then any above modules must all be
   # enabled due to module dependencies
   staging: False
-```
-
-### Configuration of Private Data in secrets.yml
-In order to avoid exposing certain data to the public this repository uses a secrets file to store sensitive configurations in addition to a standard configuration file. This file is stored in the root directory of the repository as `secrets.yml` and is included in the `.gitignore` intentionally to avoid it ever being committed to the repository.
-
-The `secrets.yml` should mirror the following structure.
-
-```yaml
-sql:
-  estimates:
-    server: <SqlInstanceName>  # SQL instance containing estimates database
-    database: <SqlDatabaseName>  # database within SQL instance containing SQL build objects
-  gis:
-    server: <SqlInstanceName>  # SQL instance containing GIS database
-    database: <SqlDatabaseName>  # database within instance containing GIS datasets (GQ/LUDU)
-  staging: <FolderPath>  # unconditional network folder path visible to SQL instance for BULK INSERT
 ```
 
 ### Production Database Schema
