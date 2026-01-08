@@ -78,7 +78,7 @@ def run_ase(year: int) -> None:
     ase_outputs = _create_ase(year, ase_inputs)
     _validate_ase_outputs(ase_outputs)
 
-    _insert_ase(ase_outputs)
+    _insert_ase(year, ase_outputs)
 
 
 @functools.lru_cache(maxsize=1)
@@ -915,7 +915,7 @@ def _validate_ase_outputs(ase_outputs: dict[str, pd.DataFrame]) -> None:
         )
 
 
-def _insert_ase(ase_outputs: dict[str, pd.DataFrame]) -> None:
+def _insert_ase(year: int, ase_outputs: dict[str, pd.DataFrame]) -> None:
     """Insert age/sex/ethnicity population by type to database."""
     for pop_type, output in ase_outputs.items():
         logger.info("Loading Estimates for " + pop_type)
@@ -923,7 +923,7 @@ def _insert_ase(ase_outputs: dict[str, pd.DataFrame]) -> None:
         # Convert the DataFrame to a Polars DataFrame
         # Polars used solely for write to CSV performance
         pl_df = pl.from_pandas(
-            output[
+            output.loc[lambda df: df["value"] != 0][
                 [
                     "run_id",
                     "year",
@@ -939,8 +939,9 @@ def _insert_ase(ase_outputs: dict[str, pd.DataFrame]) -> None:
         )
 
         # Write the DataFrame to a CSV file
+        csv_temp_location = utils.BULK_INSERT_STAGING / (pop_type + ".txt")
         pl_df.write_csv(
-            utils.BULK_INSERT_STAGING / (pop_type + ".txt"),
+            csv_temp_location,
             include_header=False,
             separator="|",
             quote_style="never",
@@ -948,15 +949,14 @@ def _insert_ase(ase_outputs: dict[str, pd.DataFrame]) -> None:
 
         # Bulk insert the CSV file into the production database
         with utils.ESTIMATES_ENGINE.connect() as con:
-            fp = (utils.BULK_INSERT_STAGING / (pop_type + ".txt")).as_posix()
             query = sql.text(
                 f"""
                     BULK INSERT [outputs].[ase]
-                    FROM '{fp}'
+                    FROM '{csv_temp_location.as_posix()}'
                     WITH (
                         TABLOCK,
                         MAXERRORS=0,
-                        FIELDTERMINATOR = '|',
+                        FIELDTERMINATOR = '|',  
                         ROWTERMINATOR = '0x0A',
                         CHECK_CONSTRAINTS
                     )
@@ -966,4 +966,20 @@ def _insert_ase(ase_outputs: dict[str, pd.DataFrame]) -> None:
             con.commit()
 
         # Remove the temporary CSV file
-        (utils.BULK_INSERT_STAGING / (pop_type + ".txt")).unlink()
+        csv_temp_location.unlink()
+
+    # Insert zeros, which is done after non-zero data for every population type has been
+    # inserted
+    logger.info("Loading Estimates for non-zero ASE data")
+    with utils.ESTIMATES_ENGINE.connect() as con:
+        with open(utils.SQL_FOLDER / "ase" / "insert_ase_zeros.sql") as file:
+            query = sql.text(file.read())
+            con.execute(
+                query,
+                {
+                    "run_id": utils.RUN_ID,
+                    "year": year,
+                    "series": utils.MGRA_SERIES,
+                },
+            )
+            con.commit()
