@@ -2,12 +2,12 @@
 # wiki page for more details:
 # https://github.com/SANDAG/Estimates-Program/wiki/Population-by-Age-Sex-Ethnicity
 
+import csv
 import functools
 import logging
 
 import numpy as np
 import pandas as pd
-import polars as pl
 import sqlalchemy as sql
 
 import python.tests as tests
@@ -934,11 +934,12 @@ def _insert_ase(year: int, ase_outputs: dict[str, pd.DataFrame]) -> None:
                     "ethnicity",
                     "value",
                 ]
-            ].write_csv(
+            ].to_csv(
                 csv_temp_location,
-                include_header=False,
-                separator="|",
-                quote_style="never",
+                header=False,
+                index=False,
+                sep="|",
+                quoting=csv.QUOTE_NONE,
             )
         )
 
