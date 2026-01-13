@@ -920,9 +920,9 @@ def _insert_ase(year: int, ase_outputs: dict[str, pd.DataFrame]) -> None:
     for pop_type, output in ase_outputs.items():
         logger.info("Loading Estimates for " + pop_type)
 
-        # Convert the DataFrame to a Polars DataFrame
-        # Polars used solely for write to CSV performance
-        pl_df = pl.from_pandas(
+        # Write the DataFrame to a CSV file
+        csv_temp_location = utils.BULK_INSERT_STAGING / (pop_type + ".txt")
+        (
             output.loc[lambda df: df["value"] != 0][
                 [
                     "run_id",
@@ -934,17 +934,12 @@ def _insert_ase(year: int, ase_outputs: dict[str, pd.DataFrame]) -> None:
                     "ethnicity",
                     "value",
                 ]
-            ],
-            include_index=False,
-        )
-
-        # Write the DataFrame to a CSV file
-        csv_temp_location = utils.BULK_INSERT_STAGING / (pop_type + ".txt")
-        pl_df.write_csv(
-            csv_temp_location,
-            include_header=False,
-            separator="|",
-            quote_style="never",
+            ].write_csv(
+                csv_temp_location,
+                include_header=False,
+                separator="|",
+                quote_style="never",
+            )
         )
 
         # Bulk insert the CSV file into the production database
@@ -968,18 +963,18 @@ def _insert_ase(year: int, ase_outputs: dict[str, pd.DataFrame]) -> None:
         # Remove the temporary CSV file
         csv_temp_location.unlink()
 
-    # Insert zeros, which is done after non-zero data for every population type has been
-    # inserted
-    logger.info("Loading Estimates for non-zero ASE data")
-    with utils.ESTIMATES_ENGINE.connect() as con:
-        with open(utils.SQL_FOLDER / "ase" / "insert_ase_zeros.sql") as file:
-            query = sql.text(file.read())
-            con.execute(
-                query,
-                {
-                    "run_id": utils.RUN_ID,
-                    "year": year,
-                    "series": utils.MGRA_SERIES,
-                },
-            )
-            con.commit()
+    # # Insert zeros, which is done after non-zero data for every population type has been
+    # # inserted
+    # logger.info("Loading Estimates for non-zero ASE data")
+    # with utils.ESTIMATES_ENGINE.connect() as con:
+    #     with open(utils.SQL_FOLDER / "ase" / "insert_ase_zeros.sql") as file:
+    #         query = sql.text(file.read())
+    #         con.execute(
+    #             query,
+    #             {
+    #                 "run_id": utils.RUN_ID,
+    #                 "year": year,
+    #                 "series": utils.MGRA_SERIES,
+    #             },
+    #         )
+    #         con.commit()
