@@ -131,6 +131,9 @@ CREATE TABLE [outputs].[ase] (
     CONSTRAINT [chk_non_negative_outputs_ase] CHECK ([value] >= 0)
 )
 
+-- For purposes of data insertion speed, only non-zero ASE data is inserted into
+-- [outputs].[ase]. In case you want the full table with zeros, you can use the below
+-- function
 CREATE FUNCTION [outputs].[ase_with_zeros](
     @run_id INTEGER
 )
@@ -147,54 +150,65 @@ RETURNS @ase_with_zeros TABLE (
 AS
 BEGIN
     INSERT INTO @ase_with_zeros
+    DECLARE @run_id INTEGER = 134;
     SELECT
-        [run_id].[run_id],
-        [year].[year],
-        [mgra].[mgra],
-        [pop_type].[pop_type],
-        [age_group].[age_group],
-        [sex].[sex],
-        [ethnicity].[ethnicity],
+        [shell].[run_id],
+        [shell].[year],
+        [shell].[mgra],
+        [shell].[pop_type],
+        [shell].[age_group],
+        [shell].[sex],
+        [shell].[ethnicity],
         ISNULL([ase].[value], 0) AS [value]
-    FROM (VALUES(@run_id)) AS [run_id]([run_id])
-    CROSS JOIN (
-        SELECT DISTINCT [year]
-        FROM [outputs].[ase]
-        WHERE [run_id] = @run_id
-    ) AS [year]
-    CROSS JOIN (
-        SELECT DISTINCT [mgra]
-        FROM [inputs].[mgra]
-        WHERE [run_id] = @run_id
-    ) AS [mgra]
-    CROSS JOIN (
-        SELECT DISTINCT [pop_type]
-        FROM [outputs].[ase]
-        WHERE [run_id] = @run_id
-    ) AS [pop_type]
-    CROSS JOIN (
-        SELECT DISTINCT [age_group]
-        FROM [outputs].[ase]
-        WHERE [run_id] = @run_id
-    ) AS [age_group]
-    CROSS JOIN (
-        SELECT DISTINCT [sex]
-        FROM [outputs].[ase]
-        WHERE [run_id] = @run_id
-    ) AS [sex]
-    CROSS JOIN (
-        SELECT DISTINCT [ethnicity]
-        FROM [outputs].[ase]
-        WHERE [run_id] = @run_id
-    ) AS [ethnicity]
+    FROM (
+            SELECT
+                [run_id].[run_id],
+                [year].[year],
+                [mgra].[mgra],
+                [pop_type].[pop_type],
+                [age_group].[age_group],
+                [sex].[sex],
+                [ethnicity].[ethnicity]
+            FROM (VALUES(@run_id)) AS [run_id]([run_id])
+            CROSS JOIN (
+                SELECT DISTINCT [year]
+                FROM [outputs].[ase]
+                WHERE [run_id] = @run_id
+            ) AS [year]
+            CROSS JOIN (
+                SELECT DISTINCT [mgra]
+                FROM [inputs].[mgra]
+                WHERE [run_id] = @run_id
+            ) AS [mgra]
+            CROSS JOIN (
+                SELECT DISTINCT [pop_type]
+                FROM [outputs].[ase]
+                WHERE [run_id] = @run_id
+            ) AS [pop_type]
+            CROSS JOIN (
+                SELECT DISTINCT [age_group]
+                FROM [outputs].[ase]
+                WHERE [run_id] = @run_id
+            ) AS [age_group]
+            CROSS JOIN (
+                SELECT DISTINCT [sex]
+                FROM [outputs].[ase]
+                WHERE [run_id] = @run_id
+            ) AS [sex]
+            CROSS JOIN (
+                SELECT DISTINCT [ethnicity]
+                FROM [outputs].[ase]
+                WHERE [run_id] = @run_id
+            ) AS [ethnicity]
+        ) AS [shell]
     LEFT JOIN [outputs].[ase]
-        ON [run_id].[run_id] = [ase].[run_id]
-        AND [year].[year] = [ase].[year]
-        AND [mgra].[mgra] = [ase].[mgra]
-        AND [pop_type].[pop_type] = [ase].[pop_type]
-        AND [age_group].[age_group] = [ase].[age_group]
-        AND [sex].[sex] = [ase].[sex]
-        AND [ethnicity].[ethnicity] = [ase].[ethnicity]
+        ON [shell].[run_id] = [ase].[run_id]
+        AND [shell].[year] = [ase].[year]
+        AND [shell].[mgra] = [ase].[mgra]
+        AND [shell].[pop_type] = [ase].[pop_type]
+        AND [shell].[age_group] = [ase].[age_group]
+        AND [shell].[sex] = [ase].[sex]
+        AND [shell].[ethnicity] = [ase].[ethnicity]
     RETURN;
 END
 
