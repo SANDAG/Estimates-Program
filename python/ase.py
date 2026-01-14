@@ -963,19 +963,3 @@ def _insert_ase(year: int, ase_outputs: dict[str, pd.DataFrame]) -> None:
 
         # Remove the temporary CSV file
         csv_temp_location.unlink()
-
-    # # Insert zeros, which is done after non-zero data for every population type has been
-    # # inserted
-    # logger.info("Loading Estimates for non-zero ASE data")
-    # with utils.ESTIMATES_ENGINE.connect() as con:
-    #     with open(utils.SQL_FOLDER / "ase" / "insert_ase_zeros.sql") as file:
-    #         query = sql.text(file.read())
-    #         con.execute(
-    #             query,
-    #             {
-    #                 "run_id": utils.RUN_ID,
-    #                 "year": year,
-    #                 "series": utils.MGRA_SERIES,
-    #             },
-    #         )
-    #         con.commit()

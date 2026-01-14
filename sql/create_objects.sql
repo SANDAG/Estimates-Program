@@ -131,6 +131,73 @@ CREATE TABLE [outputs].[ase] (
     CONSTRAINT [chk_non_negative_outputs_ase] CHECK ([value] >= 0)
 )
 
+CREATE FUNCTION [outputs].[ase_with_zeros](
+    @run_id INTEGER
+)
+RETURNS @ase_with_zeros TABLE (
+        [run_id] INTEGER NOT NULL,
+        [year] INTEGER NOT NULL,
+        [mgra] INTEGER NOT NULL,
+        [pop_type] NVARCHAR(75) NOT NULL,
+        [age_group] NVARCHAR(15) NOT NULL,
+        [sex] NVARCHAR(6) NOT NULL,
+        [ethnicity] NVARCHAR(50) NOT NULL,
+        [value] INTEGER NOT NULL
+    )
+AS
+BEGIN
+    INSERT INTO @ase_with_zeros
+    SELECT
+        [run_id].[run_id],
+        [year].[year],
+        [mgra].[mgra],
+        [pop_type].[pop_type],
+        [age_group].[age_group],
+        [sex].[sex],
+        [ethnicity].[ethnicity],
+        ISNULL([ase].[value], 0) AS [value]
+    FROM (VALUES(@run_id)) AS [run_id]([run_id])
+    CROSS JOIN (
+        SELECT DISTINCT [year]
+        FROM [outputs].[ase]
+        WHERE [run_id] = @run_id
+    ) AS [year]
+    CROSS JOIN (
+        SELECT DISTINCT [mgra]
+        FROM [inputs].[mgra]
+        WHERE [run_id] = @run_id
+    ) AS [mgra]
+    CROSS JOIN (
+        SELECT DISTINCT [pop_type]
+        FROM [outputs].[ase]
+        WHERE [run_id] = @run_id
+    ) AS [pop_type]
+    CROSS JOIN (
+        SELECT DISTINCT [age_group]
+        FROM [outputs].[ase]
+        WHERE [run_id] = @run_id
+    ) AS [age_group]
+    CROSS JOIN (
+        SELECT DISTINCT [sex]
+        FROM [outputs].[ase]
+        WHERE [run_id] = @run_id
+    ) AS [sex]
+    CROSS JOIN (
+        SELECT DISTINCT [ethnicity]
+        FROM [outputs].[ase]
+        WHERE [run_id] = @run_id
+    ) AS [ethnicity]
+    LEFT JOIN [outputs].[ase]
+        ON [run_id].[run_id] = [ase].[run_id]
+        AND [year].[year] = [ase].[year]
+        AND [mgra].[mgra] = [ase].[mgra]
+        AND [pop_type].[pop_type] = [ase].[pop_type]
+        AND [age_group].[age_group] = [ase].[age_group]
+        AND [sex].[sex] = [ase].[sex]
+        AND [ethnicity].[ethnicity] = [ase].[ethnicity]
+    RETURN;
+END
+
 CREATE TABLE [outputs].[gq] (
     [run_id] INT NOT NULL,
     [year] INT NOT NULL,
