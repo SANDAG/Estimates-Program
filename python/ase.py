@@ -2,12 +2,12 @@
 # wiki page for more details:
 # https://github.com/SANDAG/Estimates-Program/wiki/Population-by-Age-Sex-Ethnicity
 
+import csv
 import functools
 import logging
 
 import numpy as np
 import pandas as pd
-import polars as pl
 import sqlalchemy as sql
 
 import python.tests as tests
@@ -78,7 +78,7 @@ def run_ase(year: int) -> None:
     ase_outputs = _create_ase(year, ase_inputs)
     _validate_ase_outputs(ase_outputs)
 
-    _insert_ase(ase_outputs)
+    _insert_ase(year, ase_outputs)
 
 
 @functools.lru_cache(maxsize=1)
@@ -915,15 +915,15 @@ def _validate_ase_outputs(ase_outputs: dict[str, pd.DataFrame]) -> None:
         )
 
 
-def _insert_ase(ase_outputs: dict[str, pd.DataFrame]) -> None:
+def _insert_ase(year: int, ase_outputs: dict[str, pd.DataFrame]) -> None:
     """Insert age/sex/ethnicity population by type to database."""
     for pop_type, output in ase_outputs.items():
         logger.info("Loading Estimates for " + pop_type)
 
-        # Convert the DataFrame to a Polars DataFrame
-        # Polars used solely for write to CSV performance
-        pl_df = pl.from_pandas(
-            output[
+        # Write the DataFrame to a CSV file
+        csv_temp_location = utils.BULK_INSERT_STAGING / (pop_type + ".txt")
+        (
+            output.loc[lambda df: df["value"] != 0][
                 [
                     "run_id",
                     "year",
@@ -934,29 +934,25 @@ def _insert_ase(ase_outputs: dict[str, pd.DataFrame]) -> None:
                     "ethnicity",
                     "value",
                 ]
-            ],
-            include_index=False,
-        )
-
-        # Write the DataFrame to a CSV file
-        pl_df.write_csv(
-            utils.BULK_INSERT_STAGING / (pop_type + ".txt"),
-            include_header=False,
-            separator="|",
-            quote_style="never",
+            ].to_csv(
+                csv_temp_location,
+                header=False,
+                index=False,
+                sep="|",
+                quoting=csv.QUOTE_NONE,
+            )
         )
 
         # Bulk insert the CSV file into the production database
         with utils.ESTIMATES_ENGINE.connect() as con:
-            fp = (utils.BULK_INSERT_STAGING / (pop_type + ".txt")).as_posix()
             query = sql.text(
                 f"""
                     BULK INSERT [outputs].[ase]
-                    FROM '{fp}'
+                    FROM '{csv_temp_location.as_posix()}'
                     WITH (
                         TABLOCK,
                         MAXERRORS=0,
-                        FIELDTERMINATOR = '|',
+                        FIELDTERMINATOR = '|',  
                         ROWTERMINATOR = '0x0A',
                         CHECK_CONSTRAINTS
                     )
@@ -966,4 +962,4 @@ def _insert_ase(ase_outputs: dict[str, pd.DataFrame]) -> None:
             con.commit()
 
         # Remove the temporary CSV file
-        (utils.BULK_INSERT_STAGING / (pop_type + ".txt")).unlink()
+        csv_temp_location.unlink()
