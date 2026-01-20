@@ -134,7 +134,7 @@ CREATE TABLE [outputs].[ase] (
 -- For purposes of data insertion speed, only non-zero ASE data is inserted into
 -- [outputs].[ase]. In case you want the full table with zeros, you can use the below
 -- function
-CREATE FUNCTION [outputs].[ase_with_zeros](
+CREATE FUNCTION [outputs].[fn_ase_with_zeros](
     @run_id INTEGER
 )
 RETURNS @ase_with_zeros TABLE (
@@ -150,7 +150,6 @@ RETURNS @ase_with_zeros TABLE (
 AS
 BEGIN
     INSERT INTO @ase_with_zeros
-    DECLARE @run_id INTEGER = 134;
     SELECT
         [shell].[run_id],
         [shell].[year],
