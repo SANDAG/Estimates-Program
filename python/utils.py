@@ -105,7 +105,6 @@ input_parser.parse_config()
 RUN_INSTRUCTIONS = input_parser.run_instructions
 RUN_ID = input_parser.run_id
 MGRA_VERSION = input_parser.mgra_version
-MGRA_SERIES = int(MGRA_VERSION.replace("mgra", ""))
 
 logger.info(
     f"RUN_ID: {RUN_ID}, MGRA_VERSION: {MGRA_VERSION}, YEARS: {RUN_INSTRUCTIONS["years"]}"
