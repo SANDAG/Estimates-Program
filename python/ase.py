@@ -78,7 +78,7 @@ def run_ase(year: int) -> None:
     ase_outputs = _create_ase(year, ase_inputs)
     _validate_ase_outputs(ase_outputs)
 
-    _insert_ase(year, ase_outputs)
+    _insert_ase(ase_outputs)
 
 
 @functools.lru_cache(maxsize=1)
@@ -915,7 +915,7 @@ def _validate_ase_outputs(ase_outputs: dict[str, pd.DataFrame]) -> None:
         )
 
 
-def _insert_ase(year: int, ase_outputs: dict[str, pd.DataFrame]) -> None:
+def _insert_ase(ase_outputs: dict[str, pd.DataFrame]) -> None:
     """Insert age/sex/ethnicity population by type to database."""
     for pop_type, output in ase_outputs.items():
         logger.info("Loading Estimates for " + pop_type)
