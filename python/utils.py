@@ -17,7 +17,7 @@ import python.parsers as parsers
 # Store project root folder
 ROOT_FOLDER = pathlib.Path(__file__).parent.resolve().parent
 SQL_FOLDER = ROOT_FOLDER / "sql"
-
+OUTPUT_FOLDER = ROOT_FOLDER / "output"
 
 ###########
 # LOGGING #
@@ -73,6 +73,16 @@ GIS_ENGINE = sql.create_engine(
     + _secrets["sql"]["gis"]["server"]
     + "/"
     + _secrets["sql"]["gis"]["database"]
+    + "?trusted_connection=yes&driver="
+    + "ODBC Driver 17 for SQL Server",
+    fast_executemany=True,
+)
+
+LEHD_ENGINE = sql.create_engine(
+    "mssql+pyodbc://@"
+    + _secrets["sql"]["socioec"]["server"]
+    + "/"
+    + _secrets["sql"]["socioec"]["database"]
     + "?trusted_connection=yes&driver="
     + "ODBC Driver 17 for SQL Server",
     fast_executemany=True,

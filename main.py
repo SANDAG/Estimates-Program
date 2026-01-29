@@ -13,6 +13,7 @@ import python.hs_hh as hs_hh
 import python.pop_type as pop
 import python.ase as ase
 import python.hh_characteristics as hh_characteristics
+import python.employment as employment
 import python.staging as staging
 
 import python.utils as utils
@@ -56,6 +57,11 @@ for year in utils.RUN_INSTRUCTIONS["years"]:
     if utils.RUN_INSTRUCTIONS["household_characteristics"]:
         logger.info("Running Household Characteristics module...")
         hh_characteristics.run_hh_characteristics(year)
+
+    # Employment module
+    if utils.RUN_INSTRUCTIONS["employment"]:
+        logger.info("Running Employment module...")
+        employment.run_employment(year)
 
     # Diagnostic print for this year
     logger.info(f"Finished running {year}\n")
