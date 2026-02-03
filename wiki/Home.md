@@ -34,4 +34,4 @@ graph TD;
     hh_char-->Staging;
 ```
 
-Additionally, shared functionalities across modules are stored in the [Utility](https://github.com/SANDAG/Estimates-Program/wiki/Utility) module. This module contains software configurations specified in the `config.yml`, helper functions for rounding and integerization, as well as a handler allowing the program to use earlier ACS 5-year releases if the current year release is unavailable.
+Additionally, shared functionalities across modules are stored in the [Utility](https://github.com/SANDAG/Estimates-Program/wiki/Utility) module. This module contains software configurations specified in the `config.toml`, helper functions for rounding and integerization, as well as a handler allowing the program to use earlier ACS 5-year releases if the current year release is unavailable.

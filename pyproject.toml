@@ -1,6 +1,6 @@
 [project]
 name = "Estimates-Program"
-version = "0.0.0" # Not used, refer to config.yml instead
+version = "0.0.0" # Not used, refer to config.toml instead
 requires-python = ">=3.11"
 dependencies = [
     "black>=25.12.0,<26.0.0",

@@ -20,7 +20,7 @@ sql:
 
 ## Running
 
-Set the configuration file `config.yml` parameters specific to the run in the project root directory. Finally, simply execute `uv run main.py` in the main project directory
+Set the configuration file `config.toml` parameters specific to the run in the project root directory. Finally, simply execute `uv run main.py` in the main project directory
 
 ### Configuration File Settings     
 

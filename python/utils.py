@@ -1,6 +1,7 @@
 import logging
 import math
 import pathlib
+import tomllib
 import yaml
 
 import numpy as np
@@ -89,15 +90,15 @@ BULK_INSERT_STAGING = pathlib.Path(_secrets["sql"]["staging"])
 # RUNTIME CONFIGURATION #
 #########################
 
-# Load configuration YAML file
+# Load configuration TOML file
 try:
-    with open(ROOT_FOLDER / "config.yml", "r") as file:
-        config = yaml.safe_load(file)
+    with open(ROOT_FOLDER / "config.toml", "rb") as file:
+        config = tomllib.load(file)
 except IOError:
-    raise IOError("config.yml does not exist, see README.md")
+    raise IOError("config.toml does not exist, see README.md")
 
 # Initialize input parser
-# Parse the configuration YAML file and validate its contents
+# Parse the configuration TOML file and validate its contents
 input_parser = parsers.InputParser(config=config, engine=ESTIMATES_ENGINE)
 input_parser.parse_config()
 
