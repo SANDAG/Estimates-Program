@@ -17,6 +17,8 @@ SET NOCOUNT ON;
 DECLARE @year INTEGER = :year;
 DECLARE @msg nvarchar(45) = 'EDD point-level data does not exist';
 
+
+--Drop Temp table and ok and spatial index if they exist
 DROP TABLE IF EXISTS [#edd];
 CREATE TABLE [#edd] (
     [id] INTEGER IDENTITY(1,1) NOT NULL,
@@ -175,3 +177,6 @@ BEGIN
     ) [tt]
     ORDER BY [GEOID20]
 END
+
+--Drop Temp table
+DROP TABLE IF EXISTS [#edd];
