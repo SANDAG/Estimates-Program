@@ -2,7 +2,6 @@ import logging
 import math
 import pathlib
 import tomllib
-import yaml
 
 import numpy as np
 import pandas as pd
@@ -51,12 +50,12 @@ logger.info("Initialize log file")
 # SQL CONFIGURATION #
 #####################
 
-# Load secrets YAML file
+# Load secrets TOML file
 try:
-    with open(ROOT_FOLDER / "secrets.yml", "r") as file:
-        _secrets = yaml.safe_load(file)
+    with open(ROOT_FOLDER / "secrets.toml", "rb") as file:
+        _secrets = tomllib.load(file)
 except IOError:
-    raise IOError("secrets.yml does not exist, see README.md")
+    raise IOError("secrets.toml does not exist, see README.md")
 
 # Create SQLAlchemy engine(s)
 ESTIMATES_ENGINE = sql.create_engine(

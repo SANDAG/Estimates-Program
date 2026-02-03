@@ -1,21 +1,23 @@
 ## Setup
 
-Clone the repository and ensure an installation of [uv](https://docs.astral.sh/uv/getting-started/installation/) exists. Create a local virtual environment by running `uv venv` then `uv sync` in the command line. Ensure that a `secrets.yml` file exists
+Clone the repository and ensure an installation of [uv](https://docs.astral.sh/uv/getting-started/installation/) exists. Create a local virtual environment by running `uv venv` then `uv sync` in the command line. Ensure that a `secrets.toml` file exists
 
-### Configuration of Private Data in secrets.yml
-In order to avoid exposing certain data to the public this repository uses a secrets file to store sensitive configurations in addition to a standard configuration file. This file is stored in the root directory of the repository as `secrets.yml` and is included in the `.gitignore` intentionally to avoid it ever being committed to the repository.
+### Configuration of Private Data in secrets.toml
+In order to avoid exposing certain data to the public this repository uses a secrets file to store sensitive configurations in addition to a standard configuration file. This file is stored in the root directory of the repository as `secrets.toml` and is included in the `.gitignore` intentionally to avoid it ever being committed to the repository.
 
-The `secrets.yml` should mirror the following structure.
+The `secrets.toml` should mirror the following structure.
 
-```yaml
-sql:
-  estimates:
-    server: <SqlInstanceName>  # SQL instance containing estimates database
-    database: <SqlDatabaseName>  # database within SQL instance containing SQL build objects
-  gis:
-    server: <SqlInstanceName>  # SQL instance containing GIS database
-    database: <SqlDatabaseName>  # database within instance containing GIS datasets (GQ/LUDU)
-  staging: <FolderPath>  # unconditional network folder path visible to SQL instance for BULK INSERT
+```toml
+[sql.estimates]
+server = "<SqlInstanceName>"  # SQL instance containing estimates database
+database = "<SqlDatabaseName>"  # database within SQL instance containing SQL build objects
+
+[sql.gis]
+server = "<SqlInstanceName>"  # SQL instance containing GIS database
+database = "<SqlDatabaseName>"  # database within instance containing GIS datasets (GQ/LUDU)
+
+[sql]
+staging = "<FolderPath>"  # unconditional network folder path visible to SQL instance for BULK INSERT
 ```
 
 ## Running
