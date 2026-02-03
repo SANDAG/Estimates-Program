@@ -1,5 +1,5 @@
 -- Initialize parameters -----------------------------------------------------
-DECLARE @year integer = 2023--:year; 
+DECLARE @year integer = :year; 
 
 SELECT 
     [year],

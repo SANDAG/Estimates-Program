@@ -164,7 +164,7 @@ def aggregate_lodes_to_mgra(combined_data, xref, run_id, year) -> pd.DataFrame:
     lehd_to_mgra_summed = lehd_to_mgra.groupby(
         ["year", "mgra", "industry_code"], as_index=False
     )["jobs_alloc"].sum()
-    lehd_to_mgra_summed = lehd_to_mgra_summed.rename(columns={"jobs_alloc": "jobs"})
+    lehd_to_mgra_summed = lehd_to_mgra_summed.rename(columns={"jobs_alloc": "value"})
 
     # Join summed data to jobs_frame, keeping all MGRAs and industry codes
     final_lehd_to_mgra = jobs_frame.merge(
@@ -172,8 +172,11 @@ def aggregate_lodes_to_mgra(combined_data, xref, run_id, year) -> pd.DataFrame:
         on=["year", "mgra", "industry_code"],
         how="left",
     )
-    final_lehd_to_mgra["jobs"] = final_lehd_to_mgra["jobs"].fillna(0)
-    final_lehd_to_mgra = final_lehd_to_mgra[["year", "mgra", "industry_code", "jobs"]]
+    final_lehd_to_mgra["value"] = final_lehd_to_mgra["value"].fillna(0)
+    final_lehd_to_mgra["run_id"] = run_id  # Add run_id column
+    final_lehd_to_mgra = final_lehd_to_mgra[
+        ["run_id", "year", "mgra", "industry_code", "value"]
+    ]
 
     return final_lehd_to_mgra
 
@@ -229,8 +232,8 @@ def apply_employment_controls(original_data, control_totals, generator):
         ]["jobs"].iloc[0]
 
         # Apply integerize_1d and update controlled_data
-        controlled_data.loc[industry_mask, "jobs"] = utils.integerize_1d(
-            data=original_data.loc[industry_mask, "jobs"],
+        controlled_data.loc[industry_mask, "value"] = utils.integerize_1d(
+            data=original_data.loc[industry_mask, "value"],
             control=control_value,
             methodology="weighted_random",
             generator=generator,
