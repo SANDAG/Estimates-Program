@@ -18,11 +18,11 @@ comments = "Example comment"
 # automatically created, similar to `run` mode
 [debug]
 enabled = false
-run_id = ""  # null in original YAML
+run_id = -1  
 start_year = 2022
 end_year = 2023
 version = "1.1.1-dev"
-comments = ""  # null in original YAML
+comments = ""
 startup = false
 housing_and_households = false
 population = false
