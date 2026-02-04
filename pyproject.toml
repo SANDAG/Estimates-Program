@@ -1,6 +1,6 @@
 [project]
 name = "Estimates-Program"
-version = "0.0.0" # Not used, refer to config.yml instead
+version = "0.0.0" # Not used, refer to config.toml instead
 requires-python = ">=3.11"
 dependencies = [
     "black>=25.12.0,<26.0.0",
@@ -9,6 +9,5 @@ dependencies = [
     "numpy>=2.4.0,<3.0.0",
     "pandas>=2.3.3,<3.0.0",
     "pyodbc>=5.3.0,<6.0.0",
-    "pyyaml>=6.0.3,<7.0.0",
     "sqlalchemy>=2.0.45,<3.0.0",
 ]

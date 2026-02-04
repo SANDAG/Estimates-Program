@@ -1,7 +1,7 @@
 import logging
 import math
 import pathlib
-import yaml
+import tomllib
 
 import numpy as np
 import pandas as pd
@@ -50,12 +50,12 @@ logger.info("Initialize log file")
 # SQL CONFIGURATION #
 #####################
 
-# Load secrets YAML file
+# Load secrets TOML file
 try:
-    with open(ROOT_FOLDER / "secrets.yml", "r") as file:
-        _secrets = yaml.safe_load(file)
+    with open(ROOT_FOLDER / "secrets.toml", "rb") as file:
+        _secrets = tomllib.load(file)
 except IOError:
-    raise IOError("secrets.yml does not exist, see README.md")
+    raise IOError("secrets.toml does not exist, see README.md")
 
 # Create SQLAlchemy engine(s)
 ESTIMATES_ENGINE = sql.create_engine(
@@ -89,15 +89,15 @@ BULK_INSERT_STAGING = pathlib.Path(_secrets["sql"]["staging"])
 # RUNTIME CONFIGURATION #
 #########################
 
-# Load configuration YAML file
+# Load configuration TOML file
 try:
-    with open(ROOT_FOLDER / "config.yml", "r") as file:
-        config = yaml.safe_load(file)
+    with open(ROOT_FOLDER / "config.toml", "rb") as file:
+        config = tomllib.load(file)
 except IOError:
-    raise IOError("config.yml does not exist, see README.md")
+    raise IOError("config.toml does not exist, see README.md")
 
 # Initialize input parser
-# Parse the configuration YAML file and validate its contents
+# Parse the configuration TOML file and validate its contents
 input_parser = parsers.InputParser(config=config, engine=ESTIMATES_ENGINE)
 input_parser.parse_config()
 
