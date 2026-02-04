@@ -4,7 +4,7 @@ DECLARE @year integer = :year;
 SELECT 
     [year],
     [industry_code],
-    SUM([annual_avg_emplvl]) AS jobs
+    SUM([annual_avg_emplvl]) AS [value]
 FROM [socioec_data].[bls].[qcew_by_area_annual]
 INNER JOIN [socioec_data].[bls].[industry_code]
     ON [qcew_by_area_annual].[naics_id] = [industry_code].[naics_id]

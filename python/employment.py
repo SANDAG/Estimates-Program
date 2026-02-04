@@ -39,10 +39,11 @@ def run_employment(year):
     controlled_data = apply_employment_controls(lehd_jobs, control_totals, generator)
 
     # Export results
-    output_filepath = utils.OUTPUT_FOLDER / f"controlled_data_{year}.csv"
-    controlled_data.to_csv(output_filepath, index=False)
+    # output_filepath = utils.OUTPUT_FOLDER / f"controlled_data_{year}.csv"
+    # controlled_data.to_csv(output_filepath, index=False)
 
-    return controlled_data
+    _insert_jobs(control_totals, controlled_data)
+    # return controlled_data
 
 
 def get_LODES_data(year) -> pd.DataFrame:
@@ -201,6 +202,9 @@ def get_control_totals(year) -> pd.DataFrame:
                     "year": year,
                 },
             )
+
+    control_totals["run_id"] = utils.RUN_ID  # Add run_id column
+
     return control_totals
 
 
@@ -229,7 +233,7 @@ def apply_employment_controls(original_data, control_totals, generator):
         # Get control value for this industry
         control_value = control_totals[
             control_totals["industry_code"] == industry_code
-        ]["jobs"].iloc[0]
+        ]["value"].iloc[0]
 
         # Apply integerize_1d and update controlled_data
         controlled_data.loc[industry_mask, "value"] = utils.integerize_1d(
@@ -240,3 +244,22 @@ def apply_employment_controls(original_data, control_totals, generator):
         )
 
     return controlled_data
+
+
+def _insert_jobs(jobs_inputs, jobs_outputs) -> None:
+    """Insert input and output data related to household population"""
+
+    # Insert input and output data to database
+    with utils.ESTIMATES_ENGINE.connect() as con:
+
+        jobs_inputs.to_sql(
+            name="controls_jobs",
+            con=con,
+            schema="inputs",
+            if_exists="append",
+            index=False,
+        )
+
+        jobs_outputs.to_sql(
+            name="jobs", con=con, schema="outputs", if_exists="append", index=False
+        )
