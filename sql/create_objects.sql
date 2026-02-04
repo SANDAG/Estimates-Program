@@ -117,8 +117,8 @@ CREATE TABLE [inputs].[controls_jobs] (
     [value] INT NOT NULL,
     INDEX [ccsi_inputs_controls_jobs] CLUSTERED COLUMNSTORE,
     CONSTRAINT [ixuq_inputs_controls_jobs] UNIQUE ([run_id], [year], [industry_code]) WITH (DATA_COMPRESSION = PAGE),
-    CONSTRAINT [fk_inputs_controls_ase_run_id] FOREIGN KEY ([run_id]) REFERENCES [metadata].[run] ([run_id]),
-    CONSTRAINT [chk_non_negative_inputs_controls_ase] CHECK ([value] >= 0)
+    CONSTRAINT [fk_inputs_controls_jobs_run_id] FOREIGN KEY ([run_id]) REFERENCES [metadata].[run] ([run_id]),
+    CONSTRAINT [chk_non_negative_inputs_controls_jobs] CHECK ([value] >= 0)
 )
 GO
 

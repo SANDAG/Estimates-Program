@@ -8,13 +8,26 @@ generator = np.random.default_rng(utils.RANDOM_SEED)
 
 
 def run_employment(year: int):
-    """Run the Employment module for a specified year.
+    """Control function to create jobs data by industry_code (NAICS) at the MGRA level.
 
-    This function processes employment data by applying control totals to
-    LEHD LODES data at the MGRA level using integerization.
+    Get the LEHD LODES data, aggregate to the MGRA level using the block to MGRA
+    crosswalk, then apply control totals from QCEW using integerization.
+
+    Functionality is split apart for code encapsulation (function inputs not included):
+        get_LODES_data - Get LEHD LODES data for a specified year, including
+            special handling for industry_code 72 (Accommodation and Food Services)
+        xref_block_to_mgra - Get crosswalk from Census blocks to MGRAs
+        aggregate_lodes_to_mgra - Aggregate LODES data to MGRA level using allocation
+            percentages from the block to MGRA crosswalk
+        get_control_totals - Load QCEW employment data as county total controls
+        apply_employment_controls - Apply control totals to employment data using
+            utils.integerize_1d()
+        _insert_jobs - Store both the control totals and controlled employment
+            inputs/outputs to the production database
+
 
     Args:
-        year (int): The year for which to run the Employment module.
+        year (int): estimates year
     """
 
     # Check MGRA version and raise error if not 'mgra15'
@@ -140,17 +153,6 @@ def aggregate_lodes_to_mgra(
     # Join combined_data to xref and calculate allocated jobs
     lehd_to_mgra = combined_data.merge(xref, on="block", how="inner")
     lehd_to_mgra["value"] = lehd_to_mgra["jobs"] * lehd_to_mgra["allocation_pct"]
-    #    lehd_to_mgra = lehd_to_mgra[
-    #        [
-    #            "year",
-    #            "block",
-    #            "mgra",
-    #            "industry_code",
-    #            "jobs",
-    #            "allocation_pct",
-    #            "value",
-    #        ]
-    #    ]
 
     # Sum allocated jobs by year, mgra, and industry_code
     lehd_to_mgra_summed = lehd_to_mgra.groupby(
@@ -173,7 +175,7 @@ def aggregate_lodes_to_mgra(
 
 
 def get_control_totals(year: int) -> pd.DataFrame:
-    """Load employment data from SQL queries.
+    """Load QCEW employment data as control totals.
 
     Args:
         year (int): The year for which to load employment data.
@@ -203,7 +205,7 @@ def apply_employment_controls(
     control_totals: pd.DataFrame,
     generator: np.random.Generator,
 ) -> pd.DataFrame:
-    """Apply control totals to employment data using integerization.
+    """Apply control totals to employment data using utils.integerize_1d().
 
     Args:
         original_data (pd.DataFrame): LEHD LODES data at MGRA level.
@@ -241,7 +243,7 @@ def apply_employment_controls(
 
 
 def _insert_jobs(jobs_inputs: pd.DataFrame, jobs_outputs: pd.DataFrame) -> None:
-    """Insert input and output data related to household population"""
+    """Insert input and output data related to jobs to the database."""
 
     # Insert input and output data to database
     with utils.ESTIMATES_ENGINE.connect() as con:
