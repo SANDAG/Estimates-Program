@@ -683,18 +683,20 @@ def integerize_2d(
     return array_2d
 
 
-def read_sql_query_acs(**kwargs: dict) -> pd.DataFrame:
+def read_sql_query_custom(**kwargs: dict) -> pd.DataFrame:
     """Read SQL query allowing for dynamic year adjustment.
 
     This function executes a SQL query using pandas read_sql_query allowing
     for dynamic adjustment of the 'year' parameter in the query. If the query
-    returns a message indicating that the ACS 5-Year Table does not exist for
-    a given year, it will automatically decrement the year by one and re-run
+    returns a message indicating that the year does not exist in Table being
+    accessed, it will automatically decrement the year by one and re-run
     the query. This process will continue for up to 5 years back. Note this
-    function is specific to ACS 5-Year Tables and requires the SQL query file
-    to return a DataFrame with a single column called 'msg' with the text
-    'ACS 5-Year Table does not exist' when no data is found for the specified
-    year.
+    function is specific to querying ACS 5-Year Tables, LEHD LODES and EDD
+    point-level data. This function requires the SQL query file to return a
+    DataFrame with a single column called 'msg' with one of 3 text strings:
+    'ACS 5-Year Table does not exist', 'LODES data does not exist', or
+    'EDD point-level data does not exist' when no data is found for the
+    specified year.
 
     Args:
         kwargs (dict): Keyword arguments for pd.read_sql_query
@@ -739,7 +741,7 @@ def read_sql_query_acs(**kwargs: dict) -> pd.DataFrame:
                 kwargs["params"]["year"] -= 1
 
                 logger.warning(
-                    f"Re-running ACS SQL query with 'year' set to: "
+                    f"Re-running SQL query with 'year' set to: "
                     f"{kwargs['params']['year']} (attempt {attempt + 2}/{max_lookback + 1})"
                 )
 
@@ -758,6 +760,3 @@ def read_sql_query_acs(**kwargs: dict) -> pd.DataFrame:
                 df["year"] = original_year
 
         return df
-
-    # If we exit the loop without returning, raise an error
-    raise ValueError("Failed to retrieve data after maximum lookback attempts.")

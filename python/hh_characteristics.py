@@ -86,7 +86,7 @@ def _get_hh_income_inputs(year: int) -> dict[str, pd.DataFrame]:
         with open(
             utils.SQL_FOLDER / "hh_characteristics" / "get_tract_controls_hh_income.sql"
         ) as file:
-            hh_income_inputs["hh_income_tract_controls"] = utils.read_sql_query_acs(
+            hh_income_inputs["hh_income_tract_controls"] = utils.read_sql_query_custom(
                 sql=sql.text(file.read()),  # type: ignore
                 con=con,  # type: ignore
                 params={"run_id": utils.RUN_ID, "year": year},
@@ -120,7 +120,7 @@ def _get_hh_size_inputs(year: int) -> dict[str, pd.DataFrame]:
             / "hh_characteristics"
             / "get_tract_controls_hh_by_size.sql"
         ) as file:
-            hh_char_inputs["hhs_tract_controls"] = utils.read_sql_query_acs(
+            hh_char_inputs["hhs_tract_controls"] = utils.read_sql_query_custom(
                 sql=sql.text(file.read()),  # type: ignore
                 con=con,  # type: ignore
                 params={"run_id": utils.RUN_ID, "year": year},

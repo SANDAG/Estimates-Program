@@ -98,7 +98,7 @@ def _get_controls_inputs(year: int) -> dict[str, pd.DataFrame]:
 
         # Get regional age/sex/ethnicity group quarters distributions
         with open(utils.SQL_FOLDER / "ase/get_region_gq_ase_dist.sql") as file:
-            region_gq_ase_dist = utils.read_sql_query_acs(
+            region_gq_ase_dist = utils.read_sql_query_custom(
                 sql=sql.text(file.read()),
                 con=con,
                 params={
@@ -262,7 +262,7 @@ def _get_seed_inputs(year: int) -> dict[str, pd.DataFrame]:
     with utils.ESTIMATES_ENGINE.connect() as con:
         # Get the Age/Sex B010001 table data
         with open(utils.SQL_FOLDER / "ase/get_B01001.sql") as file:
-            b01001 = utils.read_sql_query_acs(
+            b01001 = utils.read_sql_query_custom(
                 sql=sql.text(file.read()),
                 con=con,
                 params={
@@ -272,7 +272,7 @@ def _get_seed_inputs(year: int) -> dict[str, pd.DataFrame]:
 
         # Get the Ethnicity B03002 table data
         with open(utils.SQL_FOLDER / "ase/get_B03002.sql") as file:
-            b03002 = utils.read_sql_query_acs(
+            b03002 = utils.read_sql_query_custom(
                 sql=sql.text(file.read()),
                 con=con,
                 params={
@@ -282,7 +282,7 @@ def _get_seed_inputs(year: int) -> dict[str, pd.DataFrame]:
 
         # Get Age/Sex/Ethnicity data from B01001(B-I) table data
         with open(utils.SQL_FOLDER / "ase/get_B01001(B-I).sql") as file:
-            b01001_b_i = utils.read_sql_query_acs(
+            b01001_b_i = utils.read_sql_query_custom(
                 sql=sql.text(file.read()),
                 con=con,
                 params={

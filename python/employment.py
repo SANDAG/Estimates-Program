@@ -6,12 +6,8 @@ import python.utils as utils
 
 generator = np.random.default_rng(utils.RANDOM_SEED)
 
-# Load configuration from YAML file
-# with open("config.yaml", "r") as f:
-#    config = yaml.safe_load(f)
 
-
-def run_employment(year):
+def run_employment(year: int):
     """Run the Employment module for a specified year.
 
     This function processes employment data by applying control totals to
@@ -30,23 +26,18 @@ def run_employment(year):
 
     LODES_data = get_LODES_data(year)
 
-    xref = get_xref_block_to_mgra(utils.MGRA_VERSION)
+    xref = get_xref_block_to_mgra()
 
-    lehd_jobs = aggregate_lodes_to_mgra(LODES_data, xref, utils.RUN_ID, year)
+    lehd_jobs = aggregate_lodes_to_mgra(LODES_data, xref, year)
 
     control_totals = get_control_totals(year)
-    # Apply controls
+
     controlled_data = apply_employment_controls(lehd_jobs, control_totals, generator)
 
-    # Export results
-    # output_filepath = utils.OUTPUT_FOLDER / f"controlled_data_{year}.csv"
-    # controlled_data.to_csv(output_filepath, index=False)
-
     _insert_jobs(control_totals, controlled_data)
-    # return controlled_data
 
 
-def get_LODES_data(year) -> pd.DataFrame:
+def get_LODES_data(year: int) -> pd.DataFrame:
     """Retrieve LEHD LODES data for a specified year.
 
     Args:
@@ -55,7 +46,7 @@ def get_LODES_data(year) -> pd.DataFrame:
 
     with utils.LEHD_ENGINE.connect() as con:
         with open(utils.SQL_FOLDER / "employment/get_lodes_data.sql") as file:
-            lodes_data = utils.read_sql_query_acs(
+            lodes_data = utils.read_sql_query_custom(
                 sql=sql.text(file.read()),
                 con=con,
                 params={"year": year},
@@ -63,7 +54,7 @@ def get_LODES_data(year) -> pd.DataFrame:
 
     with utils.GIS_ENGINE.connect() as con:
         with open(utils.SQL_FOLDER / "employment/get_naics72_split.sql") as file:
-            split_naics_72 = utils.read_sql_query_acs(
+            split_naics_72 = utils.read_sql_query_custom(
                 sql=sql.text(file.read()),
                 con=con,
                 params={"year": year},
@@ -93,32 +84,32 @@ def get_LODES_data(year) -> pd.DataFrame:
     return combined_data
 
 
-def get_xref_block_to_mgra(mgra_version) -> pd.DataFrame:
+def get_xref_block_to_mgra() -> pd.DataFrame:
     """Retrieve crosswalk from Census blocks to MGRAs.
-    Args:
-        mgra_version (str): The MGRA version to use for the crosswalk.
+
     Returns:
         pd.DataFrame: A DataFrame containing the crosswalk from blocks to MGRAs.
     """
 
     with utils.LEHD_ENGINE.connect() as con:
         with open(utils.SQL_FOLDER / "employment/xref_block_to_mgra.sql") as file:
-            xref = utils.read_sql_query_acs(
+            xref = utils.read_sql_query_custom(
                 sql=sql.text(file.read()),
                 con=con,
-                params={"mgra_version": mgra_version},
+                params={"mgra_version": utils.MGRA_VERSION},
             )
 
     return xref
 
 
-def aggregate_lodes_to_mgra(combined_data, xref, run_id, year) -> pd.DataFrame:
+def aggregate_lodes_to_mgra(
+    combined_data: pd.DataFrame, xref: pd.DataFrame, year: int
+) -> pd.DataFrame:
     """Aggregate LODES data to MGRA level using allocation percentages.
 
     Args:
         combined_data (pd.DataFrame): LODES data with columns: year, block, industry_code, jobs
         xref (pd.DataFrame): Crosswalk with columns: block, mgra, allocation_pct
-        run_id (int): The run ID for tracking
         year (int): The year for which to aggregate data
 
     Returns:
@@ -127,10 +118,10 @@ def aggregate_lodes_to_mgra(combined_data, xref, run_id, year) -> pd.DataFrame:
     # Get MGRA data from SQL
     with utils.LEHD_ENGINE.connect() as con:
         with open(utils.SQL_FOLDER / "employment/get_mgra.sql") as file:
-            mgra_data = utils.read_sql_query_acs(
+            mgra_data = utils.read_sql_query_custom(
                 sql=sql.text(file.read()),
                 con=con,
-                params={"run_id": run_id},
+                params={"run_id": utils.RUN_ID},
             )
 
     # Get unique industry codes and cross join with MGRA data
@@ -148,24 +139,23 @@ def aggregate_lodes_to_mgra(combined_data, xref, run_id, year) -> pd.DataFrame:
 
     # Join combined_data to xref and calculate allocated jobs
     lehd_to_mgra = combined_data.merge(xref, on="block", how="inner")
-    lehd_to_mgra["jobs_alloc"] = lehd_to_mgra["jobs"] * lehd_to_mgra["allocation_pct"]
-    lehd_to_mgra = lehd_to_mgra[
-        [
-            "year",
-            "block",
-            "mgra",
-            "industry_code",
-            "jobs",
-            "allocation_pct",
-            "jobs_alloc",
-        ]
-    ]
+    lehd_to_mgra["value"] = lehd_to_mgra["jobs"] * lehd_to_mgra["allocation_pct"]
+    #    lehd_to_mgra = lehd_to_mgra[
+    #        [
+    #            "year",
+    #            "block",
+    #            "mgra",
+    #            "industry_code",
+    #            "jobs",
+    #            "allocation_pct",
+    #            "value",
+    #        ]
+    #    ]
 
     # Sum allocated jobs by year, mgra, and industry_code
     lehd_to_mgra_summed = lehd_to_mgra.groupby(
         ["year", "mgra", "industry_code"], as_index=False
-    )["jobs_alloc"].sum()
-    lehd_to_mgra_summed = lehd_to_mgra_summed.rename(columns={"jobs_alloc": "value"})
+    )["value"].sum()
 
     # Join summed data to jobs_frame, keeping all MGRAs and industry codes
     final_lehd_to_mgra = jobs_frame.merge(
@@ -174,7 +164,7 @@ def aggregate_lodes_to_mgra(combined_data, xref, run_id, year) -> pd.DataFrame:
         how="left",
     )
     final_lehd_to_mgra["value"] = final_lehd_to_mgra["value"].fillna(0)
-    final_lehd_to_mgra["run_id"] = run_id  # Add run_id column
+    final_lehd_to_mgra["run_id"] = utils.RUN_ID  # Add run_id column
     final_lehd_to_mgra = final_lehd_to_mgra[
         ["run_id", "year", "mgra", "industry_code", "value"]
     ]
@@ -182,7 +172,7 @@ def aggregate_lodes_to_mgra(combined_data, xref, run_id, year) -> pd.DataFrame:
     return final_lehd_to_mgra
 
 
-def get_control_totals(year) -> pd.DataFrame:
+def get_control_totals(year: int) -> pd.DataFrame:
     """Load employment data from SQL queries.
 
     Args:
@@ -208,13 +198,17 @@ def get_control_totals(year) -> pd.DataFrame:
     return control_totals
 
 
-def apply_employment_controls(original_data, control_totals, generator):
+def apply_employment_controls(
+    original_data: pd.DataFrame,
+    control_totals: pd.DataFrame,
+    generator: np.random.Generator,
+) -> pd.DataFrame:
     """Apply control totals to employment data using integerization.
 
     Args:
         original_data (pd.DataFrame): LEHD LODES data at MGRA level.
         control_totals (pd.DataFrame): Employment control totals from QCEW.
-        generator: NumPy random number generator.
+        generator (np.random.Generator): NumPy random number generator.
 
     Returns:
         pd.DataFrame: Controlled employment data.
@@ -246,7 +240,7 @@ def apply_employment_controls(original_data, control_totals, generator):
     return controlled_data
 
 
-def _insert_jobs(jobs_inputs, jobs_outputs) -> None:
+def _insert_jobs(jobs_inputs: pd.DataFrame, jobs_outputs: pd.DataFrame) -> None:
     """Insert input and output data related to household population"""
 
     # Insert input and output data to database

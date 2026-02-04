@@ -105,7 +105,7 @@ def _get_hs_hh_inputs(year: int) -> dict[str, pd.DataFrame]:
 
         # Get tract occupancy controls
         with open(utils.SQL_FOLDER / "hs_hh/get_tract_controls_hh.sql") as file:
-            hs_hh_inputs["tract_controls"] = utils.read_sql_query_acs(
+            hs_hh_inputs["tract_controls"] = utils.read_sql_query_custom(
                 sql=sql.text(file.read()),
                 con=con,
                 params={
