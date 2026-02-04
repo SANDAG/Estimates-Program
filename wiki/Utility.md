@@ -73,7 +73,7 @@ Both the "Nearest Neighbors" and abandonment of the non-zero requirement can lea
 
 ## Dealing with un-released ACS 5-year Detailed Tables (`read_sql_query_custom()`)
 
-This function is a wrapper for `pd.read_sql_query` with an extension built in that handles requests for ACS 5-year Detailed Tables data that are currently not released. Essentially, all SQL scripts dealing with ACS data have an `IF/ELSE` statement at the top which checks for the existence of data. If the data for the specified table/year could not be found, then an error message is returned. This function detects the presence of the error message and re-runs the query using the previous year instead. 
+This function is a wrapper for `pd.read_sql_query` with an extension built in that handles requests for ACS 5-year Detailed Tables, LEHD LODES, and EDD point-level data data that are currently not released. Essentially, all SQL scripts dealing with ACS, LODES, EDD data have an `IF/ELSE` statement at the top which checks for the existence of data. If the data for the specified table/year could not be found, then an error message is returned. This function detects the presence of the error message and re-runs the query using the previous year instead, if fails again, checks up to a total of 5 years back. 
 
 ### A Note on ACS 5-year Detailed Tables
 
