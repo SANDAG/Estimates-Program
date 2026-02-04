@@ -129,7 +129,7 @@ def aggregate_lodes_to_mgra(
         pd.DataFrame: Aggregated data at MGRA level with columns: year, mgra, industry_code, jobs
     """
     # Get MGRA data from SQL
-    with utils.LEHD_ENGINE.connect() as con:
+    with utils.ESTIMATES_ENGINE.connect() as con:
         with open(utils.SQL_FOLDER / "employment/get_mgra.sql") as file:
             mgra_data = utils.read_sql_query_custom(
                 sql=sql.text(file.read()),
