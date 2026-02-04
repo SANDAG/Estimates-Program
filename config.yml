@@ -23,7 +23,7 @@ debug:
   end_year: 2023
   version: 1.1.1-dev
   comments: null
-  startup: True
+  startup: False
   housing_and_households: False
   population: False
   population_by_ase: False
