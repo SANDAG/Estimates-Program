@@ -17,7 +17,6 @@ import python.parsers as parsers
 # Store project root folder
 ROOT_FOLDER = pathlib.Path(__file__).parent.resolve().parent
 SQL_FOLDER = ROOT_FOLDER / "sql"
-OUTPUT_FOLDER = ROOT_FOLDER / "output"
 
 ###########
 # LOGGING #
