@@ -136,7 +136,7 @@ def aggregate_lodes_to_mgra(
             sql=sql.text(
                 """
                 SELECT DISTINCT [mgra]
-                FROM [EstimatesProgram].[inputs].[mgra]
+                FROM [inputs].[mgra]
                 WHERE run_id = :run_id
                 ORDER BY [mgra]
                 """
