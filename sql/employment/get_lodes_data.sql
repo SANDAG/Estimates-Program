@@ -1,3 +1,8 @@
+-- Documentation 
+-- The mapping below used for [CNS01] to [CNS20] to [industry_code] (2-digit NAICS) in WAC section of the document linked below.
+-- [industry_code] is used to represent NAICS as the QCEW data brought in a later step uses [industry_code]
+-- https://lehd.ces.census.gov/doc/help/onthemap/LODESTechDoc.pdf
+
 -- Initialize parameters -----------------------------------------------------
 DECLARE @year integer = :year;  
 DECLARE @msg nvarchar(25) = 'LODES data does not exist';
@@ -6,16 +11,18 @@ DECLARE @msg nvarchar(25) = 'LODES data does not exist';
 IF NOT EXISTS (
     SELECT TOP (1) *
 	FROM [socioec_data].[lehd].[lodes_8_wac]
-    WHERE [SEG] = 'S000'
-      AND [TYPE] = 'JT00'
-      AND [version] = 2
-      AND [YEAR] = @year
+    WHERE [SEG] = 'S000' -- 'S000' represents segment 'Total number of jobs' as seen in 'OD' section from document linked at top of file 
+        AND [TYPE] = 'JT00' -- 'JT00' is for 'All Jobs' as seen in 'OD' section from document linked at top of file
+        AND [version] = 2 -- latest version loaded into database
+        AND [YEAR] = @year
 )
-SELECT @msg AS [msg]
+BEGIN
+    SELECT @msg AS [msg]
+END
 ELSE
 BEGIN
-
-
+ 
+    -- Build the return table of QCEW control Totals by industry_code (NAICS)
     SELECT 
         [YEAR] AS [year],
         [w_geocode] AS [block],
@@ -45,9 +52,9 @@ BEGIN
             ('81',   [CNS19]),
             ('92',   [CNS20])
     ) AS u([industry_code], [value]) 
-    WHERE [SEG] = 'S000'
-        AND [TYPE] = 'JT00'
-        AND [version] = 2
+    WHERE [SEG] = 'S000' -- 'S000' represents segment 'Total number of jobs' as seen in 'OD' section from document linked at top of file 
+        AND [TYPE] = 'JT00' -- 'JT00' is for 'All Jobs' as seen in 'OD' section from document linked at top of file
+        AND [version] = 2 -- latest version loaded into database
         AND [YEAR] = @year
     GROUP BY [YEAR], [w_geocode], [industry_code]
 END
