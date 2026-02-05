@@ -692,10 +692,10 @@ def read_sql_query_fallback(max_lookback: int = 1, **kwargs: dict) -> pd.DataFra
     the query. This process will continue for up to 5 years back. Note this
     function is specific to querying ACS 5-Year Tables, LEHD LODES and EDD
     point-level data. This function requires the SQL query file to return a
-    DataFrame with a single column called 'msg' with one of 3 text strings:
-    'ACS 5-Year Table does not exist', 'LODES data does not exist', or
-    'EDD point-level data does not exist' when no data is found for the
-    specified year.
+    DataFrame with a single column called 'msg' with one of 4 text strings:
+    'ACS 5-Year Table does not exist', 'LODES data does not exist',
+    'EDD point-level data does not exist', or 'QCEW data does not exist'
+    when no data is found for the specified year.
 
     Args:
         max_lookback (int): Maximum number of years to look back if data is not found
