@@ -1,5 +1,6 @@
 -- Initialize parameters -----------------------------------------------------
 DECLARE @year integer = :year;  
+DECLARE @msg nvarchar(25) = 'LODES data does not exist';
 
 -- Send error message if no data exists --------------------------------------
 IF NOT EXISTS (
@@ -10,7 +11,7 @@ IF NOT EXISTS (
       AND [version] = 2
       AND [YEAR] = @year
 )
-SELECT 'LODES data does not exist' AS [msg] 
+SELECT @msg AS [msg]
 ELSE
 BEGIN
 

@@ -59,7 +59,8 @@ def get_LODES_data(year: int) -> pd.DataFrame:
 
     with utils.LEHD_ENGINE.connect() as con:
         with open(utils.SQL_FOLDER / "employment/get_lodes_data.sql") as file:
-            lodes_data = utils.read_sql_query_custom(
+            lodes_data = utils.read_sql_query_fallback(
+                max_lookback=2,
                 sql=sql.text(file.read()),
                 con=con,
                 params={"year": year},
@@ -67,7 +68,8 @@ def get_LODES_data(year: int) -> pd.DataFrame:
 
     with utils.GIS_ENGINE.connect() as con:
         with open(utils.SQL_FOLDER / "employment/get_naics72_split.sql") as file:
-            split_naics_72 = utils.read_sql_query_custom(
+            split_naics_72 = utils.read_sql_query_fallback(
+                max_lookback=3,
                 sql=sql.text(file.read()),
                 con=con,
                 params={"year": year},
@@ -106,7 +108,7 @@ def get_xref_block_to_mgra() -> pd.DataFrame:
 
     with utils.LEHD_ENGINE.connect() as con:
         with open(utils.SQL_FOLDER / "employment/xref_block_to_mgra.sql") as file:
-            xref = utils.read_sql_query_custom(
+            xref = pd.read_sql_query(
                 sql=sql.text(file.read()),
                 con=con,
                 params={"mgra_version": utils.MGRA_VERSION},
@@ -131,7 +133,7 @@ def aggregate_lodes_to_mgra(
     # Get MGRA data from SQL
     with utils.ESTIMATES_ENGINE.connect() as con:
         with open(utils.SQL_FOLDER / "employment/get_mgra.sql") as file:
-            mgra_data = utils.read_sql_query_custom(
+            mgra_data = pd.read_sql_query(
                 sql=sql.text(file.read()),
                 con=con,
                 params={"run_id": utils.RUN_ID},
@@ -187,7 +189,7 @@ def get_control_totals(year: int) -> pd.DataFrame:
 
         # Get employment control totals from QCEW
         with open(utils.SQL_FOLDER / "employment/QCEW_control.sql") as file:
-            control_totals = pd.read_sql(
+            control_totals = utils.read_sql_query_fallback(
                 sql=sql.text(file.read()),
                 con=con,
                 params={

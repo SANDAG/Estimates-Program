@@ -682,7 +682,7 @@ def integerize_2d(
     return array_2d
 
 
-def read_sql_query_custom(**kwargs: dict) -> pd.DataFrame:
+def read_sql_query_fallback(max_lookback: int = 1, **kwargs: dict) -> pd.DataFrame:
     """Read SQL query allowing for dynamic year adjustment.
 
     This function executes a SQL query using pandas read_sql_query allowing
@@ -698,6 +698,7 @@ def read_sql_query_custom(**kwargs: dict) -> pd.DataFrame:
     specified year.
 
     Args:
+        max_lookback (int): Maximum number of years to look back if data is not found
         kwargs (dict): Keyword arguments for pd.read_sql_query
 
     Returns:
@@ -708,14 +709,17 @@ def read_sql_query_custom(**kwargs: dict) -> pd.DataFrame:
             unexpected message is returned
     """
     # Store original year for potential relabeling
-    original_year = kwargs.get("params", {}).get("year")
-    max_lookback = 5
+    original_year = kwargs["params"]["year"]
+
+    # Get max_lookback from kwargs and REMOVE it, default to 5 if not provided
+    # max_lookback = kwargs.pop("max_lookback", 1)
 
     # Messages that trigger year lookback
     lookback_messages = [
         "ACS 5-Year Table does not exist",
         "LODES data does not exist",
         "EDD point-level data does not exist",
+        "QCEW data does not exist",
     ]
 
     # Try up to max_lookback + 1 times (original year + 5 lookbacks)

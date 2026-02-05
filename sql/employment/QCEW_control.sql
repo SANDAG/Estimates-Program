@@ -1,5 +1,16 @@
 -- Initialize parameters -----------------------------------------------------
 DECLARE @year integer = :year; 
+DECLARE @msg nvarchar(25) = 'QCEW data does not exist';
+
+-- Send error message if no data exists --------------------------------------
+IF NOT EXISTS (
+    SELECT TOP (1) *
+	FROM [socioec_data].[bls].[qcew_by_area_annual]
+    WHERE [year] = @year
+)
+SELECT @msg AS [msg]
+ELSE
+BEGIN
 
 SELECT 
     [year],
@@ -12,3 +23,5 @@ WHERE [area_fips] = '06073'
     AND [year] = @year
     AND [industry_code] IN ('11', '21', '22', '23', '31-33', '42', '44-45', '48-49', '51', '52', '53', '54', '55', '56', '61', '62', '71', '721', '722', '81', '92')
 GROUP BY [year], [industry_code]
+
+END
