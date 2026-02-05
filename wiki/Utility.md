@@ -73,7 +73,7 @@ Both the "Nearest Neighbors" and abandonment of the non-zero requirement can lea
 
 ## Dealing with un-released ACS 5-year Detailed Tables (`read_sql_query_fallback()`)
 
-This function is a wrapper for `pd.read_sql_query` with an extension built in that handles requests for ACS 5-year Detailed Tables, LEHD LODES, QCEW, and EDD point-level data data that are currently not released. Essentially, all SQL scripts dealing with ACS, LODES, QCEW, and EDD data have an `IF/ELSE` statement at the top which checks for the existence of data. If the data for the specified table/year could not be found, then an error message is returned. This function detects the presence of the error message and re-runs the query using the previous year instead or up to number of years back specified with parameter `max_lookback`, which default value is 1. 
+This function is a wrapper for `pd.read_sql_query` with an extension built in that handles requests for ACS 5-year Detailed Tables, LEHD LODES, QCEW, and EDD point-level data data that are currently not released. Essentially, all SQL scripts dealing with ACS, LODES, QCEW, and EDD data have an `IF/ELSE` statement at the top which checks for the existence of data. If the data for the specified table/year could not be found, then an error message is returned. This function detects the presence of the error message and re-runs the query using the previous year or will iteratively try to retrieve data to a defined number of years back, specified with parameter `max_lookback`, which default value is 1. 
 
 ### A Note on ACS 5-year Detailed Tables
 

@@ -698,7 +698,7 @@ def read_sql_query_fallback(max_lookback: int = 1, **kwargs: dict) -> pd.DataFra
     when no data is found for the specified year.
 
     Args:
-        max_lookback (int): Maximum number of years to look back if data is not found
+        max_lookback (int = 1): Maximum number of years to look back if data is not found, defaults to 1
         kwargs (dict): Keyword arguments for pd.read_sql_query
 
     Returns:
