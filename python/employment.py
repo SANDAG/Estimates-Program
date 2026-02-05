@@ -132,12 +132,18 @@ def aggregate_lodes_to_mgra(
     """
     # Get MGRA data from SQL
     with utils.ESTIMATES_ENGINE.connect() as con:
-        with open(utils.SQL_FOLDER / "employment/get_mgra.sql") as file:
-            mgra_data = pd.read_sql_query(
-                sql=sql.text(file.read()),
-                con=con,
-                params={"run_id": utils.RUN_ID},
-            )
+        mgra_data = pd.read_sql_query(
+            sql=sql.text(
+                """
+                SELECT DISTINCT [mgra]
+                FROM [EstimatesProgram].[inputs].[mgra]
+                WHERE run_id = :run_id
+                ORDER BY [mgra]
+                """
+            ),
+            con=con,
+            params={"run_id": utils.RUN_ID},
+        )
 
     # Get unique industry codes and cross join with MGRA data
     unique_industries = combined_data["industry_code"].unique()
