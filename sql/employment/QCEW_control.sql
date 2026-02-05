@@ -1,11 +1,11 @@
 -- Initialize parameters -----------------------------------------------------
-DECLARE @year integer = :year; 
+DECLARE @year integer = 2024--:year; 
 DECLARE @msg nvarchar(25) = 'QCEW data does not exist';
 
 -- Send error message if no data exists --------------------------------------
 IF NOT EXISTS (
     SELECT TOP (1) *
-	FROM [socioec_data].[bls].[qcew_by_area_annual]
+    FROM [socioec_data].[bls].[qcew_by_area_annual]
     WHERE [year] = @year
 )
 SELECT @msg AS [msg]

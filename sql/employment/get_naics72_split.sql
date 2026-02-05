@@ -134,20 +134,20 @@ BEGIN
         ON [businesses].[year] = [headquarters].[year]
         AND [businesses].[emp_id] = [headquarters].[emp_id]
     INNER JOIN (
-	    SELECT
-		    [year],
-		    [emp_id],
-		    1.0 * ((ISNULL([15], 0) + ISNULL([16], 0) + ISNULL([17], 0)) 
+        SELECT
+            [year],
+            [emp_id],
+            1.0 * ((ISNULL([15], 0) + ISNULL([16], 0) + ISNULL([17], 0)) 
                 /
-			    (CASE WHEN [15] IS NOT NULL THEN 1 ELSE 0 END +
-			    CASE WHEN [16] IS NOT NULL THEN 1 ELSE 0 END +
-			    CASE WHEN [17] IS NOT NULL THEN 1 ELSE 0 END))
-		    AS [employment]
-	    FROM [EMPCORE].[ca_edd].[employment]
-	    PIVOT(SUM([employment]) FOR [month_id] IN ([15], [16], [17])) AS [pivot]
-	    WHERE
-		    [year] = @year
-		    AND ([15] IS NOT NULL OR [16] IS NOT NULL OR [17] IS NOT NULL)
+                (CASE WHEN [15] IS NOT NULL THEN 1 ELSE 0 END +
+                CASE WHEN [16] IS NOT NULL THEN 1 ELSE 0 END +
+                CASE WHEN [17] IS NOT NULL THEN 1 ELSE 0 END))
+            AS [employment]
+        FROM [EMPCORE].[ca_edd].[employment]
+        PIVOT(SUM([employment]) FOR [month_id] IN ([15], [16], [17])) AS [pivot]
+        WHERE
+            [year] = @year
+            AND ([15] IS NOT NULL OR [16] IS NOT NULL OR [17] IS NOT NULL)
     ) AS [employment]
         ON [businesses].[year] = [employment].[year]
         AND [businesses].[emp_id] = [employment].[emp_id]
@@ -158,7 +158,7 @@ END
 -- Send error message if no data exists --------------------------------------
 IF NOT EXISTS (
     SELECT TOP (1) *
-	FROM [#edd]
+    FROM [#edd]
 )
 SELECT @msg AS [msg]
 ELSE

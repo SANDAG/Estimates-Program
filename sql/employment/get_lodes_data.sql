@@ -3,6 +3,7 @@
 -- [industry_code] is used to represent NAICS as the QCEW data brought in a later step uses [industry_code]
 -- https://lehd.ces.census.gov/doc/help/onthemap/LODESTechDoc.pdf
 
+
 -- Initialize parameters -----------------------------------------------------
 DECLARE @year integer = :year;  
 DECLARE @msg nvarchar(25) = 'LODES data does not exist';
@@ -10,7 +11,7 @@ DECLARE @msg nvarchar(25) = 'LODES data does not exist';
 -- Send error message if no data exists --------------------------------------
 IF NOT EXISTS (
     SELECT TOP (1) *
-	FROM [socioec_data].[lehd].[lodes_8_wac]
+    FROM [socioec_data].[lehd].[lodes_8_wac]
     WHERE [SEG] = 'S000' -- 'S000' represents segment 'Total number of jobs' as seen in 'OD' section from document linked at top of file 
         AND [TYPE] = 'JT00' -- 'JT00' is for 'All Jobs' as seen in 'OD' section from document linked at top of file
         AND [version] = 2 -- latest version loaded into database
