@@ -58,29 +58,37 @@ BEGIN
                 ELSE NULL 
             END AS [industry_code],
             CASE WHEN [emp_m1] IS NOT NULL THEN 1 ELSE 0 END 
-            + CASE WHEN [emp_m2] IS NOT NULL THEN 1 ELSE 0 END
-            + CASE WHEN [emp_m3] IS NOT NULL THEN 1 ELSE 0 END
-            + CASE WHEN [emp_m4] IS NOT NULL THEN 1 ELSE 0 END
-            + CASE WHEN [emp_m5] IS NOT NULL THEN 1 ELSE 0 END
-            + CASE WHEN [emp_m6] IS NOT NULL THEN 1 ELSE 0 END
-            + CASE WHEN [emp_m7] IS NOT NULL THEN 1 ELSE 0 END
-            + CASE WHEN [emp_m8] IS NOT NULL THEN 1 ELSE 0 END
-            + CASE WHEN [emp_m9] IS NOT NULL THEN 1 ELSE 0 END
-            + CASE WHEN [emp_m10] IS NOT NULL THEN 1 ELSE 0 END
-            + CASE WHEN [emp_m11] IS NOT NULL THEN 1 ELSE 0 END
-            + CASE WHEN [emp_m12] IS NOT NULL THEN 1 ELSE 0 END
-                AS [emp_valid],
-            ISNULL([emp_m1], 0) + ISNULL([emp_m2], 0) + ISNULL([emp_m3], 0)
-            + ISNULL([emp_m4], 0) + ISNULL([emp_m5], 0) + ISNULL([emp_m6], 0)
-            + ISNULL([emp_m7], 0) + ISNULL([emp_m8], 0) + ISNULL([emp_m9], 0)
-            + ISNULL([emp_m10], 0) + ISNULL([emp_m11], 0) + ISNULL([emp_m12], 0)
-                AS [emp_total],
+                + CASE WHEN [emp_m2] IS NOT NULL THEN 1 ELSE 0 END
+                + CASE WHEN [emp_m3] IS NOT NULL THEN 1 ELSE 0 END
+                + CASE WHEN [emp_m4] IS NOT NULL THEN 1 ELSE 0 END
+                + CASE WHEN [emp_m5] IS NOT NULL THEN 1 ELSE 0 END
+                + CASE WHEN [emp_m6] IS NOT NULL THEN 1 ELSE 0 END
+                + CASE WHEN [emp_m7] IS NOT NULL THEN 1 ELSE 0 END
+                + CASE WHEN [emp_m8] IS NOT NULL THEN 1 ELSE 0 END
+                + CASE WHEN [emp_m9] IS NOT NULL THEN 1 ELSE 0 END
+                + CASE WHEN [emp_m10] IS NOT NULL THEN 1 ELSE 0 END
+                + CASE WHEN [emp_m11] IS NOT NULL THEN 1 ELSE 0 END
+                + CASE WHEN [emp_m12] IS NOT NULL THEN 1 ELSE 0 
+            END AS [emp_valid],
+            ISNULL([emp_m1], 0) 
+                + ISNULL([emp_m2], 0) 
+                + ISNULL([emp_m3], 0)
+                + ISNULL([emp_m4], 0) 
+                + ISNULL([emp_m5], 0) 
+                + ISNULL([emp_m6], 0)
+                + ISNULL([emp_m7], 0) 
+                + ISNULL([emp_m8], 0) 
+                + ISNULL([emp_m9], 0)
+                + ISNULL([emp_m10], 0) 
+                + ISNULL([emp_m11], 0) 
+                + ISNULL([emp_m12], 0)
+            AS [emp_total],
             [SHAPE]
         FROM [EMPCORE].[ca_edd].[vi_ca_edd_employment]
         INNER JOIN [EMPCORE].[ca_edd].[naics]
             ON [vi_ca_edd_employment].[naics_id] = [naics].[naics_id]
         WHERE 
-            [year] = 2017--@year
+            [year] = @year
             AND LEFT([code], 3) IN ('721','722')
     ) AS [tt]
     WHERE
@@ -139,9 +147,10 @@ BEGIN
             [emp_id],
             1.0 * ((ISNULL([15], 0) + ISNULL([16], 0) + ISNULL([17], 0)) 
                 /
-                (CASE WHEN [15] IS NOT NULL THEN 1 ELSE 0 END +
-                CASE WHEN [16] IS NOT NULL THEN 1 ELSE 0 END +
-                CASE WHEN [17] IS NOT NULL THEN 1 ELSE 0 END))
+                (CASE WHEN [15] IS NOT NULL THEN 1 ELSE 0 END 
+                    + CASE WHEN [16] IS NOT NULL THEN 1 ELSE 0 END 
+                    + CASE WHEN [17] IS NOT NULL THEN 1 ELSE 0 END
+                ))
             AS [employment]
         FROM [EMPCORE].[ca_edd].[employment]
         PIVOT(SUM([employment]) FOR [month_id] IN ([15], [16], [17])) AS [pivot]
@@ -160,7 +169,9 @@ IF NOT EXISTS (
     SELECT TOP (1) *
     FROM [#edd]
 )
-SELECT @msg AS [msg]
+BEGIN
+    SELECT @msg AS [msg]
+END
 ELSE
 BEGIN
     -- Calculate % split of NAICS 72 into 721 and 722 for 2020 Census Blocks -
