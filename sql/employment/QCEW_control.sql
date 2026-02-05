@@ -1,5 +1,5 @@
 -- Initialize parameters -----------------------------------------------------
-DECLARE @year integer = 2024--:year; 
+DECLARE @year integer = :year; 
 DECLARE @msg nvarchar(25) = 'QCEW data does not exist';
 
 -- Send error message if no data exists --------------------------------------
