@@ -18,12 +18,12 @@ DECLARE @year INTEGER = :year;
 DECLARE @msg nvarchar(45) = 'EDD point-level data does not exist';
 
 
---Drop Temp table and ok and spatial index if they exist
+--Drop temp table if exist and then create temp table 
 DROP TABLE IF EXISTS [#edd];
 CREATE TABLE [#edd] (
     [id] INTEGER IDENTITY(1,1) NOT NULL,
     [industry_code] NVARCHAR(3) NOT NULL,
-    [jobs] FLOAT NOT NULL,
+    [average_monthly_jobs] FLOAT NOT NULL,
     [Shape] GEOMETRY NOT NULL,
     CONSTRAINT [pk_tt_edd] PRIMARY KEY ([id])
 )
@@ -43,43 +43,44 @@ WITH (BOUNDING_BOX = (
 
 
 -- Get SANDAG GIS team EDD dataset -------------------------------------------
-DECLARE @qry NVARCHAR(max)
 IF @year >= 2017
 BEGIN
     INSERT INTO [#edd]
     SELECT
         [industry_code],
-        1.0 * [emp_total]/[emp_valid] AS [jobs],
+        1.0 * [emp_total]/[emp_valid] AS [average_monthly_jobs],
         [SHAPE]
     FROM (
         SELECT
-            CASE WHEN LEFT([code], 3) = '721' THEN '721'
-                    WHEN LEFT([code], 3) = '722' THEN '722'
-                    ELSE NULL END AS [industry_code],
-            CASE WHEN [emp_m1] IS NOT NULL THEN 1 ELSE 0 END +
-            CASE WHEN [emp_m2] IS NOT NULL THEN 1 ELSE 0 END +
-            CASE WHEN [emp_m3] IS NOT NULL THEN 1 ELSE 0 END +
-            CASE WHEN [emp_m4] IS NOT NULL THEN 1 ELSE 0 END +
-            CASE WHEN [emp_m5] IS NOT NULL THEN 1 ELSE 0 END +
-            CASE WHEN [emp_m6] IS NOT NULL THEN 1 ELSE 0 END +
-            CASE WHEN [emp_m7] IS NOT NULL THEN 1 ELSE 0 END +
-            CASE WHEN [emp_m8] IS NOT NULL THEN 1 ELSE 0 END +
-            CASE WHEN [emp_m9] IS NOT NULL THEN 1 ELSE 0 END +
-            CASE WHEN [emp_m10] IS NOT NULL THEN 1 ELSE 0 END +
-            CASE WHEN [emp_m11] IS NOT NULL THEN 1 ELSE 0 END +
-            CASE WHEN [emp_m12] IS NOT NULL THEN 1 ELSE 0 END
+            CASE 
+                WHEN LEFT([code], 3) = '721' THEN '721'
+                WHEN LEFT([code], 3) = '722' THEN '722'
+                ELSE NULL 
+            END AS [industry_code],
+            CASE WHEN [emp_m1] IS NOT NULL THEN 1 ELSE 0 END 
+            + CASE WHEN [emp_m2] IS NOT NULL THEN 1 ELSE 0 END
+            + CASE WHEN [emp_m3] IS NOT NULL THEN 1 ELSE 0 END
+            + CASE WHEN [emp_m4] IS NOT NULL THEN 1 ELSE 0 END
+            + CASE WHEN [emp_m5] IS NOT NULL THEN 1 ELSE 0 END
+            + CASE WHEN [emp_m6] IS NOT NULL THEN 1 ELSE 0 END
+            + CASE WHEN [emp_m7] IS NOT NULL THEN 1 ELSE 0 END
+            + CASE WHEN [emp_m8] IS NOT NULL THEN 1 ELSE 0 END
+            + CASE WHEN [emp_m9] IS NOT NULL THEN 1 ELSE 0 END
+            + CASE WHEN [emp_m10] IS NOT NULL THEN 1 ELSE 0 END
+            + CASE WHEN [emp_m11] IS NOT NULL THEN 1 ELSE 0 END
+            + CASE WHEN [emp_m12] IS NOT NULL THEN 1 ELSE 0 END
                 AS [emp_valid],
-            COALESCE([emp_m1], 0) + COALESCE([emp_m2], 0) + COALESCE([emp_m3], 0) +
-            COALESCE([emp_m4], 0) + COALESCE([emp_m5], 0) + COALESCE([emp_m6], 0) +
-            COALESCE([emp_m7], 0) + COALESCE([emp_m8], 0) + COALESCE([emp_m9], 0) +
-            COALESCE([emp_m10], 0) + COALESCE([emp_m11], 0) + COALESCE([emp_m12], 0)
+            ISNULL([emp_m1], 0) + ISNULL([emp_m2], 0) + ISNULL([emp_m3], 0)
+            + ISNULL([emp_m4], 0) + ISNULL([emp_m5], 0) + ISNULL([emp_m6], 0)
+            + ISNULL([emp_m7], 0) + ISNULL([emp_m8], 0) + ISNULL([emp_m9], 0)
+            + ISNULL([emp_m10], 0) + ISNULL([emp_m11], 0) + ISNULL([emp_m12], 0)
                 AS [emp_total],
             [SHAPE]
         FROM [EMPCORE].[ca_edd].[vi_ca_edd_employment]
         INNER JOIN [EMPCORE].[ca_edd].[naics]
             ON [vi_ca_edd_employment].[naics_id] = [naics].[naics_id]
         WHERE 
-            [year] = @year
+            [year] = 2017--@year
             AND LEFT([code], 3) IN ('721','722')
     ) AS [tt]
     WHERE
@@ -90,10 +91,12 @@ ELSE IF @year = 2016 OR @year BETWEEN 2010 AND 2014
 BEGIN
     INSERT INTO [#edd]
     SELECT
-        CASE WHEN LEFT([code], 3) = '721' THEN '721'
-                WHEN LEFT([code], 3) = '722' THEN '722'
-                ELSE NULL END AS [industry_code],
-        [employment] * ISNULL([headquarters].[share], 1) AS [jobs],
+        CASE 
+            WHEN LEFT([code], 3) = '721' THEN '721'
+            WHEN LEFT([code], 3) = '722' THEN '722'
+            ELSE NULL 
+        END AS [industry_code],
+        [employment] * ISNULL([headquarters].[share], 1) AS [average_monthly_jobs],
         ISNULL([headquarters].[shape], [businesses].[shape]) AS [SHAPE]
     FROM [EMPCORE].[ca_edd].[businesses]
     INNER JOIN [EMPCORE].[ca_edd].[naics]
@@ -117,10 +120,12 @@ ELSE IF @year = 2015
 BEGIN
     INSERT INTO [#edd]
     SELECT
-        CASE WHEN LEFT([code], 3) = '721' THEN '721'
-                WHEN LEFT([code], 3) = '722' THEN '722'
-                ELSE NULL END AS [industry_code],
-        [employment] * ISNULL([headquarters].[share], 1) AS [jobs],
+        CASE 
+            WHEN LEFT([code], 3) = '721' THEN '721'
+            WHEN LEFT([code], 3) = '722' THEN '722'
+            ELSE NULL 
+        END AS [industry_code],
+        [employment] * ISNULL([headquarters].[share], 1) AS [average_monthly_jobs],
         ISNULL([headquarters].[shape], [businesses].[shape]) AS [SHAPE]
     FROM [EMPCORE].[ca_edd].[businesses]
     INNER JOIN [EMPCORE].[ca_edd].[naics]
@@ -132,10 +137,11 @@ BEGIN
 	    SELECT
 		    [year],
 		    [emp_id],
-		    1.0 * COALESCE([15], 0) + COALESCE([16], 0) + COALESCE([17], 0) /
-			    CASE WHEN [15] IS NOT NULL THEN 1 ELSE 0 END +
+		    1.0 * ((ISNULL([15], 0) + ISNULL([16], 0) + ISNULL([17], 0)) 
+                /
+			    (CASE WHEN [15] IS NOT NULL THEN 1 ELSE 0 END +
 			    CASE WHEN [16] IS NOT NULL THEN 1 ELSE 0 END +
-			    CASE WHEN [17] IS NOT NULL THEN 1 ELSE 0 END
+			    CASE WHEN [17] IS NOT NULL THEN 1 ELSE 0 END))
 		    AS [employment]
 	    FROM [EMPCORE].[ca_edd].[employment]
 	    PIVOT(SUM([employment]) FOR [month_id] IN ([15], [16], [17])) AS [pivot]
@@ -160,16 +166,20 @@ BEGIN
     -- Calculate % split of NAICS 72 into 721 and 722 for 2020 Census Blocks -
     SELECT
         [GEOID20] AS [block],
-        CASE WHEN [72] = 0 THEN SUM([721]) OVER() / SUM([72]) OVER()
-             ELSE [721] / [72] END AS [pct_721],
-        CASE WHEN [72] = 0 THEN SUM([722]) OVER() / SUM([72]) OVER()
-             ELSE [722] / [72] END AS [pct_722]
+        CASE 
+            WHEN [72] = 0 THEN SUM([721]) OVER() / SUM([72]) OVER()
+            ELSE [721] / [72] 
+        END AS [pct_721],
+        CASE 
+            WHEN [72] = 0 THEN SUM([722]) OVER() / SUM([72]) OVER()
+            ELSE [722] / [72] 
+        END AS [pct_722]
     FROM (
         SELECT
             [GEOID20],
-            SUM(CASE WHEN [industry_code] = '721' THEN [jobs] ELSE 0 END) AS [721],
-            SUM(CASE WHEN [industry_code] = '722' THEN [jobs] ELSE 0 END) AS [722],
-            COALESCE(SUM([jobs]), 0) AS [72]
+            SUM(CASE WHEN [industry_code] = '721' THEN [average_monthly_jobs] ELSE 0 END) AS [721],
+            SUM(CASE WHEN [industry_code] = '722' THEN [average_monthly_jobs] ELSE 0 END) AS [722],
+            ISNULL(SUM([average_monthly_jobs]), 0) AS [72]
         FROM [#edd]
         RIGHT OUTER JOIN [GeoDepot].[sde].[CENSUSBLOCKS]
             ON [#edd].[Shape].STIntersects([CENSUSBLOCKS].[Shape]) = 1
