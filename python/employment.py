@@ -37,17 +37,13 @@ def run_employment(year: int):
             f"Current MGRA_VERSION is '{utils.MGRA_VERSION}'."
         )
 
-    LODES_data = get_LODES_data(year)
+    jobs_inputs = _get_jobs_inputs(year)
+    # TODO _validate_jobs_inputs here before proceeding
 
-    xref = get_xref_block_to_mgra()
+    jobs_outputs = _create_jobs_output(jobs_inputs)
+    # TODO _validate_jobs_outputs here before proceeding
 
-    lehd_jobs = aggregate_lodes_to_mgra(LODES_data, xref, year)
-
-    control_totals = get_control_totals(year)
-
-    controlled_data = apply_employment_controls(lehd_jobs, control_totals, generator)
-
-    _insert_jobs(control_totals, controlled_data)
+    _insert_jobs(jobs_inputs, jobs_outputs)
 
 
 def get_LODES_data(year: int) -> pd.DataFrame:
@@ -99,24 +95,6 @@ def get_LODES_data(year: int) -> pd.DataFrame:
     return combined_data
 
 
-def get_xref_block_to_mgra() -> pd.DataFrame:
-    """Retrieve crosswalk from Census blocks to MGRAs.
-
-    Returns:
-        pd.DataFrame: A DataFrame containing the crosswalk from blocks to MGRAs.
-    """
-
-    with utils.LEHD_ENGINE.connect() as con:
-        with open(utils.SQL_FOLDER / "employment/xref_block_to_mgra.sql") as file:
-            xref = pd.read_sql_query(
-                sql=sql.text(file.read()),
-                con=con,
-                params={"mgra_version": utils.MGRA_VERSION},
-            )
-
-    return xref
-
-
 def aggregate_lodes_to_mgra(
     combined_data: pd.DataFrame, xref: pd.DataFrame, year: int
 ) -> pd.DataFrame:
@@ -147,72 +125,74 @@ def aggregate_lodes_to_mgra(
 
     # Get unique industry codes and cross join with MGRA data
     unique_industries = combined_data["industry_code"].unique()
-    jobs_frame = (
-        mgra_data.assign(key=1)
-        .merge(
-            pd.DataFrame({"industry_code": unique_industries, "key": 1}),
-            on="key",
-        )
-        .drop("key", axis=1)
+    jobs = mgra_data.merge(
+        pd.DataFrame({"industry_code": unique_industries}), how="cross"
     )
-    jobs_frame["year"] = year
-    jobs_frame = jobs_frame[["year", "mgra", "industry_code"]]
+    jobs["year"] = year
+    jobs = jobs[["year", "mgra", "industry_code"]]
 
     # Join combined_data to xref and calculate allocated jobs
     lehd_to_mgra = combined_data.merge(xref, on="block", how="inner")
     lehd_to_mgra["value"] = lehd_to_mgra["jobs"] * lehd_to_mgra["allocation_pct"]
 
-    # Sum allocated jobs by year, mgra, and industry_code
-    lehd_to_mgra_summed = lehd_to_mgra.groupby(
-        ["year", "mgra", "industry_code"], as_index=False
-    )["value"].sum()
-
-    # Join summed data to jobs_frame, keeping all MGRAs and industry codes
-    final_lehd_to_mgra = jobs_frame.merge(
-        lehd_to_mgra_summed,
+    # Join summed data to jobs, keeping all MGRAs and industry codes
+    jobs = jobs.merge(
+        lehd_to_mgra.groupby(["year", "mgra", "industry_code"], as_index=False)[
+            "value"
+        ].sum(),
         on=["year", "mgra", "industry_code"],
         how="left",
     )
-    final_lehd_to_mgra["value"] = final_lehd_to_mgra["value"].fillna(0)
-    final_lehd_to_mgra["run_id"] = utils.RUN_ID  # Add run_id column
-    final_lehd_to_mgra = final_lehd_to_mgra[
-        ["run_id", "year", "mgra", "industry_code", "value"]
-    ]
+    jobs["value"] = jobs["value"].fillna(0)
+    jobs["run_id"] = utils.RUN_ID
+    jobs = jobs[["run_id", "year", "mgra", "industry_code", "value"]]
 
-    return final_lehd_to_mgra
+    return jobs
 
 
-def get_control_totals(year: int) -> pd.DataFrame:
-    """Load QCEW employment data as control totals.
+def _get_jobs_inputs(year: int) -> dict[str, pd.DataFrame]:
+    """Get input data related to jobs for a specified year.
 
     Args:
-        year (int): The year for which to load employment data.
-
+        year (int): The year for which to retrieve input data.
     Returns:
-        pd.DataFrame: Employment control totals from QCEW.
+        dict[str, pd.DataFrame]: A dictionary containing input DataFrames related to jobs.
     """
-    with utils.LEHD_ENGINE.connect() as con:
+    # Store results here
+    jobs_inputs = {}
 
-        # Get employment control totals from QCEW
+    jobs_inputs["LODES_data"] = get_LODES_data(year)
+
+    with utils.LEHD_ENGINE.connect() as con:
+        # get crosswalk from Census blocks to MGRAs
+        with open(utils.SQL_FOLDER / "employment/xref_block_to_mgra.sql") as file:
+            jobs_inputs["xref_block_to_mgra"] = pd.read_sql_query(
+                sql=sql.text(file.read()),
+                con=con,
+                params={"mgra_version": utils.MGRA_VERSION},
+            )
+
+        # get regional employment control totals from QCEW
         with open(utils.SQL_FOLDER / "employment/QCEW_control.sql") as file:
-            control_totals = utils.read_sql_query_fallback(
+            jobs_inputs["control_totals"] = utils.read_sql_query_fallback(
                 sql=sql.text(file.read()),
                 con=con,
                 params={
                     "year": year,
                 },
             )
+    jobs_inputs["control_totals"]["run_id"] = utils.RUN_ID
 
-    control_totals["run_id"] = utils.RUN_ID  # Add run_id column
+    jobs_inputs["lehd_jobs"] = aggregate_lodes_to_mgra(
+        jobs_inputs["LODES_data"], jobs_inputs["xref_block_to_mgra"], year
+    )
 
-    return control_totals
+    return jobs_inputs
 
 
-def apply_employment_controls(
-    original_data: pd.DataFrame,
-    control_totals: pd.DataFrame,
-    generator: np.random.Generator,
-) -> pd.DataFrame:
+def _create_jobs_output(
+    jobs_inputs: dict[str, pd.DataFrame],
+) -> dict[str, pd.DataFrame]:
     """Apply control totals to employment data using utils.integerize_1d().
 
     Args:
@@ -223,40 +203,43 @@ def apply_employment_controls(
     Returns:
         pd.DataFrame: Controlled employment data.
     """
+    jobs_outputs = {}
     # Create a copy of original_data for controlled results
-    controlled_data = original_data.copy()
+    jobs_outputs["results"] = jobs_inputs["lehd_jobs"].copy()
 
     # Get unique industry codes
-    industry_codes = original_data["industry_code"].unique()
+    industry_codes = jobs_inputs["lehd_jobs"]["industry_code"].unique()
 
     # Apply integerize_1d to each industry code
     for industry_code in industry_codes:
         # Filter original data for this industry
-        industry_mask = original_data["industry_code"] == industry_code
+        industry_mask = jobs_inputs["lehd_jobs"]["industry_code"] == industry_code
 
         # Get control value for this industry
-        control_value = control_totals[
-            control_totals["industry_code"] == industry_code
+        control_value = jobs_inputs["control_totals"][
+            jobs_inputs["control_totals"]["industry_code"] == industry_code
         ]["value"].iloc[0]
 
         # Apply integerize_1d and update controlled_data
-        controlled_data.loc[industry_mask, "value"] = utils.integerize_1d(
-            data=original_data.loc[industry_mask, "value"],
+        jobs_outputs["results"].loc[industry_mask, "value"] = utils.integerize_1d(
+            data=jobs_inputs["lehd_jobs"].loc[industry_mask, "value"],
             control=control_value,
             methodology="weighted_random",
             generator=generator,
         )
 
-    return controlled_data
+    return jobs_outputs
 
 
-def _insert_jobs(jobs_inputs: pd.DataFrame, jobs_outputs: pd.DataFrame) -> None:
+def _insert_jobs(
+    jobs_inputs: dict[str, pd.DataFrame], jobs_outputs: dict[str, pd.DataFrame]
+) -> None:
     """Insert input and output data related to jobs to the database."""
 
     # Insert input and output data to database
     with utils.ESTIMATES_ENGINE.connect() as con:
 
-        jobs_inputs.to_sql(
+        jobs_inputs["control_totals"].to_sql(
             name="controls_jobs",
             con=con,
             schema="inputs",
@@ -264,6 +247,6 @@ def _insert_jobs(jobs_inputs: pd.DataFrame, jobs_outputs: pd.DataFrame) -> None:
             index=False,
         )
 
-        jobs_outputs.to_sql(
+        jobs_outputs["results"].to_sql(
             name="jobs", con=con, schema="outputs", if_exists="append", index=False
         )
