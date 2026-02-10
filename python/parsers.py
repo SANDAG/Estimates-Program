@@ -250,6 +250,7 @@ class InputParser:
                     "population",
                     "population_by_ase",
                     "household_characteristics",
+                    "employment",
                 ]:
                     if not self._config["debug"][key]:
                         raise ValueError(
