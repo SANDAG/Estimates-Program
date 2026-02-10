@@ -2,29 +2,27 @@ import numpy as np
 import pandas as pd
 import sqlalchemy as sql
 
+import python.tests as tests
 import python.utils as utils
 
 generator = np.random.default_rng(utils.RANDOM_SEED)
 
 
 def run_employment(year: int):
-    """Control function to create jobs data by industry_code (NAICS) at the MGRA level.
+    """Control function to create jobs data by naics_code (NAICS) at the MGRA level.
 
     Get the LEHD LODES data, aggregate to the MGRA level using the block to MGRA
     crosswalk, then apply control totals from QCEW using integerization.
 
     Functionality is split apart for code encapsulation (function inputs not included):
-        get_LODES_data - Get LEHD LODES data for a specified year, including
-            special handling for industry_code 72 (Accommodation and Food Services)
-        xref_block_to_mgra - Get crosswalk from Census blocks to MGRAs
-        aggregate_lodes_to_mgra - Aggregate LODES data to MGRA level using allocation
-            percentages from the block to MGRA crosswalk
-        get_control_totals - Load QCEW employment data as county total controls
-        apply_employment_controls - Apply control totals to employment data using
-            utils.integerize_1d()
-        _insert_jobs - Store both the control totals and controlled employment
-            inputs/outputs to the production database
-
+        _get_jobs_inputs - Get all input data related to jobs, including LODES data,
+            block to MGRA crosswalk, and control totals from QCEW. Then process the
+            LODES data to the MGRA level by naics_code.
+        _validate_jobs_inputs - Validate the input tables from the above function
+        _create_jobs_output - Apply control totals to employment data using
+            utils.integerize_1d() and create output table
+        _validate_jobs_outputs - Validate the output table from the above function
+        _insert_jobs - Store input and output data related to jobs to the database.
 
     Args:
         year (int): estimates year
@@ -38,19 +36,22 @@ def run_employment(year: int):
         )
 
     jobs_inputs = _get_jobs_inputs(year)
-    # TODO _validate_jobs_inputs here before proceeding
+    _validate_jobs_inputs(jobs_inputs)
 
     jobs_outputs = _create_jobs_output(jobs_inputs)
-    # TODO _validate_jobs_outputs here before proceeding
+    _validate_jobs_outputs(jobs_outputs)
 
     _insert_jobs(jobs_inputs, jobs_outputs)
 
 
 def get_LODES_data(year: int) -> pd.DataFrame:
-    """Retrieve LEHD LODES data for a specified year.
+    """Retrieve LEHD LODES data for a specified year and split naics_code 72 into
+        721 and 722 using split percentages.
 
     Args:
         year (int): The year for which to retrieve LEHD LODES data.
+    Returns:
+        pd.DataFrame: A DataFrame containing the combined LEHD LODES data with naics
     """
 
     with utils.LEHD_ENGINE.connect() as con:
@@ -71,26 +72,26 @@ def get_LODES_data(year: int) -> pd.DataFrame:
                 params={"year": year},
             )
 
-    # Separate industry_code 72 from other industries
-    lodes_72 = lodes_data[lodes_data["industry_code"] == "72"].copy()
-    lodes_other = lodes_data[lodes_data["industry_code"] != "72"].copy()
+    # Separate naics_code 72 from other industries
+    lodes_72 = lodes_data[lodes_data["naics_code"] == "72"].copy()
+    lodes_other = lodes_data[lodes_data["naics_code"] != "72"].copy()
 
-    # Join industry_code 72 data with split percentages
+    # Join naics_code 72 data with split percentages
     lodes_72_split = lodes_72.merge(split_naics_72, on="block", how="left")
 
-    # Create rows for industry_code 721
+    # Create rows for naics_code 721
     lodes_721 = lodes_72_split[["year", "block"]].copy()
-    lodes_721["industry_code"] = "721"
+    lodes_721["naics_code"] = "721"
     lodes_721["jobs"] = lodes_72_split["jobs"] * lodes_72_split["pct_721"]
 
-    # Create rows for industry_code 722
+    # Create rows for naics_code 722
     lodes_722 = lodes_72_split[["year", "block"]].copy()
-    lodes_722["industry_code"] = "722"
+    lodes_722["naics_code"] = "722"
     lodes_722["jobs"] = lodes_72_split["jobs"] * lodes_72_split["pct_722"]
 
     # Combine all data
     combined_data = pd.concat([lodes_other, lodes_721, lodes_722], ignore_index=True)
-    combined_data = combined_data[["year", "block", "industry_code", "jobs"]]
+    combined_data = combined_data[["year", "block", "naics_code", "jobs"]]
 
     return combined_data
 
@@ -101,12 +102,12 @@ def aggregate_lodes_to_mgra(
     """Aggregate LODES data to MGRA level using allocation percentages.
 
     Args:
-        combined_data (pd.DataFrame): LODES data with columns: year, block, industry_code, jobs
+        combined_data (pd.DataFrame): LODES data with columns: year, block, naics_code, jobs
         xref (pd.DataFrame): Crosswalk with columns: block, mgra, allocation_pct
         year (int): The year for which to aggregate data
 
     Returns:
-        pd.DataFrame: Aggregated data at MGRA level with columns: year, mgra, industry_code, jobs
+        pd.DataFrame: Aggregated data at MGRA level with columns: year, mgra, naics_code, jobs
     """
     # Get MGRA data from SQL
     with utils.ESTIMATES_ENGINE.connect() as con:
@@ -124,28 +125,26 @@ def aggregate_lodes_to_mgra(
         )
 
     # Get unique industry codes and cross join with MGRA data
-    unique_industries = combined_data["industry_code"].unique()
-    jobs = mgra_data.merge(
-        pd.DataFrame({"industry_code": unique_industries}), how="cross"
-    )
+    unique_industries = combined_data["naics_code"].unique()
+    jobs = mgra_data.merge(pd.DataFrame({"naics_code": unique_industries}), how="cross")
     jobs["year"] = year
-    jobs = jobs[["year", "mgra", "industry_code"]]
+    jobs = jobs[["year", "mgra", "naics_code"]]
 
     # Join combined_data to xref and calculate allocated jobs
     lehd_to_mgra = combined_data.merge(xref, on="block", how="inner")
     lehd_to_mgra["value"] = lehd_to_mgra["jobs"] * lehd_to_mgra["allocation_pct"]
 
-    # Join summed data to jobs, keeping all MGRAs and industry codes
+    # Join summed data to jobs, keeping all MGRAs and naics codes
     jobs = jobs.merge(
-        lehd_to_mgra.groupby(["year", "mgra", "industry_code"], as_index=False)[
+        lehd_to_mgra.groupby(["year", "mgra", "naics_code"], as_index=False)[
             "value"
         ].sum(),
-        on=["year", "mgra", "industry_code"],
+        on=["year", "mgra", "naics_code"],
         how="left",
     )
     jobs["value"] = jobs["value"].fillna(0)
     jobs["run_id"] = utils.RUN_ID
-    jobs = jobs[["run_id", "year", "mgra", "industry_code", "value"]]
+    jobs = jobs[["run_id", "year", "mgra", "naics_code", "value"]]
 
     return jobs
 
@@ -190,6 +189,36 @@ def _get_jobs_inputs(year: int) -> dict[str, pd.DataFrame]:
     return jobs_inputs
 
 
+def _validate_jobs_inputs(jobs_inputs: dict[str, pd.DataFrame]) -> None:
+    """Validate the jobs input data"""
+    tests.validate_data(
+        "LEHD LODES data",
+        jobs_inputs["LODES_data"],
+        negative={},
+        null={},
+    )
+    tests.validate_data(
+        "xref",
+        jobs_inputs["xref_block_to_mgra"],
+        negative={},
+        null={},
+    )
+    tests.validate_data(
+        "QCEW control totals",
+        jobs_inputs["control_totals"],
+        row_count={"key_columns": {"naics_code"}},
+        negative={},
+        null={},
+    )
+    tests.validate_data(
+        "LEHD jobs at MGRA level",
+        jobs_inputs["lehd_jobs"],
+        row_count={"key_columns": {"mgra", "naics_code"}},
+        negative={},
+        null={},
+    )
+
+
 def _create_jobs_output(
     jobs_inputs: dict[str, pd.DataFrame],
 ) -> dict[str, pd.DataFrame]:
@@ -208,16 +237,21 @@ def _create_jobs_output(
     jobs_outputs["results"] = jobs_inputs["lehd_jobs"].copy()
 
     # Get unique industry codes
-    industry_codes = jobs_inputs["lehd_jobs"]["industry_code"].unique()
+    naics_codes = jobs_inputs["lehd_jobs"]["naics_code"].unique()
+
+    # Order jobs_inputs["lehd_jobs"] by "mgra", "naics_code"
+    jobs_inputs["lehd_jobs"] = jobs_inputs["lehd_jobs"].sort_values(
+        by=["mgra", "naics_code"]
+    )
 
     # Apply integerize_1d to each industry code
-    for industry_code in industry_codes:
+    for naics_code in naics_codes:
         # Filter original data for this industry
-        industry_mask = jobs_inputs["lehd_jobs"]["industry_code"] == industry_code
+        industry_mask = jobs_inputs["lehd_jobs"]["naics_code"] == naics_code
 
         # Get control value for this industry
         control_value = jobs_inputs["control_totals"][
-            jobs_inputs["control_totals"]["industry_code"] == industry_code
+            jobs_inputs["control_totals"]["naics_code"] == naics_code
         ]["value"].iloc[0]
 
         # Apply integerize_1d and update controlled_data
@@ -229,6 +263,17 @@ def _create_jobs_output(
         )
 
     return jobs_outputs
+
+
+def _validate_jobs_outputs(jobs_outputs: dict[str, pd.DataFrame]) -> None:
+    """Validate the jobs output data"""
+    tests.validate_data(
+        "Controlled jobs data",
+        jobs_outputs["results"],
+        row_count={"key_columns": {"mgra", "naics_code"}},
+        negative={},
+        null={},
+    )
 
 
 def _insert_jobs(

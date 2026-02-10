@@ -14,7 +14,7 @@ BEGIN
 
 SELECT 
     [year],
-    [industry_code],
+    [industry_code] AS [naics_code],
     SUM([annual_avg_emplvl]) AS [value]
 FROM [socioec_data].[bls].[qcew_by_area_annual]
 INNER JOIN [socioec_data].[bls].[industry_code]

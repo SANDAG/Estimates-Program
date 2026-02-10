@@ -27,7 +27,7 @@ BEGIN
     SELECT 
         [YEAR] AS [year],
         [w_geocode] AS [block],
-        [industry_code],
+        [naics_code],
         SUM([value]) AS [jobs]
     FROM [socioec_data].[lehd].[lodes_8_wac]
     CROSS APPLY (
@@ -52,10 +52,10 @@ BEGIN
             ('72',   [CNS18]),
             ('81',   [CNS19]),
             ('92',   [CNS20])
-    ) AS u([industry_code], [value]) 
+    ) AS u([naics_code], [value]) 
     WHERE [SEG] = 'S000' -- 'S000' represents segment 'Total number of jobs' as seen in 'OD' section from document linked at top of file 
         AND [TYPE] = 'JT00' -- 'JT00' is for 'All Jobs' as seen in 'OD' section from document linked at top of file
         AND [version] = 2 -- latest version loaded into database
         AND [YEAR] = @year
-    GROUP BY [YEAR], [w_geocode], [industry_code]
+    GROUP BY [YEAR], [w_geocode], [naics_code]
 END
