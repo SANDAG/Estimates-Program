@@ -191,6 +191,10 @@ def _get_jobs_inputs(year: int) -> dict[str, pd.DataFrame]:
 
 def _validate_jobs_inputs(jobs_inputs: dict[str, pd.DataFrame]) -> None:
     """Validate the jobs input data"""
+    # LODES data does not have any row_count check as the number of rows can vary by
+    # year because blocks are only included in LEHD LODES dataif there are any jobs
+    # present in the block. Only place this explanation exists is in a note in this webpage:
+    # https://lehd.ces.census.gov/data/lehd-code-samples/sections/lodes/basic_examples.html
     tests.validate_data(
         "LEHD LODES data",
         jobs_inputs["LODES_data"],
