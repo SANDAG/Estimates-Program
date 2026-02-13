@@ -1,8 +1,14 @@
--- Documentation 
--- The mapping below used for [CNS01] to [CNS20] to [industry_code] (2-digit NAICS) in WAC section of the document linked below.
--- [industry_code] is used to represent NAICS as the QCEW data brought in a later step uses [industry_code]
--- https://lehd.ces.census.gov/doc/help/onthemap/LODESTechDoc.pdf
+/*
+Get LEHD LODES data.
 
+The mapping below used for [CNS01] to [CNS20] to [niacs_code] (2-digit NAICS) in WAC 
+section of the document linked below. The mapping for [SEG] and [TYPE] are included in 
+the OD section of document linked below.
+
+https://lehd.ces.census.gov/doc/help/onthemap/LODESTechDoc.pdf
+
+For any other LEHD LODES data questions check: https://lehd.ces.census.gov/data/
+*/
 
 -- Initialize parameters -----------------------------------------------------
 DECLARE @year integer = :year;  
@@ -12,8 +18,8 @@ DECLARE @msg nvarchar(25) = 'LODES data does not exist';
 IF NOT EXISTS (
     SELECT TOP (1) *
     FROM [socioec_data].[lehd].[lodes_8_wac]
-    WHERE [SEG] = 'S000' -- 'S000' represents segment 'Total number of jobs' as seen in 'OD' section from document linked at top of file 
-        AND [TYPE] = 'JT00' -- 'JT00' is for 'All Jobs' as seen in 'OD' section from document linked at top of file
+    WHERE [SEG] = 'S000' -- 'S000' = 'Total number of jobs'
+        AND [TYPE] = 'JT00' -- 'JT00' = 'All Jobs'
         AND [version] = 2 -- latest version loaded into database
         AND [YEAR] = @year
 )
@@ -22,11 +28,16 @@ BEGIN
 END
 ELSE
 BEGIN
- 
-    -- Build the return table of QCEW control Totals by industry_code (NAICS)
+    -- Build the return table of QCEW control Totals by naics_code (NAICS) ---
     SELECT 
         [YEAR] AS [year],
-        [w_geocode] AS [block],
+        -- https://github.com/SANDAG/Estimates-Program/issues/193
+        CASE
+            WHEN [w_geocode] = '060730106012030' THEN '060730106012027'
+            WHEN [w_geocode] IN ('060730183012003', '060730183012004') 
+                THEN '060730183012010'
+            ELSE [w_geocode]
+        END AS [block],
         [naics_code],
         SUM([value]) AS [jobs]
     FROM [socioec_data].[lehd].[lodes_8_wac]
@@ -53,9 +64,24 @@ BEGIN
             ('81',   [CNS19]),
             ('92',   [CNS20])
     ) AS u([naics_code], [value]) 
-    WHERE [SEG] = 'S000' -- 'S000' represents segment 'Total number of jobs' as seen in 'OD' section from document linked at top of file 
-        AND [TYPE] = 'JT00' -- 'JT00' is for 'All Jobs' as seen in 'OD' section from document linked at top of file
-        AND [version] = 2 -- latest version loaded into database
+    WHERE 
+        [SEG] = 'S000' -- 'S000' = 'Total number of jobs' 
+        AND [TYPE] = 'JT00' -- 'JT00' = 'All Jobs' 
+        AND [version] = 2 -- lodes v8.4
         AND [YEAR] = @year
-    GROUP BY [YEAR], [w_geocode], [naics_code]
+    GROUP BY 
+        [YEAR], 
+        -- https://github.com/SANDAG/Estimates-Program/issues/193
+        CASE
+            WHEN [w_geocode] = '060730106012030' THEN '060730106012027'
+            WHEN [w_geocode] IN ('060730183012003', '060730183012004') 
+                THEN '060730183012010'
+            ELSE [w_geocode]
+        END, 
+        [naics_code]
+    ORDER BY 
+        [year],
+        [block],
+        [naics_code]
 END
+------------------------------------------------------------------------------

@@ -40,7 +40,7 @@ def run_employment(year: int):
     _insert_jobs(jobs_inputs, jobs_outputs)
 
 
-def _get_LODES_data(year: int) -> pd.DataFrame:
+def _get_lodes_data(year: int) -> pd.DataFrame:
     """Retrieve LEHD LODES data for a specified year and split naics_code 72 into
         721 and 722 using split percentages.
 
@@ -50,7 +50,7 @@ def _get_LODES_data(year: int) -> pd.DataFrame:
         combined LEHD LODES data with naics
     """
 
-    with utils.LEHD_ENGINE.connect() as con:
+    with utils.ESTIMATES_ENGINE.connect() as con:
         with open(utils.SQL_FOLDER / "employment/get_lodes_data.sql") as file:
             lodes_data = utils.read_sql_query_fallback(
                 max_lookback=2,
@@ -69,13 +69,13 @@ def _get_LODES_data(year: int) -> pd.DataFrame:
             )
 
     # Split naics_code 72 and combine with other industries
-    lodes_72_split = lodes_data.query("naics_code == '72'").merge(
+    lodes_72_split = lodes_data.loc[lambda df: df["naics_code"] == "72"].merge(
         split_naics_72, on="block", how="left"
     )
 
     combined_data = pd.concat(
         [
-            lodes_data.query("naics_code != '72'"),
+            lodes_data.loc[lambda df: df["naics_code"] != "72"],
             lodes_72_split.assign(
                 naics_code="721", jobs=lambda df: df["jobs"] * df["pct_721"]
             ),
@@ -101,7 +101,7 @@ def _aggregate_lodes_to_mgra(
 
     Returns:
         Aggregated data at MGRA level with columns: run_id, year, mgra,
-        naics_code, value
+            naics_code, value
     """
     # Get MGRA data from SQL
     with utils.ESTIMATES_ENGINE.connect() as con:
@@ -149,9 +149,9 @@ def _get_jobs_inputs(year: int) -> dict[str, pd.DataFrame]:
     # Store results here
     jobs_inputs = {}
 
-    jobs_inputs["LODES_data"] = _get_LODES_data(year)
+    jobs_inputs["lodes_data"] = _get_lodes_data(year)
 
-    with utils.LEHD_ENGINE.connect() as con:
+    with utils.ESTIMATES_ENGINE.connect() as con:
         # get crosswalk from Census blocks to MGRAs
         with open(utils.SQL_FOLDER / "employment/xref_block_to_mgra.sql") as file:
             jobs_inputs["xref_block_to_mgra"] = pd.read_sql_query(
@@ -172,7 +172,7 @@ def _get_jobs_inputs(year: int) -> dict[str, pd.DataFrame]:
     jobs_inputs["control_totals"]["run_id"] = utils.RUN_ID
 
     jobs_inputs["lehd_jobs"] = _aggregate_lodes_to_mgra(
-        jobs_inputs["LODES_data"], jobs_inputs["xref_block_to_mgra"], year
+        jobs_inputs["lodes_data"], jobs_inputs["xref_block_to_mgra"], year
     )
 
     return jobs_inputs
@@ -180,18 +180,15 @@ def _get_jobs_inputs(year: int) -> dict[str, pd.DataFrame]:
 
 def _validate_jobs_inputs(jobs_inputs: dict[str, pd.DataFrame]) -> None:
     """Validate the jobs input data"""
-    # LODES data does not have any row_count check as the number of rows can vary by
-    # year because blocks are only included in LEHD LODES dataif there are any jobs
-    # present in the block. Only place this explanation exists is in a note in this
-    # webpage:
+    # LODES only includes blocks with jobs therefore no row count validation performed
     # https://lehd.ces.census.gov/data/lehd-code-samples/sections/lodes/basic_examples.html
     tests.validate_data(
         "LEHD LODES data",
-        jobs_inputs["LODES_data"],
+        jobs_inputs["lodes_data"],
         negative={},
         null={},
     )
-    # This xref table of block to mgra is many to many, so we cannot do a row count
+    # No row count validation performed as xref is many-to-many
     # check
     tests.validate_data(
         "xref",

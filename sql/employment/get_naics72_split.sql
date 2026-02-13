@@ -9,7 +9,8 @@ Notes:
     2) Data prior to year 2017 is not present in the EDD view and must be
     queried directly from the source database table.
     3) If no split is present for a block, the regional percentage split is
-    substituted. All 2020 Census blocks are represented.
+    substituted. All 2020 Census blocks are represented, except three 
+    water-only slivers see: https://github.com/SANDAG/Estimates-Program/issues/193
 */
 
 SET NOCOUNT ON;
@@ -48,7 +49,7 @@ BEGIN
     INSERT INTO [#edd]
     SELECT
         [industry_code],
-        1.0 * [emp_total]/[emp_valid] AS [average_monthly_jobs],
+        1.0 * [emp_total]/[emp_valid] AS [jobs],
         [SHAPE]
     FROM (
         SELECT
@@ -104,7 +105,7 @@ BEGIN
             WHEN LEFT([code], 3) = '722' THEN '722'
             ELSE NULL 
         END AS [industry_code],
-        [employment] * ISNULL([headquarters].[share], 1) AS [average_monthly_jobs],
+        [employment] * ISNULL([headquarters].[share], 1) AS [jobs],
         ISNULL([headquarters].[shape], [businesses].[shape]) AS [SHAPE]
     FROM [EMPCORE].[ca_edd].[businesses]
     INNER JOIN [EMPCORE].[ca_edd].[naics]
@@ -133,7 +134,7 @@ BEGIN
             WHEN LEFT([code], 3) = '722' THEN '722'
             ELSE NULL 
         END AS [industry_code],
-        [employment] * ISNULL([headquarters].[share], 1) AS [average_monthly_jobs],
+        [employment] * ISNULL([headquarters].[share], 1) AS [jobs],
         ISNULL([headquarters].[shape], [businesses].[shape]) AS [SHAPE]
     FROM [EMPCORE].[ca_edd].[businesses]
     INNER JOIN [EMPCORE].[ca_edd].[naics]
@@ -188,8 +189,18 @@ BEGIN
     FROM (
         SELECT
             [GEOID20],
-            SUM(CASE WHEN [industry_code] = '721' THEN [average_monthly_jobs] ELSE 0 END) AS [721],
-            SUM(CASE WHEN [industry_code] = '722' THEN [average_monthly_jobs] ELSE 0 END) AS [722],
+            SUM(
+                CASE 
+                    WHEN [industry_code] = '721' THEN [average_monthly_jobs] 
+                    ELSE 0 
+                END
+            ) AS [721],
+            SUM(
+                CASE 
+                    WHEN [industry_code] = '722' THEN [average_monthly_jobs] 
+                    ELSE 0 
+                END
+            ) AS [722],
             ISNULL(SUM([average_monthly_jobs]), 0) AS [72]
         FROM [#edd]
         RIGHT OUTER JOIN [GeoDepot].[sde].[CENSUSBLOCKS]

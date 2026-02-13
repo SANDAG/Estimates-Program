@@ -77,16 +77,6 @@ GIS_ENGINE = sql.create_engine(
     fast_executemany=True,
 )
 
-LEHD_ENGINE = sql.create_engine(
-    "mssql+pyodbc://@"
-    + _secrets["sql"]["socioec"]["server"]
-    + "/"
-    + _secrets["sql"]["socioec"]["database"]
-    + "?trusted_connection=yes&driver="
-    + "ODBC Driver 17 for SQL Server",
-    fast_executemany=True,
-)
-
 # Other SQL configuration
 GIS_SERVER = _secrets["sql"]["gis"]["server"]
 
@@ -687,32 +677,30 @@ def read_sql_query_fallback(max_lookback: int = 1, **kwargs: dict) -> pd.DataFra
 
     This function executes a SQL query using pandas read_sql_query allowing
     for dynamic adjustment of the 'year' parameter in the query. If the query
-    returns a message indicating that the year does not exist in Table being
-    accessed, it will automatically decrement the year by one and re-run
-    the query. This process will continue for up to 5 years back. Note this
-    function is specific to querying ACS 5-Year Tables, LEHD LODES and EDD
-    point-level data. This function requires the SQL query file to return a
-    DataFrame with a single column called 'msg' with one of 4 text strings:
-    'ACS 5-Year Table does not exist', 'LODES data does not exist',
-    'EDD point-level data does not exist', or 'QCEW data does not exist'
-    when no data is found for the specified year.
+    returns a message indicating that the year does not exist in the dataset being
+    accessed, it will automatically decrement the year by one and re-run the query.
+    This process will continue for up to max_lookback years back, or 1 year if not
+    specified. Note this function is specific to querying ACS 5-Year Tables, LEHD LODES,
+    EDD point-level, and QCEW data. This function requires the SQL query file to return
+    a DataFrame with a single column called 'msg' with one of 4 text strings: 'ACS
+    5-Year Table does not exist', 'LODES data does not exist', 'EDD point-level data
+    does not exist', or 'QCEW data does not exist' when no data is found for the
+    specified year.
 
     Args:
-        max_lookback (int = 1): Maximum number of years to look back if data is not found, defaults to 1
+        max_lookback (int = 1): Maximum number of years to look back if data is not
+            found, defaults to 1
         kwargs (dict): Keyword arguments for pd.read_sql_query
 
     Returns:
         pd.DataFrame: Result of the SQL query
 
     Raises:
-        ValueError: If data is not found after 5 year lookback or if an
+        ValueError: If data is not found after max_lookback year is reached or if an
             unexpected message is returned
     """
     # Store original year for potential relabeling
     original_year = kwargs["params"]["year"]
-
-    # Get max_lookback from kwargs and REMOVE it, default to 5 if not provided
-    # max_lookback = kwargs.pop("max_lookback", 1)
 
     # Messages that trigger year lookback
     lookback_messages = [
@@ -722,7 +710,7 @@ def read_sql_query_fallback(max_lookback: int = 1, **kwargs: dict) -> pd.DataFra
         "QCEW data does not exist",
     ]
 
-    # Try up to max_lookback + 1 times (original year + 5 lookbacks)
+    # Try up to max_lookback + 1 times
     for attempt in range(max_lookback + 1):
         df = pd.read_sql_query(**kwargs)  # type: ignore
 
