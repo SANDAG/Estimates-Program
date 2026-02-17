@@ -54,8 +54,8 @@ BEGIN
     FROM (
         SELECT
             CASE 
-                WHEN LEFT([code], 3) = '721' THEN '721'
-                WHEN LEFT([code], 3) = '722' THEN '722'
+                WHEN LEFT([naics_code], 3) = '721' THEN '721'
+                WHEN LEFT([naics_code], 3) = '722' THEN '722'
                 ELSE NULL 
             END AS [industry_code],
             CASE WHEN [emp_m1] IS NOT NULL THEN 1 ELSE 0 END 
@@ -86,11 +86,9 @@ BEGIN
             AS [emp_total],
             [SHAPE]
         FROM [EMPCORE].[ca_edd].[vi_ca_edd_employment]
-        INNER JOIN [EMPCORE].[ca_edd].[naics]
-            ON [vi_ca_edd_employment].[naics_id] = [naics].[naics_id]
         WHERE 
             [year] = @year
-            AND LEFT([code], 3) IN ('721','722')
+            AND LEFT([naics_code], 3) IN ('721','722')
     ) AS [tt]
     WHERE
         [emp_valid] > 0
