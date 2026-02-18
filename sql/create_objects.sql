@@ -114,9 +114,10 @@ CREATE TABLE [inputs].[controls_jobs] (
     [run_id] INT NOT NULL,
     [year] INT NOT NULL,
     [naics_code] NVARCHAR(5) NOT NULL,
+    [metric] NVARCHAR(4) NOT NULL,
     [value] INT NOT NULL,
     INDEX [ccsi_inputs_controls_jobs] CLUSTERED COLUMNSTORE,
-    CONSTRAINT [ixuq_inputs_controls_jobs] UNIQUE ([run_id], [year], [naics_code]) WITH (DATA_COMPRESSION = PAGE),
+    CONSTRAINT [ixuq_inputs_controls_jobs] UNIQUE ([run_id], [year], [naics_code], [metric]) WITH (DATA_COMPRESSION = PAGE),
     CONSTRAINT [fk_inputs_controls_jobs_run_id] FOREIGN KEY ([run_id]) REFERENCES [metadata].[run] ([run_id]),
     CONSTRAINT [chk_non_negative_inputs_controls_jobs] CHECK ([value] >= 0)
 )

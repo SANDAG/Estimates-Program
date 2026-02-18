@@ -24,7 +24,7 @@ DROP TABLE IF EXISTS [#edd];
 CREATE TABLE [#edd] (
     [id] INTEGER IDENTITY(1,1) NOT NULL,
     [industry_code] NVARCHAR(3) NOT NULL,
-    [average_monthly_jobs] FLOAT NOT NULL,
+    [jobs] FLOAT NOT NULL,
     [Shape] GEOMETRY NOT NULL,
     CONSTRAINT [pk_tt_edd] PRIMARY KEY ([id])
 )
@@ -189,17 +189,17 @@ BEGIN
             [GEOID20],
             SUM(
                 CASE 
-                    WHEN [industry_code] = '721' THEN [average_monthly_jobs] 
+                    WHEN [industry_code] = '721' THEN [jobs] 
                     ELSE 0 
                 END
             ) AS [721],
             SUM(
                 CASE 
-                    WHEN [industry_code] = '722' THEN [average_monthly_jobs] 
+                    WHEN [industry_code] = '722' THEN [jobs] 
                     ELSE 0 
                 END
             ) AS [722],
-            ISNULL(SUM([average_monthly_jobs]), 0) AS [72]
+            ISNULL(SUM([jobs]), 0) AS [72]
         FROM [#edd]
         RIGHT OUTER JOIN [GeoDepot].[sde].[CENSUSBLOCKS]
             ON [#edd].[Shape].STIntersects([CENSUSBLOCKS].[Shape]) = 1

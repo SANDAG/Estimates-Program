@@ -18,9 +18,10 @@ DECLARE @msg nvarchar(25) = 'LODES data does not exist';
 IF NOT EXISTS (
     SELECT TOP (1) *
     FROM [socioec_data].[lehd].[lodes_8_wac]
-    WHERE [SEG] = 'S000' -- 'S000' = 'Total number of jobs'
+    WHERE 
+        [SEG] = 'S000' -- 'S000' = 'Total number of jobs'
         AND [TYPE] = 'JT00' -- 'JT00' = 'All Jobs'
-        AND [version] = 2 -- latest version loaded into database
+        AND [version] = 2 -- lodes v8.4
         AND [YEAR] = @year
 )
 BEGIN
