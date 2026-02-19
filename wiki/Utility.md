@@ -71,9 +71,9 @@ For rows with negative deviations, is not always possible to find non-zero colum
 
 Both the "Nearest Neighbors" and abandonment of the non-zero requirement can lead to values being increased in columns that are implausible for the row. For example, in the "Population by Age Sex Ethnicity" module, a row defined as a MGRA containing male-only adult persons may have female or juvenile values increased if the function cannot reallocate to non-zero columns. This necessitates the use of an additional "balancer" in the "Population by Age Sex Ethnicity" module for special MGRAs.
 
-## Dealing with un-released ACS 5-year Detailed Tables (`read_sql_query_acs()`)
+## Dealing with un-released tables (`read_sql_query_fallback()`)
 
-This function is a wrapper for `pd.read_sql_query` with an extension built in that handles requests for ACS 5-year Detailed Tables data that are currently not released. Essentially, all SQL scripts dealing with ACS data have an `IF/ELSE` statement at the top which checks for the existence of data. If the data for the specified table/year could not be found, then an error message is returned. This function detects the presence of the error message and re-runs the query using the previous year instead. 
+This function is a wrapper for `pd.read_sql_query` with an extension built in that handles requests for ACS 5-year Detailed Tables, LEHD LODES, QCEW, and EDD point-level data data that are currently not released. Essentially, all SQL scripts dealing with ACS, LODES, QCEW, and EDD data have an `IF/ELSE` statement at the top which checks for the existence of data. If the data for the specified table/year could not be found, then an error message is returned. This function detects the presence of the error message and re-runs the query using the previous year or will iteratively try to retrieve data to a defined number of years back, specified with parameter `max_lookback`, which default value is 1. 
 
 ### A Note on ACS 5-year Detailed Tables
 

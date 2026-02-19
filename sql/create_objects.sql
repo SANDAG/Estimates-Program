@@ -110,6 +110,18 @@ INSERT INTO [inputs].[special_mgras] VALUES
         transferred to the Las Colinas Detention Facility.')
 GO
 
+CREATE TABLE [inputs].[controls_jobs] (
+    [run_id] INT NOT NULL,
+    [year] INT NOT NULL,
+    [naics_code] NVARCHAR(5) NOT NULL,
+    [metric] NVARCHAR(4) NOT NULL,
+    [value] INT NOT NULL,
+    INDEX [ccsi_inputs_controls_jobs] CLUSTERED COLUMNSTORE,
+    CONSTRAINT [ixuq_inputs_controls_jobs] UNIQUE ([run_id], [year], [naics_code], [metric]) WITH (DATA_COMPRESSION = PAGE),
+    CONSTRAINT [fk_inputs_controls_jobs_run_id] FOREIGN KEY ([run_id]) REFERENCES [metadata].[run] ([run_id]),
+    CONSTRAINT [chk_non_negative_inputs_controls_jobs] CHECK ([value] >= 0)
+)
+GO
 
 
 CREATE SCHEMA [outputs]
@@ -274,5 +286,19 @@ CREATE TABLE [outputs].[hhp] (
     CONSTRAINT [fk_outputs_hhp_run_id] FOREIGN KEY ([run_id]) REFERENCES [metadata].[run] ([run_id]),
     CONSTRAINT [fk_outputs_hhp_mgra] FOREIGN KEY ([run_id], [mgra]) REFERENCES [inputs].[mgra] ([run_id], [mgra]),
     CONSTRAINT [chk_non_negative_outputs_hhp] CHECK ([value] >= 0)
+)
+GO
+
+CREATE TABLE [outputs].[jobs] (
+    [run_id] INT NOT NULL,
+    [year] INT NOT NULL,
+    [mgra] INT NOT NULL, 
+    [naics_code] NVARCHAR(5) NOT NULL,
+    [value] INT NOT NULL,
+    INDEX [ccsi_outputs_jobs] CLUSTERED COLUMNSTORE,
+    CONSTRAINT [ixuq_outputs_jobs] UNIQUE ([run_id], [year], [mgra], [naics_code]) WITH (DATA_COMPRESSION = PAGE),
+    CONSTRAINT [fk_outputs_jobs_run_id] FOREIGN KEY ([run_id]) REFERENCES [metadata].[run] ([run_id]),
+    CONSTRAINT [fk_outputs_jobs_mgra] FOREIGN KEY ([run_id], [mgra]) REFERENCES [inputs].[mgra] ([run_id], [mgra]),
+    CONSTRAINT [chk_non_negative_outputs_jobs] CHECK ([value] >= 0)
 )
 GO

@@ -18,7 +18,6 @@ import python.parsers as parsers
 ROOT_FOLDER = pathlib.Path(__file__).parent.resolve().parent
 SQL_FOLDER = ROOT_FOLDER / "sql"
 
-
 ###########
 # LOGGING #
 ###########
@@ -673,45 +672,82 @@ def integerize_2d(
     return array_2d
 
 
-def read_sql_query_acs(**kwargs: dict) -> pd.DataFrame:
+def read_sql_query_fallback(max_lookback: int = 1, **kwargs: dict) -> pd.DataFrame:
     """Read SQL query allowing for dynamic year adjustment.
 
     This function executes a SQL query using pandas read_sql_query allowing
     for dynamic adjustment of the 'year' parameter in the query. If the query
-    returns a message indicating that the ACS 5-Year Table does not exist for
-    a given year, it will automatically decrement the year by one and re-run
-    the query. Note this function is specific to ACS 5-Year Tables and
-    requires the SQL query file to return a DataFrame with a single column
-    called 'msg' with the text 'ACS 5-Year Table does not exist' when no data
-    is found for the specified year.
+    returns a message indicating that the year does not exist in the dataset being
+    accessed, it will automatically decrement the year by one and re-run the query.
+    This process will continue for up to max_lookback years back, or 1 year if not
+    specified. Note this function is specific to querying ACS 5-Year Tables, LEHD LODES,
+    EDD point-level, and QCEW data. This function requires the SQL query file to return
+    a DataFrame with a single column called 'msg' with one of 4 text strings: 'ACS
+    5-Year Table does not exist', 'LODES data does not exist', 'EDD point-level data
+    does not exist', or 'QCEW data does not exist' when no data is found for the
+    specified year.
 
     Args:
+        max_lookback (int = 1): Maximum number of years to look back if data is not
+            found, defaults to 1
         kwargs (dict): Keyword arguments for pd.read_sql_query
 
     Returns:
         pd.DataFrame: Result of the SQL query
+
+    Raises:
+        ValueError: If data is not found after max_lookback year is reached or if an
+            unexpected message is returned
     """
-    df = pd.read_sql_query(**kwargs)  # type: ignore
+    # Store original year for potential relabeling
+    original_year = kwargs["params"]["year"]
 
-    # Check if returned DataFrame contains SQL message
-    if df.columns.tolist() == ["msg"]:
-        msg = df["msg"].values[0]
-        if msg == "ACS 5-Year Table does not exist" and "year" in kwargs["params"]:
-            # If the table does not exist run query for prior year
-            kwargs["params"]["year"] -= 1
+    # Messages that trigger year lookback
+    lookback_messages = [
+        "ACS 5-Year Table does not exist",
+        "LODES data does not exist",
+        "EDD point-level data does not exist",
+        "QCEW data does not exist",
+    ]
 
-            logger.warning(
-                "Re-running ACS SQL query with 'year' set to: "
-                + str(kwargs["params"]["year"])
-            )
+    # Try up to max_lookback + 1 times
+    for attempt in range(max_lookback + 1):
+        df = pd.read_sql_query(**kwargs)  # type: ignore
 
-            df = pd.read_sql_query(**kwargs)  # type: ignore
+        # Check if returned DataFrame contains SQL message
+        if df.columns.tolist() == ["msg"]:
+            msg = df["msg"].values[0]
 
-            # If the year column exists, set it to the original year
-            if "year" in df.columns:
-                df["year"] = kwargs["params"]["year"] + 1
-        else:
-            # Raise error if the message is not expected
-            raise ValueError(f"SQL query returned a message: {msg}.")
+            # Check if message is in the lookback list and year parameter exists
+            if msg in lookback_messages and "year" in kwargs["params"]:
+                # If we've exhausted all lookback attempts, raise error
+                if attempt >= max_lookback:
+                    raise ValueError(
+                        f"Data not found after {max_lookback} year lookback. "
+                        f"Original year: {original_year}, "
+                        f"Final attempted year: {kwargs['params']['year']}"
+                    )
 
-    return df
+                # Decrement year and try again
+                kwargs["params"]["year"] -= 1
+
+                logger.warning(
+                    f"Re-running SQL query with 'year' set to: "
+                    f"{kwargs['params']['year']} (attempt {attempt + 2}/{max_lookback + 1})"
+                )
+
+                continue  # Continue to next iteration
+            else:
+                # Raise error if the message is not expected
+                raise ValueError(f"SQL query returned an unexpected message: {msg}")
+
+        # If we got valid data, relabel year column if it exists and year was adjusted
+        if "year" in df.columns and original_year is not None:
+            if kwargs["params"]["year"] != original_year:
+                logger.info(
+                    f"Relabeling 'year' column from {kwargs['params']['year']} "
+                    f"to {original_year}"
+                )
+                df["year"] = original_year
+
+        return df

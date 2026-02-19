@@ -204,7 +204,7 @@ def _get_hhp_inputs(year: int) -> dict[str, pd.DataFrame]:
 
         # Get tract level household size controls
         with open(utils.SQL_FOLDER / "pop_type/get_tract_controls_hhs.sql") as file:
-            tract_controls = utils.read_sql_query_acs(
+            tract_controls = utils.read_sql_query_fallback(
                 sql=sql.text(file.read()),
                 con=con,
                 params={

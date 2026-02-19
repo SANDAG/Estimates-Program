@@ -99,6 +99,7 @@ class InputParser:
                 "population",
                 "population_by_ase",
                 "household_characteristics",
+                "employment",
                 "staging",
             ]:
                 self.run_instructions[key] = self._config["debug"][key]
@@ -165,6 +166,7 @@ class InputParser:
                     "population": {"type": "boolean"},
                     "population_by_ase": {"type": "boolean"},
                     "household_characteristics": {"type": "boolean"},
+                    "employment": {"type": "boolean"},
                     "staging": {"type": "boolean"},
                 },
             },
@@ -252,6 +254,7 @@ class InputParser:
                     "population",
                     "population_by_ase",
                     "household_characteristics",
+                    "employment",
                 ]:
                     if not self._config["debug"][key]:
                         raise ValueError(
