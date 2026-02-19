@@ -7,7 +7,7 @@ __pycache__/
 *.so
 
 # Secrets file
-secrets.yml
+secrets.toml
 
 # Log file
 log.txt

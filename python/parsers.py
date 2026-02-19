@@ -22,7 +22,7 @@ class InputParser:
         _end_year (int): Used to store the end_year, whether of a new run or an
             existing run
         run_instructions (dict): Explicit instructions on which modules/years to run.
-            The YAML config file is parsed and this dictionary is filled no matter if
+            The toml config file is parsed and this dictionary is filled no matter if
             run or debug mode is enabled
         run_id (int): The run identifier parsed from the configuration.
         mgra_version (int): The MGRA version we are running on. Depending on run mode,
@@ -60,6 +60,10 @@ class InputParser:
         Returns:
             None
         """
+        # Convert -1 to None for run_id (TOML doesn't support null/None)
+        if self._config.get("debug", {}).get("run_id") == -1:
+            self._config["debug"]["run_id"] = None
+
         self._validate_config()
         self.run_id = self._parse_run_id()
         self.mgra_version = self._parse_mgra_version()

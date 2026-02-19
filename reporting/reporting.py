@@ -8,7 +8,7 @@ RUN_ID = 245
 
 # We cannot import python.utils, as just importing will cause a new [run_id]` value and
 # new log file to be created. Instead, copy what we need for now :(
-import yaml
+import tomllib
 import pathlib
 import textwrap
 import sqlalchemy as sql
@@ -17,10 +17,10 @@ import numpy as np
 
 ROOT_FOLDER = pathlib.Path(__file__).parent.resolve().parent
 try:
-    with open(ROOT_FOLDER / "secrets.yml", "r") as file:
-        _secrets = yaml.safe_load(file)
+    with open(ROOT_FOLDER / "secrets.toml", "rb") as file:
+        _secrets = tomllib.load(file)
 except IOError:
-    raise IOError("secrets.yml does not exist, see README.md")
+    raise IOError("secrets.toml does not exist, see README.md")
 
 # Create SQLAlchemy engine(s)
 ESTIMATES_ENGINE = sql.create_engine(
