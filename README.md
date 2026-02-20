@@ -102,6 +102,10 @@ population_by_ase = false
 # modules must all be enabled due to module dependencies
 household_characteristics = false
 
+# Whether to run the 'employment' module. If enabled, then startup module must also be 
+# enabled due to module dependencies
+employment = false
+
 # Whether to run the 'staging' module. If enabled, then any above modules must all be
 # enabled due to module dependencies
 staging = false

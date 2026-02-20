@@ -83,6 +83,7 @@ class InputParser:
                 "population",
                 "population_by_ase",
                 "household_characteristics",
+                "employment",
                 "staging",
             ]:
                 self.run_instructions[key] = True
