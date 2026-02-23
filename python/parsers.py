@@ -83,6 +83,7 @@ class InputParser:
                 "population",
                 "population_by_ase",
                 "household_characteristics",
+                "employment",
                 "staging",
             ]:
                 self.run_instructions[key] = True
@@ -291,6 +292,12 @@ class InputParser:
                 if not self._config["debug"]["startup"]:
                     raise ValueError(
                         "Because debug key 'housing_and_households' is enabled, "
+                        "debug key 'startup' must also be enabled"
+                    )
+            if self._config["debug"]["employment"]:
+                if not self._config["debug"]["startup"]:
+                    raise ValueError(
+                        "Because debug key 'employment' is enabled, "
                         "debug key 'startup' must also be enabled"
                     )
 
