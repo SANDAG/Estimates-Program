@@ -6,8 +6,7 @@ TODO: 2010-2011 have no [DIS] field which makes the 'Group Quarters - Other'
 type basically non-existent and the 'Group Quarters - Institutional
 Correctional Facilities' type contain a large segment of elderly persons. It
 may be prudent to use the 2012 dataset for 2010-2011 distributions. For now,
-this results in a divide by zero error for 2010 and unreasonable values for
-2011.
+this results in potentially unreasonable values for 2010 and 2011.
 
 Notes:
     (1) The 'Group Quarters - College' and 'Group Quarters - Military' types
@@ -146,8 +145,8 @@ BEGIN
                     OR (@year BETWEEN 2012 AND 2023 AND [SCHG] IN ('15','16'))
                 THEN 'Group Quarters - College'
                 WHEN [ESR] IN ('4','5') THEN 'Group Quarters - Military'
-                WHEN (@year = 2010 AND [RELP] = '14' AND [AGEP] >= 10)
-                    OR (@year= 2011 AND [RELP] = '13' AND [AGEP] >= 10)
+                WHEN 
+                    (@year BETWEEN 2010 AND 2011 AND [RELP] = '13' AND [AGEP] >= 10)
                     OR (@year BETWEEN 2012 AND 2018 AND [RELP] = '16' AND [DIS] = '2' AND [AGEP] >= 10)
                     OR (@year BETWEEN 2019 AND 2023 AND [RELSHIPP] = '37' AND [DIS] = '2' AND [AGEP] >= 10)
                 THEN 'Group Quarters - Institutional Correctional Facilities'
@@ -194,8 +193,7 @@ BEGIN
             [PWGTP]
         FROM [#pums_tbl]
         WHERE 
-            (@year = 2010 AND [RELP] IN ('14','15'))
-            OR (@year = 2011 AND [RELP] IN ('13','14'))
+            (@year BETWEEN 2010 AND 2011 AND [RELP] IN ('13','14'))
             OR (@year BETWEEN 2012 AND 2018 AND [RELP] IN ('16','17'))
             OR (@year BETWEEN 2019 AND 2023 AND [RELSHIPP] IN ('37','38'))
     ),
