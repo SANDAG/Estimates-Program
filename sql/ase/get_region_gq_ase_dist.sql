@@ -114,7 +114,7 @@ BEGIN
         CASE 
             WHEN @year BETWEEN 2010 AND 2011 THEN 'SELECT [SCHG], [ESR], NULL AS [DIS], [AGEP], [SEX], [HISP], [RAC1P], NULL AS [RELSHIPP], [RELP], [PWGTP] FROM [acs].[pums].[vi_5y_' + CONVERT(nvarchar, @year-4) + '_' + CONVERT(nvarchar, @year) + '_persons_sd]'
             WHEN @year BETWEEN 2012 AND 2018 THEN 'SELECT [SCHG], [ESR], [DIS], [AGEP], [SEX], [HISP], [RAC1P], NULL AS [RELSHIPP], [RELP], [PWGTP] FROM [acs].[pums].[vi_5y_' + CONVERT(nvarchar, @year-4) + '_' + CONVERT(nvarchar, @year) + '_persons_sd]'
-            WHEN @year BETWEEN 2019 AND 2023 THEN 'SELECT [SCHG], [ESR], [DIS], [AGEP], [SEX], [HISP], [RAC1P], [RELSHIPP], NULL AS [RELP], [PWGTP] FROM [acs].[pums].[vi_5y_' + CONVERT(nvarchar, @year-4) + '_' + CONVERT(nvarchar, @year) + '_persons_sd]'
+            WHEN @year BETWEEN 2019 AND 2024 THEN 'SELECT [SCHG], [ESR], [DIS], [AGEP], [SEX], [HISP], [RAC1P], [RELSHIPP], NULL AS [RELP], [PWGTP] FROM [acs].[pums].[vi_5y_' + CONVERT(nvarchar, @year-4) + '_' + CONVERT(nvarchar, @year) + '_persons_sd]'
         ELSE NULL END;
 
     -- Declare temporary table to receive results of ACS PUMS query
@@ -142,13 +142,13 @@ BEGIN
         SELECT  
             CASE
                 WHEN (@year BETWEEN 2010 AND 2011 AND [SCHG] IN ('6', '7'))
-                    OR (@year BETWEEN 2012 AND 2023 AND [SCHG] IN ('15','16'))
+                    OR (@year BETWEEN 2012 AND 2024 AND [SCHG] IN ('15','16'))
                 THEN 'Group Quarters - College'
                 WHEN [ESR] IN ('4','5') THEN 'Group Quarters - Military'
                 WHEN 
                     (@year BETWEEN 2010 AND 2011 AND [RELP] = '13' AND [AGEP] >= 10)
                     OR (@year BETWEEN 2012 AND 2018 AND [RELP] = '16' AND [DIS] = '2' AND [AGEP] >= 10)
-                    OR (@year BETWEEN 2019 AND 2023 AND [RELSHIPP] = '37' AND [DIS] = '2' AND [AGEP] >= 10)
+                    OR (@year BETWEEN 2019 AND 2024 AND [RELSHIPP] = '37' AND [DIS] = '2' AND [AGEP] >= 10)
                 THEN 'Group Quarters - Institutional Correctional Facilities'
                 ELSE 'Group Quarters - Other'
                 END AS [gq_type],
@@ -195,7 +195,7 @@ BEGIN
         WHERE 
             (@year BETWEEN 2010 AND 2011 AND [RELP] IN ('13','14'))
             OR (@year BETWEEN 2012 AND 2018 AND [RELP] IN ('16','17'))
-            OR (@year BETWEEN 2019 AND 2023 AND [RELSHIPP] IN ('37','38'))
+            OR (@year BETWEEN 2019 AND 2024 AND [RELSHIPP] IN ('37','38'))
     ),
     [population] AS (
         SELECT
