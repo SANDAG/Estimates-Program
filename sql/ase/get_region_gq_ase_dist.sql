@@ -2,12 +2,6 @@
 Calculate San Diego County age/sex/ethnicity distribution for group quarters
 population by type using the 5-year ACS PUMS.
 
-TODO: 2010-2011 have no [DIS] field which makes the 'Group Quarters - Other'
-type basically non-existent and the 'Group Quarters - Institutional
-Correctional Facilities' type contain a large segment of elderly persons. It
-may be prudent to use the 2012 dataset for 2010-2011 distributions. For now,
-this results in potentially unreasonable values for 2010 and 2011.
-
 Notes:
     (1) The 'Group Quarters - College' and 'Group Quarters - Military' types
 may contain both institutional and non-institutional group quarters as they
@@ -25,7 +19,12 @@ institutional group quarters where persons are under 10 years of age.
     (4) The 1997 OMB SP15 race/ethnicity categories are used so the
 'Some Other Race alone' category is removed.
     (5) The [SCHG] field changes values after 2011.
-    (6) The [DIS] field exists only after 2011.
+    (6) The [DIS] field exists only after 2011. This creates an issue in
+assigning the 'Group Quarters - Institutional Correctional Facilities' type.
+As such, PUMS distributions from 2012 are used for years 2010-2011. This does
+make portions of this script unreachable but they are kept for documentation
+purposes and in case any portion requires reversion back to 2010-2011.
+See https://github.com/SANDAG/Estimates-Program/issues/203.
     (7) The [RELP] field exists from 2010-2018 but changes values in 2010 and
 2011 before remaining consistent from 2012-2018 and subsequently being replaced
 by the [RELSHIPP] field.
@@ -37,6 +36,12 @@ DECLARE @run_id integer = :run_id;
 DECLARE @year integer = :year;
 DECLARE @msg nvarchar(45) = 'ACS 5-Year Table does not exist';
 
+-- Pre-2012 PUMS does not contain the [DIS] field requiring use of 2012
+-- https://github.com/SANDAG/Estimates-Program/issues/203.
+DECLARE @pums_year integer = CASE
+    WHEN @year BETWEEN 2010 AND 2011 THEN 2012
+    ELSE @year END;
+
 
 -- Send error message if no data exists --------------------------------------
 IF NOT EXISTS (
@@ -44,7 +49,7 @@ IF NOT EXISTS (
     FROM [acs].[INFORMATION_SCHEMA].[VIEWS] 
     WHERE
         [TABLE_SCHEMA] = 'pums' 
-        AND [TABLE_NAME] = 'vi_5y_' + CONVERT(nvarchar, @year-4) + '_' + CONVERT(nvarchar, @year) + '_persons_sd'
+        AND [TABLE_NAME] = 'vi_5y_' + CONVERT(nvarchar, @pums_year-4) + '_' + CONVERT(nvarchar, @pums_year) + '_persons_sd'
 )
 SELECT @msg AS [msg]
 ELSE
@@ -112,9 +117,9 @@ BEGIN
     -- Build ACS PUMS query based on year
     DECLARE @pums_qry nvarchar(max) =
         CASE 
-            WHEN @year BETWEEN 2010 AND 2011 THEN 'SELECT [SCHG], [ESR], NULL AS [DIS], [AGEP], [SEX], [HISP], [RAC1P], NULL AS [RELSHIPP], [RELP], [PWGTP] FROM [acs].[pums].[vi_5y_' + CONVERT(nvarchar, @year-4) + '_' + CONVERT(nvarchar, @year) + '_persons_sd]'
-            WHEN @year BETWEEN 2012 AND 2018 THEN 'SELECT [SCHG], [ESR], [DIS], [AGEP], [SEX], [HISP], [RAC1P], NULL AS [RELSHIPP], [RELP], [PWGTP] FROM [acs].[pums].[vi_5y_' + CONVERT(nvarchar, @year-4) + '_' + CONVERT(nvarchar, @year) + '_persons_sd]'
-            WHEN @year BETWEEN 2019 AND 2023 THEN 'SELECT [SCHG], [ESR], [DIS], [AGEP], [SEX], [HISP], [RAC1P], [RELSHIPP], NULL AS [RELP], [PWGTP] FROM [acs].[pums].[vi_5y_' + CONVERT(nvarchar, @year-4) + '_' + CONVERT(nvarchar, @year) + '_persons_sd]'
+            WHEN @pums_year BETWEEN 2010 AND 2011 THEN 'SELECT [SCHG], [ESR], NULL AS [DIS], [AGEP], [SEX], [HISP], [RAC1P], NULL AS [RELSHIPP], [RELP], [PWGTP] FROM [acs].[pums].[vi_5y_' + CONVERT(nvarchar, @pums_year-4) + '_' + CONVERT(nvarchar, @pums_year) + '_persons_sd]'
+            WHEN @pums_year BETWEEN 2012 AND 2018 THEN 'SELECT [SCHG], [ESR], [DIS], [AGEP], [SEX], [HISP], [RAC1P], NULL AS [RELSHIPP], [RELP], [PWGTP] FROM [acs].[pums].[vi_5y_' + CONVERT(nvarchar, @pums_year-4) + '_' + CONVERT(nvarchar, @pums_year) + '_persons_sd]'
+            WHEN @pums_year BETWEEN 2019 AND 2024 THEN 'SELECT [SCHG], [ESR], [DIS], [AGEP], [SEX], [HISP], [RAC1P], [RELSHIPP], NULL AS [RELP], [PWGTP] FROM [acs].[pums].[vi_5y_' + CONVERT(nvarchar, @pums_year-4) + '_' + CONVERT(nvarchar, @pums_year) + '_persons_sd]'
         ELSE NULL END;
 
     -- Declare temporary table to receive results of ACS PUMS query
@@ -141,14 +146,14 @@ BEGIN
     with [acs_data] AS (
         SELECT  
             CASE
-                WHEN (@year BETWEEN 2010 AND 2011 AND [SCHG] IN ('6', '7'))
-                    OR (@year BETWEEN 2012 AND 2023 AND [SCHG] IN ('15','16'))
+                WHEN (@pums_year BETWEEN 2010 AND 2011 AND [SCHG] IN ('6', '7'))
+                    OR (@pums_year BETWEEN 2012 AND 2024 AND [SCHG] IN ('15','16'))
                 THEN 'Group Quarters - College'
                 WHEN [ESR] IN ('4','5') THEN 'Group Quarters - Military'
                 WHEN 
-                    (@year BETWEEN 2010 AND 2011 AND [RELP] = '13' AND [AGEP] >= 10)
-                    OR (@year BETWEEN 2012 AND 2018 AND [RELP] = '16' AND [DIS] = '2' AND [AGEP] >= 10)
-                    OR (@year BETWEEN 2019 AND 2023 AND [RELSHIPP] = '37' AND [DIS] = '2' AND [AGEP] >= 10)
+                    (@pums_year BETWEEN 2010 AND 2011 AND [RELP] = '13' AND [AGEP] >= 10)
+                    OR (@pums_year BETWEEN 2012 AND 2018 AND [RELP] = '16' AND [DIS] = '2' AND [AGEP] >= 10)
+                    OR (@pums_year BETWEEN 2019 AND 2024 AND [RELSHIPP] = '37' AND [DIS] = '2' AND [AGEP] >= 10)
                 THEN 'Group Quarters - Institutional Correctional Facilities'
                 ELSE 'Group Quarters - Other'
                 END AS [gq_type],
@@ -193,14 +198,12 @@ BEGIN
             [PWGTP]
         FROM [#pums_tbl]
         WHERE 
-            (@year BETWEEN 2010 AND 2011 AND [RELP] IN ('13','14'))
-            OR (@year BETWEEN 2012 AND 2018 AND [RELP] IN ('16','17'))
-            OR (@year BETWEEN 2019 AND 2023 AND [RELSHIPP] IN ('37','38'))
+            (@pums_year BETWEEN 2010 AND 2011 AND [RELP] IN ('13','14'))
+            OR (@pums_year BETWEEN 2012 AND 2018 AND [RELP] IN ('16','17'))
+            OR (@pums_year BETWEEN 2019 AND 2024 AND [RELSHIPP] IN ('37','38'))
     ),
     [population] AS (
         SELECT
-            @run_id AS [run_id],
-            @year AS [year],
             [#tt_shell].[gq_type],
             [#tt_shell].[age_group],
             [#tt_shell].[sex],
