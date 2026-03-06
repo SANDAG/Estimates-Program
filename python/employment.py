@@ -96,7 +96,7 @@ def _aggregate_lodes_to_mgra(
 
     Args:
         combined_data: LODES data with columns: year, block, naics_code, jobs
-        xref: Crosswalk with columns: block, mgra, allocation_pct
+        xref: Crosswalk with columns: block, mgra, pct_edd, pct_area, edd_flag
         year: The year for which to aggregate data
 
     Returns:
@@ -125,7 +125,10 @@ def _aggregate_lodes_to_mgra(
         .assign(year=year)
         .merge(
             combined_data.merge(xref, on="block", how="inner")
-            .assign(value=lambda df: df["jobs"] * df["allocation_pct"])
+            .assign(
+                value=lambda df: df["jobs"]
+                * np.where(df["edd_flag"] == 1, df["pct_edd"], df["pct_area"])
+            )
             .groupby(["year", "mgra", "naics_code"], as_index=False)["value"]
             .sum(),
             on=["year", "mgra", "naics_code"],
@@ -151,15 +154,19 @@ def _get_jobs_inputs(year: int) -> dict[str, pd.DataFrame]:
 
     jobs_inputs["lodes_data"] = _get_lodes_data(year)
 
-    with utils.ESTIMATES_ENGINE.connect() as con:
+    with utils.GIS_ENGINE.connect() as con:
         # get crosswalk from Census blocks to MGRAs
-        with open(utils.SQL_FOLDER / "employment/xref_block_to_mgra.sql") as file:
-            jobs_inputs["xref_block_to_mgra"] = pd.read_sql_query(
+        with open(utils.SQL_FOLDER / "employment/edd_land_use_split.sql") as file:
+            jobs_inputs["xref_block_to_mgra"] = utils.read_sql_query_fallback(
                 sql=sql.text(file.read()),
                 con=con,
-                params={"mgra_version": utils.MGRA_VERSION},
+                params={
+                    "mgra_version": utils.MGRA_VERSION,
+                    "year": year,
+                },
             )
 
+    with utils.ESTIMATES_ENGINE.connect() as con:
         # get regional employment control totals from QCEW
         with open(utils.SQL_FOLDER / "employment/QCEW_control.sql") as file:
             jobs_inputs["control_totals"] = utils.read_sql_query_fallback(
