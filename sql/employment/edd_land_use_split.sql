@@ -52,7 +52,6 @@ WITH (BOUNDING_BOX = (
 
 
 -- Get SANDAG GIS team EDD dataset -------------------------------------------
-DECLARE @qry NVARCHAR(max)
 IF @year >= 2017
 BEGIN
     INSERT INTO [#edd]
@@ -72,8 +71,8 @@ BEGIN
                 + CASE WHEN [emp_m9] IS NOT NULL THEN 1 ELSE 0 END 
                 + CASE WHEN [emp_m10] IS NOT NULL THEN 1 ELSE 0 END 
                 + CASE WHEN [emp_m11] IS NOT NULL THEN 1 ELSE 0 END 
-                + CASE WHEN [emp_m12] IS NOT NULL THEN 1 ELSE 0 
-            END AS [emp_valid],
+                + CASE WHEN [emp_m12] IS NOT NULL THEN 1 ELSE 0 END 
+            AS [emp_valid],
             ISNULL([emp_m1], 0) 
                 + COALESCE([emp_m2], 0) 
                 + COALESCE([emp_m3], 0) 
@@ -209,7 +208,9 @@ BEGIN
 	         THEN [pct_edd] * 1/SUM([pct_edd]) OVER (PARTITION BY [block])
 		     ELSE 0 END AS [pct_edd],
 	    [pct_area] * 1/SUM([pct_area]) OVER (PARTITION BY [block]) AS [pct_area],
-        SUM([pct_edd]) OVER (PARTITION BY [block]) AS edd_flag
+        CASE WHEN SUM([pct_edd]) OVER (PARTITION BY [block])> 0 
+            THEN 1 
+            ELSE 0 END AS edd_flag
     FROM
 	    [results]
     WHERE

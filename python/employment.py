@@ -127,12 +127,7 @@ def _aggregate_lodes_to_mgra(
             combined_data.merge(xref, on="block", how="inner")
             .assign(
                 value=lambda df: df["jobs"]
-                * df.apply(
-                    lambda row: (
-                        row["pct_edd"] if row["edd_flag"] == 1 else row["pct_area"]
-                    ),
-                    axis=1,
-                )
+                * np.where(df["edd_flag"] == 1, df["pct_edd"], df["pct_area"])
             )
             .groupby(["year", "mgra", "naics_code"], as_index=False)["value"]
             .sum(),
@@ -170,9 +165,6 @@ def _get_jobs_inputs(year: int) -> dict[str, pd.DataFrame]:
                     "year": year,
                 },
             )
-
-    # Debug: print columns
-    # print(f"xref columns: {jobs_inputs['xref_block_to_mgra'].columns.tolist()}")
 
     with utils.ESTIMATES_ENGINE.connect() as con:
         # get regional employment control totals from QCEW
