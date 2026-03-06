@@ -21,7 +21,9 @@ institutional group quarters where persons are under 10 years of age.
     (5) The [SCHG] field changes values after 2011.
     (6) The [DIS] field exists only after 2011. This creates an issue in
 assigning the 'Group Quarters - Institutional Correctional Facilities' type.
-As such, PUMS distributions from 2012 are used for years 2010-2011.
+As such, PUMS distributions from 2012 are used for years 2010-2011. This does
+make portions of this script unreachable but they are kept for documentation
+purposes and in case any portion requires reversion back to 2010-2011.
 See https://github.com/SANDAG/Estimates-Program/issues/203.
     (7) The [RELP] field exists from 2010-2018 but changes values in 2010 and
 2011 before remaining consistent from 2012-2018 and subsequently being replaced
