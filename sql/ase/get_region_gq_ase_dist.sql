@@ -38,7 +38,7 @@ DECLARE @msg nvarchar(45) = 'ACS 5-Year Table does not exist';
 -- https://github.com/SANDAG/Estimates-Program/issues/203.
 DECLARE @pums_year integer = CASE
     WHEN @year BETWEEN 2010 AND 2011 THEN 2012
-    ELSE @year END
+    ELSE @year END;
 
 
 -- Send error message if no data exists --------------------------------------
