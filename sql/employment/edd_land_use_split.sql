@@ -74,20 +74,20 @@ BEGIN
                 + CASE WHEN [emp_m12] IS NOT NULL THEN 1 ELSE 0 END 
             AS [emp_valid],
             ISNULL([emp_m1], 0) 
-                + COALESCE([emp_m2], 0) 
-                + COALESCE([emp_m3], 0) 
-                + COALESCE([emp_m4], 0) 
-                + COALESCE([emp_m5], 0) 
-                + COALESCE([emp_m6], 0) 
-                + COALESCE([emp_m7], 0) 
-                + COALESCE([emp_m8], 0) 
-                + COALESCE([emp_m9], 0) 
-                + COALESCE([emp_m10], 0) 
-                + COALESCE([emp_m11], 0) 
-                + COALESCE([emp_m12], 0)
+                + ISNULL([emp_m2], 0) 
+                + ISNULL([emp_m3], 0) 
+                + ISNULL([emp_m4], 0) 
+                + ISNULL([emp_m5], 0) 
+                + ISNULL([emp_m6], 0) 
+                + ISNULL([emp_m7], 0) 
+                + ISNULL([emp_m8], 0) 
+                + ISNULL([emp_m9], 0) 
+                + ISNULL([emp_m10], 0) 
+                + ISNULL([emp_m11], 0) 
+                + ISNULL([emp_m12], 0)
             AS [emp_total],
             [SHAPE]
-        FROM [EMPCORE].[ca_edd].[vi_ca_edd_employment]
+        FROM [ca_edd].[vi_ca_edd_employment]
         WHERE [year] = @year
     ) AS [tt]
     WHERE
@@ -100,13 +100,13 @@ BEGIN
         SELECT 
             [employment] * ISNULL([headquarters].[share], 1) AS [jobs],
             ISNULL([headquarters].[shape], [businesses].[shape]) AS [SHAPE]
-        FROM [EMPCORE].[ca_edd].[businesses]
-        LEFT JOIN [EMPCORE].[ca_edd].[headquarters]
+        FROM [ca_edd].[businesses]
+        LEFT JOIN [ca_edd].[headquarters]
             ON [businesses].[year] = [headquarters].[year]
             AND [businesses].[emp_id] = [headquarters].[emp_id]
         INNER JOIN (
             SELECT [year], [emp_id], [employment]
-            FROM [EMPCORE].[ca_edd].[employment]
+            FROM [ca_edd].[employment]
             WHERE 
                 [month_id] = 14  -- adjusted employment
                 AND [employment] > 0
@@ -121,8 +121,8 @@ BEGIN
         SELECT 
             [employment] * ISNULL([headquarters].[share], 1) AS [jobs],
             ISNULL([headquarters].[shape], [businesses].[shape]) AS [SHAPE]
-        FROM [EMPCORE].[ca_edd].[businesses]
-        LEFT JOIN [EMPCORE].[ca_edd].[headquarters]
+        FROM [ca_edd].[businesses]
+        LEFT JOIN [ca_edd].[headquarters]
             ON [businesses].[year] = [headquarters].[year]
             AND [businesses].[emp_id] = [headquarters].[emp_id]
         INNER JOIN (
@@ -136,7 +136,7 @@ BEGIN
                         + CASE WHEN [17] IS NOT NULL THEN 1 ELSE 0 END
                     ))
 		        AS [employment]
-	        FROM [EMPCORE].[ca_edd].[employment]
+	        FROM [ca_edd].[employment]
 	        PIVOT(SUM([employment]) FOR [month_id] IN ([15], [16], [17])) AS [pivot]
 	        WHERE
 		        [year] = @year AND
@@ -163,7 +163,8 @@ BEGIN
             [CENSUSBLOCKS].[GEOID20] AS [block],
             [MGRA15].[MGRA] AS [mgra],
 	        SUM([jobs]) AS [mgra_jobs],
-	        SUM(SUM([jobs])) OVER (PARTITION BY [CENSUSBLOCKS].[GEOID20]) AS [block_jobs]
+	        SUM(SUM([jobs])) OVER (PARTITION BY [CENSUSBLOCKS].[GEOID20]) 
+            AS [block_jobs]
         FROM [#edd]
         INNER JOIN [GeoDepot].[sde].[CENSUSBLOCKS]
             ON [#edd].[Shape].STIntersects([CENSUSBLOCKS].[Shape]) = 1
@@ -175,30 +176,34 @@ BEGIN
     -- Get % area overlap of Census 2020 Block area and MGRAs
     [xref_area] AS (
 		SELECT
-			[c].[GEOID20] AS [block],
-			[m].[MGRA] AS [mgra],
-			([c].[Shape].STIntersection([m].[Shape]).STArea() / [c].[Shape].STArea()) AS [pct_area]
-		FROM [GeoDepot].[sde].[CENSUSBLOCKS] AS [c]
-			LEFT OUTER JOIN [GeoDepot].[sde].[MGRA15] AS [m]
-			ON [c].[Shape].STIntersects([m].[Shape]) = 1
-		WHERE ([c].[Shape].STIntersection([m].[Shape]).STArea() / [c].[Shape].STArea()) > 0.01
+			[CENSUSBLOCKS].[GEOID20] AS [block],
+			[MGRA15].[MGRA] AS [mgra],
+			([CENSUSBLOCKS].[Shape].STIntersection([MGRA15].[Shape]).STArea() 
+                / [CENSUSBLOCKS].[Shape].STArea()) 
+            AS [pct_area]
+		FROM [GeoDepot].[sde].[CENSUSBLOCKS]
+		LEFT JOIN [GeoDepot].[sde].[MGRA15] 
+			ON [CENSUSBLOCKS].[Shape].STIntersects([MGRA15].[Shape]) = 1
+		WHERE ([CENSUSBLOCKS].[Shape].STIntersection([MGRA15].[Shape]).STArea() 
+            / [CENSUSBLOCKS].[Shape].STArea()) > 0.01
     ),
     -- Combine results and calculate % allocations of Census 2020 blocks to MGRAs
     [results] AS (
 	    SELECT
-		    COALESCE([xref_edd].[block], [xref_area].[block]) AS [block],
-		    COALESCE([xref_edd].[mgra], [xref_area].[mgra]) AS [mgra],
-		    SUM(CASE WHEN COALESCE([xref_edd].[block_jobs], 0) = 0 THEN 0
-				    ELSE 1.0 * COALESCE([xref_edd].[mgra_jobs], 0) / COALESCE([xref_edd].[block_jobs], 0)
+		    ISNULL([xref_edd].[block], [xref_area].[block]) AS [block],
+		    ISNULL([xref_edd].[mgra], [xref_area].[mgra]) AS [mgra],
+		    SUM(CASE WHEN ISNULL([xref_edd].[block_jobs], 0) = 0 THEN 0
+				    ELSE 1.0 * ISNULL([xref_edd].[mgra_jobs], 0) 
+                        / ISNULL([xref_edd].[block_jobs], 0)
 				    END) AS [pct_edd],
-			SUM(COALESCE([xref_area].[pct_area], 0)) AS [pct_area]
+			SUM(ISNULL([xref_area].[pct_area], 0)) AS [pct_area]
 	    FROM [xref_edd]
-	    FULL OUTER JOIN [xref_area]
+	    FULL JOIN [xref_area]
 		    ON [xref_edd].[block] = [xref_area].[block]
             AND [xref_edd].[mgra] = [xref_area].[mgra]
 	    GROUP BY 
-	        COALESCE([xref_edd].[block], [xref_area].[block]),
-	        COALESCE([xref_edd].[mgra], [xref_area].[mgra])
+	        ISNULL([xref_edd].[block], [xref_area].[block]),
+	        ISNULL([xref_edd].[mgra], [xref_area].[mgra])
     )
     -- Return results ensuring % allocations add to 1 within each Census 2020 Block
     SELECT
