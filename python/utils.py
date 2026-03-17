@@ -104,16 +104,19 @@ input_parser.parse_config()
 RUN_INSTRUCTIONS = input_parser.run_instructions
 RUN_ID = input_parser.run_id
 MGRA_VERSION = input_parser.mgra_version
+DEBUG = input_parser.debug
 
-logger.info(
-    f"RUN_ID: {RUN_ID}, MGRA_VERSION: {MGRA_VERSION}, YEARS: {RUN_INSTRUCTIONS["years"]}"
-)
+logger.info(f"RUN_ID: {RUN_ID}")
+logger.info(f"MGRA_VERSION: {MGRA_VERSION}")
+logger.info(f"DEBUG: {DEBUG}")
+logger.info(f"RUN_INSTRUCTIONS: {RUN_INSTRUCTIONS}")
 
 ##############################
 # UTILITY LISTS AND MAPPINGS #
 ##############################
 
-RANDOM_SEED = 42  # Seed for random number generation
+# For deterministic random number generation
+RANDOM_SEED = 42
 
 HOUSEHOLD_SIZES = list(range(1, 8))
 

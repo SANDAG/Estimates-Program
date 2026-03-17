@@ -30,7 +30,7 @@ logger = logging.getLogger(__name__)
 if utils.RUN_INSTRUCTIONS["startup"]:
     utils.display_ascii_art("data/welcome.txt")
     logger.info("Running Startup module...\n")
-    startup.run_startup()
+    startup.run_startup(debug=utils.DEBUG)
 
 # Loop through the years first
 for year in utils.RUN_INSTRUCTIONS["years"]:
@@ -41,27 +41,27 @@ for year in utils.RUN_INSTRUCTIONS["years"]:
     # Housing and Households module
     if utils.RUN_INSTRUCTIONS["housing_and_households"]:
         logger.info("Running Housing and Households module...")
-        hs_hh.run_hs_hh(year)
+        hs_hh.run_hs_hh(year, debug=utils.DEBUG)
 
     # Population module
     if utils.RUN_INSTRUCTIONS["population"]:
         logger.info("Running Population module...")
-        pop.run_pop(year)
+        pop.run_pop(year, debug=utils.DEBUG)
 
     # Population by Age/Sex/Ethnicity module
     if utils.RUN_INSTRUCTIONS["population_by_ase"]:
         logger.info("Running Population by Age/Sex/Ethnicity module...")
-        ase.run_ase(year)
+        ase.run_ase(year, debug=utils.DEBUG)
 
     # Household Characteristics module
     if utils.RUN_INSTRUCTIONS["household_characteristics"]:
         logger.info("Running Household Characteristics module...")
-        hh_characteristics.run_hh_characteristics(year)
+        hh_characteristics.run_hh_characteristics(year, debug=utils.DEBUG)
 
     # Employment module
     if utils.RUN_INSTRUCTIONS["employment"]:
         logger.info("Running Employment module...")
-        employment.run_employment(year)
+        employment.run_employment(year, debug=utils.DEBUG)
 
     # Diagnostic print for this year
     logger.info(f"Finished running {year}\n")
@@ -70,7 +70,7 @@ for year in utils.RUN_INSTRUCTIONS["years"]:
 # [metadata].[run] table
 if utils.RUN_INSTRUCTIONS["staging"]:
     logger.info("Running Staging module...")
-    staging.run_staging()
+    staging.run_staging(debug=utils.DEBUG)
 
 # Final print for completion
 logger.info("Completed")

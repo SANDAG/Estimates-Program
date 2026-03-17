@@ -17,7 +17,7 @@ generator = np.random.default_rng(utils.RANDOM_SEED)
 logger = logging.getLogger(__name__)
 
 
-def run_ase(year: int) -> None:
+def run_ase(year: int, debug: bool) -> None:
     """Orchestrator function for age/sex/ethnicity population by type.
 
     Creates regional age/sex/ethnicity controls by population type. Then
@@ -69,7 +69,7 @@ def run_ase(year: int) -> None:
     controls_outputs = _create_controls(controls_inputs)
     _validate_controls_outputs(controls_outputs)
 
-    _insert_controls(controls_outputs)
+    _insert_controls(controls_outputs, debug)
 
     # Calculate MGRA age/sex/ethnicity population by population type
     ase_inputs = _get_ase_inputs(year)
@@ -78,7 +78,7 @@ def run_ase(year: int) -> None:
     ase_outputs = _create_ase(year, ase_inputs)
     _validate_ase_outputs(ase_outputs)
 
-    _insert_ase(ase_outputs)
+    _insert_ase(ase_outputs, debug)
 
 
 @functools.lru_cache(maxsize=1)
@@ -245,8 +245,13 @@ def _validate_controls_outputs(controls_outputs: pd.DataFrame) -> None:
     )
 
 
-def _insert_controls(controls_outputs: pd.DataFrame) -> None:
+def _insert_controls(controls_outputs: pd.DataFrame, debug: bool) -> None:
     """Insert regional age/sex/ethnicity controls to database."""
+
+    # Skip insertion if running in debug mode
+    if debug:
+        return
+
     with utils.ESTIMATES_ENGINE.connect() as con:
         controls_outputs.to_sql(
             name="controls_ase",
@@ -915,8 +920,13 @@ def _validate_ase_outputs(ase_outputs: dict[str, pd.DataFrame]) -> None:
         )
 
 
-def _insert_ase(ase_outputs: dict[str, pd.DataFrame]) -> None:
+def _insert_ase(ase_outputs: dict[str, pd.DataFrame], debug: bool) -> None:
     """Insert age/sex/ethnicity population by type to database."""
+
+    # Skip insertion if running in debug mode
+    if debug:
+        return
+
     for pop_type, output in ase_outputs.items():
         logger.info("Loading Estimates for " + pop_type)
 

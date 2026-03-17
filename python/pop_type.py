@@ -11,7 +11,7 @@ import python.tests as tests
 generator = np.random.default_rng(utils.RANDOM_SEED)
 
 
-def run_pop(year: int):
+def run_pop(year: int, debug: bool):
     """Control function to create population by type (GQ and HHP) data
 
     Get MGRA group quarters input data, create the output data, then load both into the
@@ -51,7 +51,7 @@ def run_pop(year: int):
     gq_outputs = _create_gq_outputs(gq_inputs)
     _validate_gq_outputs(gq_outputs)
 
-    _insert_gq(gq_inputs, gq_outputs)
+    _insert_gq(gq_inputs, gq_outputs, debug)
 
     # Then do Household Population
     hhp_inputs = _get_hhp_inputs(year)
@@ -60,7 +60,7 @@ def run_pop(year: int):
     hhp_outputs = _create_hhp_outputs(hhp_inputs)
     _validate_hhp_outputs(hhp_outputs)
 
-    _insert_hhp(hhp_inputs, hhp_outputs)
+    _insert_hhp(hhp_inputs, hhp_outputs, debug)
 
 
 def _get_gq_inputs(year: int) -> dict[str, pd.DataFrame]:
@@ -165,9 +165,13 @@ def _validate_gq_outputs(gq_outputs: dict[str, pd.DataFrame]) -> None:
 
 
 def _insert_gq(
-    gq_inputs: dict[str, pd.DataFrame], gq_outputs: dict[str, pd.DataFrame]
+    gq_inputs: dict[str, pd.DataFrame], gq_outputs: dict[str, pd.DataFrame], debug: bool
 ) -> None:
     """Insert both input and output data for MGRA group quarters"""
+
+    # Skip insertion if running in debug mode
+    if debug:
+        return
 
     # Insert controls and group quarters results to database
     with utils.ESTIMATES_ENGINE.connect() as con:
@@ -382,9 +386,15 @@ def _validate_hhp_outputs(hhp_outputs: dict[str, pd.DataFrame]) -> None:
 
 
 def _insert_hhp(
-    hhp_inputs: dict[str, pd.DataFrame], hhp_outputs: dict[str, pd.DataFrame]
+    hhp_inputs: dict[str, pd.DataFrame],
+    hhp_outputs: dict[str, pd.DataFrame],
+    debug: bool,
 ) -> None:
     """Insert input and output data related to household population"""
+
+    # Skip insertion if running in debug mode
+    if debug:
+        return
 
     # Insert input and output data to database
     with utils.ESTIMATES_ENGINE.connect() as con:

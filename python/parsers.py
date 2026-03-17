@@ -1,6 +1,16 @@
 import cerberus
 import sqlalchemy as sql
 
+_MODULES = [
+    "startup",
+    "housing_and_households",
+    "population",
+    "population_by_ase",
+    "household_characteristics",
+    "employment",
+    "staging",
+]
+
 
 class InputParser:
     """A class to parse and validate input configurations.
@@ -45,6 +55,7 @@ class InputParser:
         self.run_instructions = {}
         self.run_id = None
         self.mgra_version = None
+        self.debug = False
 
     def parse_config(self) -> None:
         """Control flow to parse the runtime configuration
@@ -60,10 +71,6 @@ class InputParser:
         Returns:
             None
         """
-        # Convert -1 to None for run_id (TOML doesn't support null/None)
-        if self._config.get("debug", {}).get("run_id") == -1:
-            self._config["debug"]["run_id"] = None
-
         self._validate_config()
         self.run_id = self._parse_run_id()
         self.mgra_version = self._parse_mgra_version()
@@ -77,42 +84,37 @@ class InputParser:
                     self._config["run"]["end_year"] + 1,
                 )
             )
-            for key in [
-                "startup",
-                "housing_and_households",
-                "population",
-                "population_by_ase",
-                "household_characteristics",
-                "employment",
-                "staging",
-            ]:
+            for key in _MODULES:
                 self.run_instructions[key] = True
         elif self._config["debug"]["enabled"]:
-            self.run_instructions["years"] = list(
-                range(
-                    self._start_year,
-                    self._end_year + 1,
-                )
-            )
-            for key in [
-                "startup",
-                "housing_and_households",
-                "population",
-                "population_by_ase",
-                "household_characteristics",
-                "employment",
-                "staging",
-            ]:
-                self.run_instructions[key] = self._config["debug"][key]
+            self.debug = True
+            self.run_instructions["years"] = [self._start_year]
+            for key in _MODULES:
+                self.run_instructions[key] = key == self._config["debug"]["module"]
 
-    def _check_run_id(self, run_id: int) -> None:
-        """Check if supplied run id exists in the database."""
+    def _check_run_id(self, run_id: int, complete: bool = False) -> None:
+        """Check if supplied run id exists in the database.
+
+        Args:
+            run_id: The [run_id] to check for
+            complete: Default False. If True, then only check for [run_id]s marked as
+                [complete] = 1. If False, don't check for [complete] status
+
+        Return:
+            None
+
+        Raises:
+            ValueError: If [run_id] does not exist in the database
+        """
         with self._engine.connect() as con:
             # Ensure supplied run id exists in the database
             query = sql.text(
-                """
+                f"""
                     SELECT CASE WHEN EXISTS (
-                        SELECT [run_id] FROM [metadata].[run] WHERE run_id = :run_id
+                        SELECT [run_id] 
+                        FROM [metadata].[run] 
+                        WHERE [run_id] = :run_id
+                            {"AND [complete] = 1" if complete else ""}
                     ) THEN 1 ELSE 0 END
                 """
             )
@@ -153,22 +155,16 @@ class InputParser:
                 "type": "dict",
                 "schema": {
                     "enabled": {"type": "boolean"},
-                    "run_id": {"type": "integer", "nullable": True},
-                    "start_year": {"type": "integer", "min": min_max_years[0]},
-                    "end_year": {"type": "integer", "max": min_max_years[1]},
-                    "version": {
-                        "type": "string",
-                        "allowed": versions,
-                        "nullable": True,
+                    "run_id": {"type": "integer"},
+                    "year": {
+                        "type": "integer",
+                        "min": min_max_years[0],
+                        "max": min_max_years[1],
                     },
-                    "comments": {"type": "string", "nullable": True},
-                    "startup": {"type": "boolean"},
-                    "housing_and_households": {"type": "boolean"},
-                    "population": {"type": "boolean"},
-                    "population_by_ase": {"type": "boolean"},
-                    "household_characteristics": {"type": "boolean"},
-                    "employment": {"type": "boolean"},
-                    "staging": {"type": "boolean"},
+                    "module": {
+                        "type": "string",
+                        "allowed": _MODULES,
+                    },
                 },
             },
         }
@@ -177,33 +173,19 @@ class InputParser:
             raise ValueError(validator.errors)
 
         # Make sure our years are not travelling backwards in time
-        for run_type in ["run", "debug"]:
-            if self._config[run_type]["enabled"] and (
-                self._config[run_type]["start_year"]
-                > self._config[run_type]["end_year"]
-            ):
-                raise ValueError(
-                    f"Key 'start year' cannot be greater than key 'end year' in '{run_type}' settings"
-                )
-
-        # Check that if we are in debug mode and trying to re-use a 'run_id'...
-        if (
-            self._config["debug"]["enabled"]
-            and self._config["debug"]["run_id"] is not None
+        if self._config["run"]["enabled"] and (
+            self._config["run"]["start_year"] > self._config["run"]["end_year"]
         ):
+            raise ValueError(
+                f"Key 'start year' cannot be greater than key 'end year' in 'run' settings"
+            )
+
+        # Check that if we are in debug mode...
+        if self._config["debug"]["enabled"]:
             # That the provided 'run_id' is valid
-            self._check_run_id(self._config["debug"]["run_id"])
+            self._check_run_id(self._config["debug"]["run_id"], complete=True)
 
-            # That 'version', and 'comments' are null
-            for key in ["version", "comments"]:
-                if self._config["debug"][key] is not None:
-                    raise ValueError(
-                        f"If a debug 'run_id' is provided, then the debug key of "
-                        f"'{key}' must be null"
-                    )
-
-            # That the 'start_year' and 'end_year' values, conform with those already
-            # in [metadata].[run]
+            # That the 'year' value conforms with those already in [metadata].[run]
             with self._engine.connect() as con:
                 existing_start_year = con.execute(
                     sql.text(
@@ -211,14 +193,14 @@ class InputParser:
                     ),
                     {"run_id": self._config["debug"]["run_id"]},
                 ).scalar()
-            if self._config["debug"]["start_year"] < existing_start_year:
+            if self._config["debug"]["year"] < existing_start_year:
                 raise ValueError(
-                    f"The provided debug 'start_year' of {self._config['debug']['start_year']} "
+                    f"The provided debug 'year' of {self._config['debug']['year']} "
                     f"is less than the [metadata].[run] 'start_year' of "
                     f"{existing_start_year} for 'run_id' {self._config["debug"]["run_id"]}"
                 )
             else:
-                self._start_year = self._config["debug"]["start_year"]
+                self._start_year = self._config["debug"]["year"]
 
             with self._engine.connect() as con:
                 existing_end_year = con.execute(
@@ -227,79 +209,14 @@ class InputParser:
                     ),
                     {"run_id": self._config["debug"]["run_id"]},
                 ).scalar()
-            if self._config["debug"]["end_year"] > existing_end_year:
+            if self._config["debug"]["year"] > existing_end_year:
                 raise ValueError(
-                    f"The provided debug 'end_year' of {self._config['debug']['end_year']} "
+                    f"The provided debug 'year' of {self._config['debug']['year']} "
                     f"is greater than the [metadata].[run] 'end_year' of "
                     f"{existing_end_year} for 'run_id' {self._config["debug"]["run_id"]}"
                 )
             else:
-                self._end_year = self._config["debug"]["end_year"]
-
-        # Check that in debug mode, if no 'run_id' is provided...
-        if self._config["debug"]["enabled"] and self._config["debug"]["run_id"] is None:
-            # That all of 'start_year', 'end_year', and 'version' are provided. Note
-            # that 'comments' can still be null
-            for key in ["start_year", "end_year", "version"]:
-                if self._config["debug"][key] is None:
-                    raise ValueError(
-                        f"If a debug 'run_id' is not provided, then the debug key of "
-                        f"'{key}' must be provided"
-                    )
-
-            # That the dependency chain of modules is correct
-            if self._config["debug"]["staging"]:
-                for key in [
-                    "startup",
-                    "housing_and_households",
-                    "population",
-                    "population_by_ase",
-                    "household_characteristics",
-                    "employment",
-                ]:
-                    if not self._config["debug"][key]:
-                        raise ValueError(
-                            f"Because debug key 'staging' is enabled, debug key "
-                            f"'{key}' must also be enabled"
-                        )
-            if self._config["debug"]["household_characteristics"]:
-                for key in [
-                    "startup",
-                    "housing_and_households",
-                    "population",
-                    "population_by_ase",
-                ]:
-                    if not self._config["debug"][key]:
-                        raise ValueError(
-                            f"Because debug key 'household_characteristics' is "
-                            f"enabled, debug key '{key}' must also be enabled"
-                        )
-            if self._config["debug"]["population_by_ase"]:
-                for key in ["startup", "housing_and_households", "population"]:
-                    if not self._config["debug"][key]:
-                        raise ValueError(
-                            f"Because debug key 'population_by_ase' is enabled, "
-                            f"debug key '{key}' must also be enabled"
-                        )
-            if self._config["debug"]["population"]:
-                for key in ["startup", "housing_and_households"]:
-                    if not self._config["debug"][key]:
-                        raise ValueError(
-                            f"Because debug key 'population' is enabled, debug key "
-                            f"'{key}' must also be enabled"
-                        )
-            if self._config["debug"]["housing_and_households"]:
-                if not self._config["debug"]["startup"]:
-                    raise ValueError(
-                        "Because debug key 'housing_and_households' is enabled, "
-                        "debug key 'startup' must also be enabled"
-                    )
-            if self._config["debug"]["employment"]:
-                if not self._config["debug"]["startup"]:
-                    raise ValueError(
-                        "Because debug key 'employment' is enabled, "
-                        "debug key 'startup' must also be enabled"
-                    )
+                self._end_year = self._config["debug"]["year"]
 
     def _parse_run_id(self) -> int:
         """Parse the run id from the configuration file.
@@ -315,22 +232,12 @@ class InputParser:
         Raises:
             ValueError: If any of the configuration values are invalid.
         """
-        # Create a new run id if standard run mode is enabled, or if we are running a
-        # subset of Estimates via debug mode
-        if self._config["run"]["enabled"] or (
-            self._config["debug"]["enabled"] and self._config["debug"]["run_id"] is None
-        ):
+        # Create a new run id if standard run mode is enabled
+        if self._config["run"]["enabled"]:
             with self._engine.connect() as con:
 
-                # Override default arguments if debug mode is enabled
-                if self._config["debug"]["enabled"]:
-                    comments = self._config["debug"]["comments"]
-                    self._start_year = self._config["debug"]["start_year"]
-                    self._end_year = self._config["debug"]["end_year"]
-                else:
-                    comments = self._config["run"]["comments"]
-                    self._start_year = self._config["run"]["start_year"]
-                    self._end_year = self._config["run"]["end_year"]
+                self._start_year = self._config["run"]["start_year"]
+                self._end_year = self._config["run"]["end_year"]
 
                 # Create run id from the most recent run id in the database
                 run_id = con.execute(
@@ -372,23 +279,19 @@ class InputParser:
                         "start_year": self._start_year,
                         "end_year": self._end_year,
                         "version": self._config["run"]["version"],
-                        "comments": comments,
+                        "comments": self._config["run"]["comments"],
                     },
                 )
 
                 # Commit the transaction
                 con.commit()
 
-                # Return the valid 'run_id'
-                return run_id
+        # For debug mode, simply return the pre-selected [run_id]
+        else:
+            run_id = self._config["debug"]["run_id"]
 
-        # Use the supplied 'run_id' if debug mode is enabled. Note the existence of the
-        # 'run_id' has already been checked
-        if (
-            self._config["debug"]["enabled"]
-            and self._config["debug"]["run_id"] is not None
-        ):
-            return self._config["debug"]["run_id"]
+        # Return the [run_id] this Estimates Program run is using
+        return run_id
 
     def _parse_mgra_version(self) -> str:
         """Parse the MGRA version from the configuration file."""
@@ -399,7 +302,7 @@ class InputParser:
         # Get mgra version from database if debug mode is enabled
         elif self._config["debug"]["enabled"]:
             # Ensure run id exists in the database
-            self._check_run_id(run_id=self.run_id)
+            self._check_run_id(run_id=self.run_id, complete=True)
 
             with self._engine.connect() as con:
                 query = sql.text(

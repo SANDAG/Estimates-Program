@@ -12,7 +12,7 @@ import python.tests as tests
 generator = np.random.default_rng(utils.RANDOM_SEED)
 
 
-def run_hh_characteristics(year: int) -> None:
+def run_hh_characteristics(year: int, debug: bool) -> None:
     """Orchestrator function to calculate and insert household characteristics.
 
     The exact household characteristics created are:
@@ -51,7 +51,7 @@ def run_hh_characteristics(year: int) -> None:
     hh_income_outputs = _create_hh_income(hh_income_inputs)
     _validate_hh_income_outputs(hh_income_outputs)
 
-    _insert_hh_income(hh_income_inputs, hh_income_outputs)
+    _insert_hh_income(hh_income_inputs, hh_income_outputs, debug)
 
     # Then do households by size
     hh_size_inputs = _get_hh_size_inputs(year)
@@ -60,7 +60,7 @@ def run_hh_characteristics(year: int) -> None:
     hh_size_outputs = _create_hh_size(hh_size_inputs)
     _validate_hh_size_outputs(hh_size_outputs)
 
-    _insert_hh_size(hh_size_inputs, hh_size_outputs)
+    _insert_hh_size(hh_size_inputs, hh_size_outputs, debug)
 
 
 def _get_hh_income_inputs(year: int) -> dict[str, pd.DataFrame]:
@@ -417,8 +417,14 @@ def _validate_hh_size_outputs(hh_size_outputs: dict[str, pd.DataFrame]) -> None:
 def _insert_hh_income(
     hh_income_inputs: dict[str, pd.DataFrame],
     hh_income_outputs: dict[str, pd.DataFrame],
+    debug: bool,
 ) -> None:
     """Insert hh characteristics and tract level controls to database"""
+
+    # Skip insertion if running in debug mode
+    if debug:
+        return
+
     with utils.ESTIMATES_ENGINE.connect() as con:
         hh_income_inputs["hh_income_tract_controls"][
             ["run_id", "year", "tract", "income_category", "value"]
@@ -446,9 +452,16 @@ def _insert_hh_income(
 
 
 def _insert_hh_size(
-    hh_size_inputs: dict[str, pd.DataFrame], hh_size_outputs: dict[str, pd.DataFrame]
+    hh_size_inputs: dict[str, pd.DataFrame],
+    hh_size_outputs: dict[str, pd.DataFrame],
+    debug: bool,
 ) -> None:
     """Insert hh characteristics and tract level controls to database"""
+
+    # Skip insertion if running in debug mode
+    if debug:
+        return
+
     with utils.ESTIMATES_ENGINE.connect() as con:
         hh_size_inputs["hhs_tract_controls"].rename(
             columns={"household_size": "metric"}

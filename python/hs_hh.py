@@ -12,7 +12,7 @@ import python.tests as tests
 generator = np.random.default_rng(utils.RANDOM_SEED)
 
 
-def run_hs_hh(year: int) -> None:
+def run_hs_hh(year: int, debug: bool) -> None:
     """Orchestrator function to calculate and insert housing stock and households.
 
     Inserts housing stock by MGRA from SANDAG's LUDU database for a given year
@@ -48,7 +48,7 @@ def run_hs_hh(year: int) -> None:
     hs_hh_outputs = _create_hs_hh(hs_hh_inputs)
     _validate_hs_hh_outputs(hs_hh_outputs)
 
-    _insert_hs_hh(hs_hh_inputs, hs_hh_outputs)
+    _insert_hs_hh(hs_hh_inputs, hs_hh_outputs, debug)
 
 
 def _calculate_hh_adjustment(households: int, housing_stock: int) -> int:
@@ -239,9 +239,16 @@ def _validate_hs_hh_outputs(hs_hh_outputs: dict[str, pd.DataFrame]) -> None:
 
 
 def _insert_hs_hh(
-    hs_hh_inputs: dict[str, pd.DataFrame], hs_hh_outputs: dict[str, pd.DataFrame]
+    hs_hh_inputs: dict[str, pd.DataFrame],
+    hs_hh_outputs: dict[str, pd.DataFrame],
+    debug: bool,
 ) -> None:
     """Insert occupancy controls and households results to database."""
+
+    # Skip insertion if running in debug mode
+    if debug:
+        return
+
     with utils.ESTIMATES_ENGINE.connect() as con:
         hs_hh_inputs["hs"].drop(columns=["tract", "city"]).to_sql(
             name="hs",
