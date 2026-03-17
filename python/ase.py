@@ -248,18 +248,22 @@ def _validate_controls_outputs(controls_outputs: pd.DataFrame) -> None:
 def _insert_controls(controls_outputs: pd.DataFrame, debug: bool) -> None:
     """Insert regional age/sex/ethnicity controls to database."""
 
-    # Skip insertion if running in debug mode
+    # Save locally if in debug mode
     if debug:
-        return
-
-    with utils.ESTIMATES_ENGINE.connect() as con:
-        controls_outputs.to_sql(
-            name="controls_ase",
-            con=con,
-            schema="inputs",
-            if_exists="append",
-            index=False,
+        controls_outputs.to_csv(
+            utils.DEBUG_OUTPUT_FOLDER / f"ase_inputs_controls_ase.csv", index=False
         )
+
+    # Otherwise, insert into the database
+    else:
+        with utils.ESTIMATES_ENGINE.connect() as con:
+            controls_outputs.to_sql(
+                name="controls_ase",
+                con=con,
+                schema="inputs",
+                if_exists="append",
+                index=False,
+            )
 
 
 def _get_seed_inputs(year: int) -> dict[str, pd.DataFrame]:
@@ -923,53 +927,58 @@ def _validate_ase_outputs(ase_outputs: dict[str, pd.DataFrame]) -> None:
 def _insert_ase(ase_outputs: dict[str, pd.DataFrame], debug: bool) -> None:
     """Insert age/sex/ethnicity population by type to database."""
 
-    # Skip insertion if running in debug mode
+    # Save locally if in debug mode
     if debug:
-        return
-
-    for pop_type, output in ase_outputs.items():
-        logger.info("Loading Estimates for " + pop_type)
-
-        # Write the DataFrame to a CSV file
-        csv_temp_location = utils.BULK_INSERT_STAGING / (pop_type + ".txt")
-        (
-            output.loc[lambda df: df["value"] != 0][
-                [
-                    "run_id",
-                    "year",
-                    "mgra",
-                    "pop_type",
-                    "age_group",
-                    "sex",
-                    "ethnicity",
-                    "value",
-                ]
-            ].to_csv(
-                csv_temp_location,
-                header=False,
-                index=False,
-                sep="|",
-                quoting=csv.QUOTE_NONE,
+        for name, data in ase_outputs.items():
+            data.to_csv(
+                utils.DEBUG_OUTPUT_FOLDER / f"ase_outputs_{name}.csv", index=False
             )
-        )
 
-        # Bulk insert the CSV file into the production database
-        with utils.ESTIMATES_ENGINE.connect() as con:
-            query = sql.text(
-                f"""
-                    BULK INSERT [outputs].[ase]
-                    FROM '{csv_temp_location.as_posix()}'
-                    WITH (
-                        TABLOCK,
-                        MAXERRORS=0,
-                        FIELDTERMINATOR = '|',  
-                        ROWTERMINATOR = '0x0A',
-                        CHECK_CONSTRAINTS
-                    )
-                """
+    # Otherwise, load to database
+    else:
+        for pop_type, output in ase_outputs.items():
+            logger.info("Loading Estimates for " + pop_type)
+
+            # Write the DataFrame to a CSV file
+            csv_temp_location = utils.BULK_INSERT_STAGING / (pop_type + ".txt")
+            (
+                output.loc[lambda df: df["value"] != 0][
+                    [
+                        "run_id",
+                        "year",
+                        "mgra",
+                        "pop_type",
+                        "age_group",
+                        "sex",
+                        "ethnicity",
+                        "value",
+                    ]
+                ].to_csv(
+                    csv_temp_location,
+                    header=False,
+                    index=False,
+                    sep="|",
+                    quoting=csv.QUOTE_NONE,
+                )
             )
-            con.execute(query)
-            con.commit()
 
-        # Remove the temporary CSV file
-        csv_temp_location.unlink()
+            # Bulk insert the CSV file into the production database
+            with utils.ESTIMATES_ENGINE.connect() as con:
+                query = sql.text(
+                    f"""
+                        BULK INSERT [outputs].[ase]
+                        FROM '{csv_temp_location.as_posix()}'
+                        WITH (
+                            TABLOCK,
+                            MAXERRORS=0,
+                            FIELDTERMINATOR = '|',  
+                            ROWTERMINATOR = '0x0A',
+                            CHECK_CONSTRAINTS
+                        )
+                    """
+                )
+                con.execute(query)
+                con.commit()
+
+            # Remove the temporary CSV file
+            csv_temp_location.unlink()

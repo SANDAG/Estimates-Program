@@ -5,7 +5,7 @@
 # The `run` section contains configuration for running every module of the Estimates
 # Program for a specified set of years
 [run]
-enabled = false
+enabled = true
 mgra = "mgra15"
 start_year = 2020
 end_year = 2024
@@ -17,7 +17,7 @@ comments = "Example comment"
 # string can be any of startup, housing_and_households, population, population_by_ase,
 # household_characteristics, employment, or staging
 [debug]
-enabled = true
+enabled = false
 run_id = 82 # The run_id for the released v24 Estimates
-year = 2022
-module = "staging"
+year = 2020
+module = ""

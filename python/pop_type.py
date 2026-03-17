@@ -169,26 +169,34 @@ def _insert_gq(
 ) -> None:
     """Insert both input and output data for MGRA group quarters"""
 
-    # Skip insertion if running in debug mode
+    # Save locally if in debug mode
     if debug:
-        return
+        for name, data in gq_inputs.items():
+            data.to_csv(
+                utils.DEBUG_OUTPUT_FOLDER / f"pop_inputs_{name}.csv", index=False
+            )
+        for name, data in gq_outputs.items():
+            data.to_csv(
+                utils.DEBUG_OUTPUT_FOLDER / f"pop_outputs_{name}.csv", index=False
+            )
 
-    # Insert controls and group quarters results to database
-    with utils.ESTIMATES_ENGINE.connect() as con:
-        gq_inputs["city_controls"].to_sql(
-            name="controls_city",
-            con=con,
-            schema="inputs",
-            if_exists="append",
-            index=False,
-        )
-        gq_outputs["gq"].drop(columns="city").to_sql(
-            name="gq",
-            con=con,
-            schema="outputs",
-            if_exists="append",
-            index=False,
-        )
+    # Otherwise, insert controls and group quarters results to database
+    else:
+        with utils.ESTIMATES_ENGINE.connect() as con:
+            gq_inputs["city_controls"].to_sql(
+                name="controls_city",
+                con=con,
+                schema="inputs",
+                if_exists="append",
+                index=False,
+            )
+            gq_outputs["gq"].drop(columns="city").to_sql(
+                name="gq",
+                con=con,
+                schema="outputs",
+                if_exists="append",
+                index=False,
+            )
 
 
 def _get_hhp_inputs(year: int) -> dict[str, pd.DataFrame]:
@@ -392,27 +400,35 @@ def _insert_hhp(
 ) -> None:
     """Insert input and output data related to household population"""
 
-    # Skip insertion if running in debug mode
+    # Save locally if in debug mode
     if debug:
-        return
+        for name, data in hhp_inputs.items():
+            data.to_csv(
+                utils.DEBUG_OUTPUT_FOLDER / f"pop_inputs_{name}.csv", index=False
+            )
+        for name, data in hhp_outputs.items():
+            data.to_csv(
+                utils.DEBUG_OUTPUT_FOLDER / f"pop_outputs_{name}.csv", index=False
+            )
 
-    # Insert input and output data to database
-    with utils.ESTIMATES_ENGINE.connect() as con:
-        hhp_inputs["city_controls"].to_sql(
-            name="controls_city",
-            con=con,
-            schema="inputs",
-            if_exists="append",
-            index=False,
-        )
+    # Otherwise, insert to database
+    else:
+        with utils.ESTIMATES_ENGINE.connect() as con:
+            hhp_inputs["city_controls"].to_sql(
+                name="controls_city",
+                con=con,
+                schema="inputs",
+                if_exists="append",
+                index=False,
+            )
 
-        hhp_inputs["tract_controls"].assign(metric="Household Size").to_sql(
-            name="controls_tract",
-            con=con,
-            schema="inputs",
-            if_exists="append",
-            index=False,
-        )
-        hhp_outputs["hhp"].to_sql(
-            name="hhp", con=con, schema="outputs", if_exists="append", index=False
-        )
+            hhp_inputs["tract_controls"].assign(metric="Household Size").to_sql(
+                name="controls_tract",
+                con=con,
+                schema="inputs",
+                if_exists="append",
+                index=False,
+            )
+            hhp_outputs["hhp"].to_sql(
+                name="hhp", con=con, schema="outputs", if_exists="append", index=False
+            )

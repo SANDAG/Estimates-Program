@@ -274,21 +274,29 @@ def _insert_jobs(
 ) -> None:
     """Insert input and output data related to jobs to the database."""
 
-    # Skip insertion if running in debug mode
+    # Save locally if in debug mode
     if debug:
-        return
+        for name, data in jobs_inputs.items():
+            data.to_csv(
+                utils.DEBUG_OUTPUT_FOLDER / f"emp_inputs_{name}.csv", index=False
+            )
+        for name, data in jobs_outputs.items():
+            data.to_csv(
+                utils.DEBUG_OUTPUT_FOLDER / f"emp_outputs_{name}.csv", index=False
+            )
 
-    # Insert input and output data to database
-    with utils.ESTIMATES_ENGINE.connect() as con:
+    # Otherwise, insert to database
+    else:
+        with utils.ESTIMATES_ENGINE.connect() as con:
 
-        jobs_inputs["control_totals"].to_sql(
-            name="controls_jobs",
-            con=con,
-            schema="inputs",
-            if_exists="append",
-            index=False,
-        )
+            jobs_inputs["control_totals"].to_sql(
+                name="controls_jobs",
+                con=con,
+                schema="inputs",
+                if_exists="append",
+                index=False,
+            )
 
-        jobs_outputs["results"].to_sql(
-            name="jobs", con=con, schema="outputs", if_exists="append", index=False
-        )
+            jobs_outputs["results"].to_sql(
+                name="jobs", con=con, schema="outputs", if_exists="append", index=False
+            )

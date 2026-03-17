@@ -111,6 +111,13 @@ logger.info(f"MGRA_VERSION: {MGRA_VERSION}")
 logger.info(f"DEBUG: {DEBUG}")
 logger.info(f"RUN_INSTRUCTIONS: {RUN_INSTRUCTIONS}")
 
+# Additionally, if we are in debug mode, we don't load any data to database since the
+# [run_id] we are re-using is already complete. Instead, we save data locally into an
+# ignored folder
+DEBUG_OUTPUT_FOLDER = ROOT_FOLDER / "debug_output"
+if DEBUG:
+    DEBUG_OUTPUT_FOLDER.mkdir(parents=False, exist_ok=True)
+
 ##############################
 # UTILITY LISTS AND MAPPINGS #
 ##############################

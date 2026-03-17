@@ -163,7 +163,7 @@ class InputParser:
                     },
                     "module": {
                         "type": "string",
-                        "allowed": _MODULES,
+                        "allowed": _MODULES + [""],
                     },
                 },
             },
@@ -184,6 +184,13 @@ class InputParser:
         if self._config["debug"]["enabled"]:
             # That the provided 'run_id' is valid
             self._check_run_id(self._config["debug"]["run_id"], complete=True)
+
+            # That a valid module was provided
+            if self._config["debug"]["module"] not in _MODULES:
+                raise ValueError(
+                    f"Debug key 'module' must be one of {', '.join(_MODULES)}. "
+                    f"Instead, \"{self._config['debug']['module']}\" was provided."
+                )
 
             # That the 'year' value conforms with those already in [metadata].[run]
             with self._engine.connect() as con:

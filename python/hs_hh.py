@@ -245,38 +245,47 @@ def _insert_hs_hh(
 ) -> None:
     """Insert occupancy controls and households results to database."""
 
-    # Skip insertion if running in debug mode
+    # Save locally if in debug mode
     if debug:
-        return
+        for name, data in hs_hh_inputs.items():
+            data.to_csv(
+                utils.DEBUG_OUTPUT_FOLDER / f"hs_hh_inputs_{name}.csv", index=False
+            )
+        for name, data in hs_hh_outputs.items():
+            data.to_csv(
+                utils.DEBUG_OUTPUT_FOLDER / f"hs_hh_outputs_{name}.csv", index=False
+            )
 
-    with utils.ESTIMATES_ENGINE.connect() as con:
-        hs_hh_inputs["hs"].drop(columns=["tract", "city"]).to_sql(
-            name="hs",
-            con=con,
-            schema="outputs",
-            if_exists="append",
-            index=False,
-        )
-        hs_hh_inputs["city_controls"].to_sql(
-            name="controls_city",
-            con=con,
-            schema="inputs",
-            if_exists="append",
-            index=False,
-        )
-        hs_hh_inputs["tract_controls"].assign(
-            metric=lambda x: "Occupancy Rate - " + x["structure_type"]
-        ).drop(columns="structure_type").to_sql(
-            name="controls_tract",
-            con=con,
-            schema="inputs",
-            if_exists="append",
-            index=False,
-        )
-        hs_hh_outputs["hh"].to_sql(
-            name="hh",
-            con=con,
-            schema="outputs",
-            if_exists="append",
-            index=False,
-        )
+    # Otherwise, load to database
+    else:
+        with utils.ESTIMATES_ENGINE.connect() as con:
+            hs_hh_inputs["hs"].drop(columns=["tract", "city"]).to_sql(
+                name="hs",
+                con=con,
+                schema="outputs",
+                if_exists="append",
+                index=False,
+            )
+            hs_hh_inputs["city_controls"].to_sql(
+                name="controls_city",
+                con=con,
+                schema="inputs",
+                if_exists="append",
+                index=False,
+            )
+            hs_hh_inputs["tract_controls"].assign(
+                metric=lambda x: "Occupancy Rate - " + x["structure_type"]
+            ).drop(columns="structure_type").to_sql(
+                name="controls_tract",
+                con=con,
+                schema="inputs",
+                if_exists="append",
+                index=False,
+            )
+            hs_hh_outputs["hh"].to_sql(
+                name="hh",
+                con=con,
+                schema="outputs",
+                if_exists="append",
+                index=False,
+            )

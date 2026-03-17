@@ -421,34 +421,43 @@ def _insert_hh_income(
 ) -> None:
     """Insert hh characteristics and tract level controls to database"""
 
-    # Skip insertion if running in debug mode
+    # Save locally if in debug mode
     if debug:
-        return
+        for name, data in hh_income_inputs.items():
+            data.to_csv(
+                utils.DEBUG_OUTPUT_FOLDER / f"hh_char_inputs_{name}.csv", index=False
+            )
+        for name, data in hh_income_outputs.items():
+            data.to_csv(
+                utils.DEBUG_OUTPUT_FOLDER / f"hh_char_outputs_{name}.csv", index=False
+            )
 
-    with utils.ESTIMATES_ENGINE.connect() as con:
-        hh_income_inputs["hh_income_tract_controls"][
-            ["run_id", "year", "tract", "income_category", "value"]
-        ].rename(columns={"income_category": "metric"}).assign(
-            metric=lambda df: "Income Category - " + df["metric"]
-        ).to_sql(
-            schema="inputs",
-            name="controls_tract",
-            if_exists="append",
-            con=con,
-            index=False,
-        )
+    # Otherwise, load to database
+    else:
+        with utils.ESTIMATES_ENGINE.connect() as con:
+            hh_income_inputs["hh_income_tract_controls"][
+                ["run_id", "year", "tract", "income_category", "value"]
+            ].rename(columns={"income_category": "metric"}).assign(
+                metric=lambda df: "Income Category - " + df["metric"]
+            ).to_sql(
+                schema="inputs",
+                name="controls_tract",
+                if_exists="append",
+                con=con,
+                index=False,
+            )
 
-        hh_income_outputs["hh_income"][
-            ["run_id", "year", "mgra", "income_category", "hh"]
-        ].rename(columns={"income_category": "metric", "hh": "value"}).assign(
-            metric=lambda df: "Income Category - " + df["metric"]
-        ).to_sql(
-            schema="outputs",
-            name="hh_characteristics",
-            if_exists="append",
-            con=con,
-            index=False,
-        )
+            hh_income_outputs["hh_income"][
+                ["run_id", "year", "mgra", "income_category", "hh"]
+            ].rename(columns={"income_category": "metric", "hh": "value"}).assign(
+                metric=lambda df: "Income Category - " + df["metric"]
+            ).to_sql(
+                schema="outputs",
+                name="hh_characteristics",
+                if_exists="append",
+                con=con,
+                index=False,
+            )
 
 
 def _insert_hh_size(
@@ -458,33 +467,42 @@ def _insert_hh_size(
 ) -> None:
     """Insert hh characteristics and tract level controls to database"""
 
-    # Skip insertion if running in debug mode
+    # Save locally if in debug mode
     if debug:
-        return
+        for name, data in hh_size_inputs.items():
+            data.to_csv(
+                utils.DEBUG_OUTPUT_FOLDER / f"hh_char_inputs_{name}.csv", index=False
+            )
+        for name, data in hh_size_outputs.items():
+            data.to_csv(
+                utils.DEBUG_OUTPUT_FOLDER / f"hh_char_outputs_{name}.csv", index=False
+            )
 
-    with utils.ESTIMATES_ENGINE.connect() as con:
-        hh_size_inputs["hhs_tract_controls"].rename(
-            columns={"household_size": "metric"}
-        ).assign(
-            metric=lambda df: "Household Size - "
-            + df["metric"].astype(str).replace("7", "7+")
-        ).to_sql(
-            schema="inputs",
-            name="controls_tract",
-            if_exists="append",
-            con=con,
-            index=False,
-        )
+    # Otherwise, load to database
+    else:
+        with utils.ESTIMATES_ENGINE.connect() as con:
+            hh_size_inputs["hhs_tract_controls"].rename(
+                columns={"household_size": "metric"}
+            ).assign(
+                metric=lambda df: "Household Size - "
+                + df["metric"].astype(str).replace("7", "7+")
+            ).to_sql(
+                schema="inputs",
+                name="controls_tract",
+                if_exists="append",
+                con=con,
+                index=False,
+            )
 
-        hh_size_outputs["hh_size"][
-            ["run_id", "year", "mgra", "household_size", "hh"]
-        ].rename(columns={"household_size": "metric", "hh": "value"}).assign(
-            metric=lambda df: "Household Size - "
-            + df["metric"].astype(str).replace("7", "7+")
-        ).to_sql(
-            schema="outputs",
-            name="hh_characteristics",
-            if_exists="append",
-            con=con,
-            index=False,
-        )
+            hh_size_outputs["hh_size"][
+                ["run_id", "year", "mgra", "household_size", "hh"]
+            ].rename(columns={"household_size": "metric", "hh": "value"}).assign(
+                metric=lambda df: "Household Size - "
+                + df["metric"].astype(str).replace("7", "7+")
+            ).to_sql(
+                schema="outputs",
+                name="hh_characteristics",
+                if_exists="append",
+                con=con,
+                index=False,
+            )
