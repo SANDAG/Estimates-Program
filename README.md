@@ -58,7 +58,8 @@ comments = "Example comment"
 # The `debug` section contains configuration for running a single module for a single
 # year based on the input data of an existing complete Estimates run. Output data is not
 # written to database, but is instead saved to a local folder debug_output\, which is 
-# ignored by .gitignore
+# ignored by .gitignore. No data is saved locally for the "startup" and "staging" 
+# modules
 [debug]
 
 # Whether to use the 'debug' section. Mutually exclusive with 'run' mode
