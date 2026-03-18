@@ -17,7 +17,7 @@ server = "<SqlInstanceName>"  # SQL instance containing GIS database
 database = "<SqlDatabaseName>"  # database within instance containing GIS datasets (GQ/LUDU)
 
 [sql]
-staging = "<FolderPath>"  # unconditional network folder path visible to SQL instance for BULK INSERT
+staging = '<FolderPath>'  # unconditional network folder path visible to SQL instance for BULK INSERT
 ```
 
 ## Running
@@ -47,68 +47,37 @@ mgra = "mgra15"
 start_year = 2020
 
 # The last year inclusive to end running with
-end_year = 2023
+end_year = 2024
 
 # The code version
-version = "0.0.0-dev"
+version = "1.1.1-dev"
 
 # Additional notes on this run
 comments = "Example comment"
 
-# The 'debug' section contains configuration for running a subset of modules of the
-# Estimates Program for a given set of years. All parameters must be provided except for
-# 'run_id', 'version', and 'comments'. If 'run_id' is -1, then a new 'run_id' will 
-# be automatically created, similar to 'run' mode
+# The `debug` section contains configuration for running a single module for a single
+# year based on the input data of an existing complete Estimates run. Output data is not
+# written to database, but is instead saved to a local folder debug_output\, which is 
+# ignored by .gitignore. No data is saved locally for the "startup" and "staging" 
+# modules
 [debug]
 
 # Whether to use the 'debug' section. Mutually exclusive with 'run' mode
 enabled = false
 
-# (Optional) If provided, then most parameters in the 'debug' section will be pulled 
-# from '[run].[metadata]'. If not provided, then a new 'run_id' will be automatically 
-# created. Use -1 to indicate no run_id (TOML doesn't support null)
-run_id = -1
+# The [run_id] of a fully [complete] Estimates Program run. Input data for debugging
+# will be pulled from this [run_id]
+run_id = 82 # The run_id for the released v24 Estimates
 
-# The first year inclusive and last year inclusive to run. In the case that...
-# * The value of 'run_id' is -1, the values will be loaded into [metadata].[run]
-#   and will be used as is
-# * The value of 'run_id' is not -1, the values will be checked against the values
-#   already in '[run].[metadata]'
-start_year = 2020
-end_year = 2023
+# The year of the Estimates Program to run. This year must be consistent with the stored
+# [start_year] and [end_year] associated with the above [run_id] in [metadata].[run]
+year = 2020
 
-# (Optional) The code version. If provided, then 'run_id' must be -1
-version = "0.0.0-dev"
-
-# (Optional) Additional notes on this run. If provided, then 'run_id' must be -1
-comments = ""
-
-# Whether to run the 'startup' module
-startup = false
-
-# Whether to run the 'housing_and_households' module. If enabled, then any above 
-# modules must all be enabled due to module dependencies
-housing_and_households = false
-
-# Whether to run the 'population' module. If enabled, then any above modules must all
-# be enabled due to module dependencies
-population = false
-
-# Whether to run the 'population_by_ase' module. If enabled, then any above modules 
-# must all be enabled due to module dependencies
-population_by_ase = false
-
-# Whether to run the 'household_characteristics' module. If enabled, then any above 
-# modules must all be enabled due to module dependencies
-household_characteristics = false
-
-# Whether to run the 'employment' module. If enabled, then startup module must also be 
-# enabled due to module dependencies
-employment = false
-
-# Whether to run the 'staging' module. If enabled, then any above modules must all be
-# enabled due to module dependencies
-staging = false
+# The module of the Estimates Program to run. Since only [complete] [run_id]s are 
+# allowed, this can be any Estimates Program module. Explicitly, the valid inputs
+# are "startup", "housing_and_households", "population", "population_by_ase", 
+# "household_characteristics", "employment", or "staging"
+module = ""
 ```
 
 ### Production Database Schema

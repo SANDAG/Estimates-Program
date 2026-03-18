@@ -12,21 +12,12 @@ end_year = 2024
 version = "1.1.1-dev"
 comments = "Example comment"
 
-# The `debug` section contains configuration for running a subset of modules of the
-# Estimates Program for a given set of years. All parameters must be provided except for
-# `run_id` and `comments`. If `run_id` is `null`, then a new `run_id` will be
-# automatically created, similar to `run` mode
+# The `debug` section contains configuration for running a single module for a single
+# year based on the input data of an existing complete Estimates run. The input module
+# string can be any of "startup", "housing_and_households", "population",
+# "population_by_ase", "household_characteristics", "employment", or "staging"
 [debug]
 enabled = false
-run_id = -1 # -1 is interpreted as None
-start_year = 2022
-end_year = 2023
-version = "1.1.1-dev"
-comments = ""
-startup = false
-housing_and_households = false
-population = false
-population_by_ase = false
-household_characteristics = false
-employment = false
-staging = false
+run_id = 82 # The run_id for the released v24 Estimates
+year = 2020
+module = ""

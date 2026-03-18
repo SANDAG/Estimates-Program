@@ -11,7 +11,7 @@ import python.utils as utils
 generator = np.random.default_rng(utils.RANDOM_SEED)
 
 
-def run_employment(year: int):
+def run_employment(year: int, debug: bool):
     """Control function to create jobs data by naics_code (NAICS) at the MGRA level.
 
     Get the LEHD LODES data, aggregate to the MGRA level using the block to MGRA
@@ -37,7 +37,7 @@ def run_employment(year: int):
     jobs_outputs = _create_jobs_output(jobs_inputs)
     _validate_jobs_outputs(jobs_outputs)
 
-    _insert_jobs(jobs_inputs, jobs_outputs)
+    _insert_jobs(jobs_inputs, jobs_outputs, debug)
 
 
 def _get_lodes_data(year: int) -> pd.DataFrame:
@@ -268,21 +268,33 @@ def _validate_jobs_outputs(jobs_outputs: dict[str, pd.DataFrame]) -> None:
 
 
 def _insert_jobs(
-    jobs_inputs: dict[str, pd.DataFrame], jobs_outputs: dict[str, pd.DataFrame]
+    jobs_inputs: dict[str, pd.DataFrame],
+    jobs_outputs: dict[str, pd.DataFrame],
+    debug: bool,
 ) -> None:
     """Insert input and output data related to jobs to the database."""
 
-    # Insert input and output data to database
-    with utils.ESTIMATES_ENGINE.connect() as con:
-
-        jobs_inputs["control_totals"].to_sql(
-            name="controls_jobs",
-            con=con,
-            schema="inputs",
-            if_exists="append",
-            index=False,
+    # Save locally if in debug mode
+    if debug:
+        jobs_inputs["control_totals"].to_csv(
+            utils.DEBUG_OUTPUT_FOLDER / "inputs_controls_jobs.csv", index=False
+        )
+        jobs_outputs["results"].to_csv(
+            utils.DEBUG_OUTPUT_FOLDER / "outputs_jobs.csv", index=False
         )
 
-        jobs_outputs["results"].to_sql(
-            name="jobs", con=con, schema="outputs", if_exists="append", index=False
-        )
+    # Otherwise, insert to database
+    else:
+        with utils.ESTIMATES_ENGINE.connect() as con:
+
+            jobs_inputs["control_totals"].to_sql(
+                name="controls_jobs",
+                con=con,
+                schema="inputs",
+                if_exists="append",
+                index=False,
+            )
+
+            jobs_outputs["results"].to_sql(
+                name="jobs", con=con, schema="outputs", if_exists="append", index=False
+            )

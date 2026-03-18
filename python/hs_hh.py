@@ -12,7 +12,7 @@ import python.tests as tests
 generator = np.random.default_rng(utils.RANDOM_SEED)
 
 
-def run_hs_hh(year: int) -> None:
+def run_hs_hh(year: int, debug: bool) -> None:
     """Orchestrator function to calculate and insert housing stock and households.
 
     Inserts housing stock by MGRA from SANDAG's LUDU database for a given year
@@ -48,7 +48,7 @@ def run_hs_hh(year: int) -> None:
     hs_hh_outputs = _create_hs_hh(hs_hh_inputs)
     _validate_hs_hh_outputs(hs_hh_outputs)
 
-    _insert_hs_hh(hs_hh_inputs, hs_hh_outputs)
+    _insert_hs_hh(hs_hh_inputs, hs_hh_outputs, debug)
 
 
 def _calculate_hh_adjustment(households: int, housing_stock: int) -> int:
@@ -239,37 +239,59 @@ def _validate_hs_hh_outputs(hs_hh_outputs: dict[str, pd.DataFrame]) -> None:
 
 
 def _insert_hs_hh(
-    hs_hh_inputs: dict[str, pd.DataFrame], hs_hh_outputs: dict[str, pd.DataFrame]
+    hs_hh_inputs: dict[str, pd.DataFrame],
+    hs_hh_outputs: dict[str, pd.DataFrame],
+    debug: bool,
 ) -> None:
     """Insert occupancy controls and households results to database."""
-    with utils.ESTIMATES_ENGINE.connect() as con:
-        hs_hh_inputs["hs"].drop(columns=["tract", "city"]).to_sql(
-            name="hs",
-            con=con,
-            schema="outputs",
-            if_exists="append",
-            index=False,
+
+    # Save locally if in debug mode
+    if debug:
+        hs_hh_inputs["hs"].drop(columns=["tract", "city"]).to_csv(
+            utils.DEBUG_OUTPUT_FOLDER / "outputs_hs.csv", index=False
         )
-        hs_hh_inputs["city_controls"].to_sql(
-            name="controls_city",
-            con=con,
-            schema="inputs",
-            if_exists="append",
-            index=False,
+        hs_hh_inputs["city_controls"].to_csv(
+            utils.DEBUG_OUTPUT_FOLDER / "inputs_controls_city.csv", index=False
         )
         hs_hh_inputs["tract_controls"].assign(
             metric=lambda x: "Occupancy Rate - " + x["structure_type"]
-        ).drop(columns="structure_type").to_sql(
-            name="controls_tract",
-            con=con,
-            schema="inputs",
-            if_exists="append",
-            index=False,
+        ).drop(columns="structure_type").to_csv(
+            utils.DEBUG_OUTPUT_FOLDER / "inputs_controls_tract.csv", index=False
         )
-        hs_hh_outputs["hh"].to_sql(
-            name="hh",
-            con=con,
-            schema="outputs",
-            if_exists="append",
-            index=False,
+        hs_hh_outputs["hh"].to_csv(
+            utils.DEBUG_OUTPUT_FOLDER / "outputs_hh.csv", index=False
         )
+
+    # Otherwise, load to database
+    else:
+        with utils.ESTIMATES_ENGINE.connect() as con:
+            hs_hh_inputs["hs"].drop(columns=["tract", "city"]).to_sql(
+                name="hs",
+                con=con,
+                schema="outputs",
+                if_exists="append",
+                index=False,
+            )
+            hs_hh_inputs["city_controls"].to_sql(
+                name="controls_city",
+                con=con,
+                schema="inputs",
+                if_exists="append",
+                index=False,
+            )
+            hs_hh_inputs["tract_controls"].assign(
+                metric=lambda x: "Occupancy Rate - " + x["structure_type"]
+            ).drop(columns="structure_type").to_sql(
+                name="controls_tract",
+                con=con,
+                schema="inputs",
+                if_exists="append",
+                index=False,
+            )
+            hs_hh_outputs["hh"].to_sql(
+                name="hh",
+                con=con,
+                schema="outputs",
+                if_exists="append",
+                index=False,
+            )
