@@ -174,7 +174,7 @@ def _insert_gq(
         gq_inputs["city_controls"].to_csv(
             utils.DEBUG_OUTPUT_FOLDER / "inputs_controls_city_gq.csv", index=False
         )
-        gq_outputs["gq"].to_csv(
+        gq_outputs["gq"].drop(columns="city").to_csv(
             utils.DEBUG_OUTPUT_FOLDER / "outputs_gq.csv", index=False
         )
 
@@ -403,7 +403,7 @@ def _insert_hhp(
         hhp_inputs["city_controls"].to_csv(
             utils.DEBUG_OUTPUT_FOLDER / "inputs_controls_city_pop.csv", index=False
         )
-        hhp_inputs["tract_controls"].to_csv(
+        hhp_inputs["tract_controls"].assign(metric="Household Size").to_csv(
             utils.DEBUG_OUTPUT_FOLDER / "inputs_controls_tract.csv", index=False
         )
         hhp_outputs["hhp"].to_csv(
