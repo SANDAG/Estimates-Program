@@ -251,7 +251,7 @@ def _insert_controls(controls_outputs: pd.DataFrame, debug: bool) -> None:
     # Save locally if in debug mode
     if debug:
         controls_outputs.to_csv(
-            utils.DEBUG_OUTPUT_FOLDER / f"ase_inputs_controls_ase.csv", index=False
+            utils.DEBUG_OUTPUT_FOLDER / f"inputs_controls_ase.csv", index=False
         )
 
     # Otherwise, insert into the database
@@ -927,33 +927,36 @@ def _validate_ase_outputs(ase_outputs: dict[str, pd.DataFrame]) -> None:
 def _insert_ase(ase_outputs: dict[str, pd.DataFrame], debug: bool) -> None:
     """Insert age/sex/ethnicity population by type to database."""
 
-    # Save locally if in debug mode
-    if debug:
-        for name, data in ase_outputs.items():
-            data.to_csv(
-                utils.DEBUG_OUTPUT_FOLDER / f"ase_outputs_{name}.csv", index=False
+    for pop_type, pop_type_data in ase_outputs.items():
+        logger.info("Loading Estimates for " + pop_type)
+
+        # For loading speed, remove all data which is zero. See GitHub for more details:
+        # https://github.com/SANDAG/Estimates-Program/pull/184
+        pop_type_data_no_zero = pop_type_data.loc[lambda df: df["value"] != 0][
+            [
+                "run_id",
+                "year",
+                "mgra",
+                "pop_type",
+                "age_group",
+                "sex",
+                "ethnicity",
+                "value",
+            ]
+        ]
+
+        # Write the data locally if in debug mode
+        if debug:
+            pop_type_data_no_zero.to_csv(
+                utils.DEBUG_OUTPUT_FOLDER / f"outputs_ase_{pop_type}.csv", index=False
             )
 
-    # Otherwise, load to database
-    else:
-        for pop_type, output in ase_outputs.items():
-            logger.info("Loading Estimates for " + pop_type)
-
-            # Write the DataFrame to a CSV file
+        # Otherwise, load to database
+        else:
+            # First, write the DataFrame to a CSV file in the network location
             csv_temp_location = utils.BULK_INSERT_STAGING / (pop_type + ".txt")
             (
-                output.loc[lambda df: df["value"] != 0][
-                    [
-                        "run_id",
-                        "year",
-                        "mgra",
-                        "pop_type",
-                        "age_group",
-                        "sex",
-                        "ethnicity",
-                        "value",
-                    ]
-                ].to_csv(
+                pop_type_data_no_zero.to_csv(
                     csv_temp_location,
                     header=False,
                     index=False,
@@ -962,7 +965,7 @@ def _insert_ase(ase_outputs: dict[str, pd.DataFrame], debug: bool) -> None:
                 )
             )
 
-            # Bulk insert the CSV file into the production database
+            # Then, bulk insert the CSV file into the production database
             with utils.ESTIMATES_ENGINE.connect() as con:
                 query = sql.text(
                     f"""
@@ -980,5 +983,5 @@ def _insert_ase(ase_outputs: dict[str, pd.DataFrame], debug: bool) -> None:
                 con.execute(query)
                 con.commit()
 
-            # Remove the temporary CSV file
+            # Finally, remove the temporary CSV file
             csv_temp_location.unlink()

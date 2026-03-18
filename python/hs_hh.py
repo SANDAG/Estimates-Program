@@ -247,14 +247,20 @@ def _insert_hs_hh(
 
     # Save locally if in debug mode
     if debug:
-        for name, data in hs_hh_inputs.items():
-            data.to_csv(
-                utils.DEBUG_OUTPUT_FOLDER / f"hs_hh_inputs_{name}.csv", index=False
-            )
-        for name, data in hs_hh_outputs.items():
-            data.to_csv(
-                utils.DEBUG_OUTPUT_FOLDER / f"hs_hh_outputs_{name}.csv", index=False
-            )
+        hs_hh_inputs["hs"].drop(columns=["tract", "city"]).to_csv(
+            utils.DEBUG_OUTPUT_FOLDER / "outputs_hs.csv", index=False
+        )
+        hs_hh_inputs["city_controls"].to_csv(
+            utils.DEBUG_OUTPUT_FOLDER / "inputs_controls_city.csv", index=False
+        )
+        hs_hh_inputs["tract_controls"].assign(
+            metric=lambda x: "Occupancy Rate - " + x["structure_type"]
+        ).drop(columns="structure_type").to_csv(
+            utils.DEBUG_OUTPUT_FOLDER / "inputs_controls_tract.csv", index=False
+        )
+        hs_hh_outputs["hh"].to_csv(
+            utils.DEBUG_OUTPUT_FOLDER / "outputs_hh.csv", index=False
+        )
 
     # Otherwise, load to database
     else:

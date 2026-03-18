@@ -276,14 +276,12 @@ def _insert_jobs(
 
     # Save locally if in debug mode
     if debug:
-        for name, data in jobs_inputs.items():
-            data.to_csv(
-                utils.DEBUG_OUTPUT_FOLDER / f"emp_inputs_{name}.csv", index=False
-            )
-        for name, data in jobs_outputs.items():
-            data.to_csv(
-                utils.DEBUG_OUTPUT_FOLDER / f"emp_outputs_{name}.csv", index=False
-            )
+        jobs_inputs["control_totals"].to_csv(
+            utils.DEBUG_OUTPUT_FOLDER / "inputs_controls_jobs.csv", index=False
+        )
+        jobs_outputs["results"].to_csv(
+            utils.DEBUG_OUTPUT_FOLDER / "outputs_jobs.csv", index=False
+        )
 
     # Otherwise, insert to database
     else:
