@@ -11,6 +11,9 @@ log.txt
 # Debug output file
 debug_output/
 
+# Temporary testing files
+test.py
+
 ##################################################################
 # Python .gitignore                                              #
 # https://github.com/github/gitignore/blob/main/Python.gitignore #
