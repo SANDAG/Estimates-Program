@@ -19,9 +19,7 @@ class InputParser:
     function is:
     * (Class variable 'run_instructions') Explicit instructions on which modules to run
         on which years
-    * (Class variable 'run_id') The value of 'run_id' to use. If standard run mode is
-        enabled or if no 'run_id' was provided in 'debug' mode, then a new 'run_id' was
-        created and inserted into '[run].[metadata]'
+    * (Class variable 'run_id') The value of 'run_id' to use
     * (Class variable 'mgra_version') The MGRA version to run on
 
     Attributes:
