@@ -90,36 +90,27 @@ class InputParser:
             for key in _MODULES:
                 self.run_instructions[key] = key == self._config["debug"]["module"]
 
-    def _check_run_id(self, run_id: int, complete: bool = False) -> None:
-        """Check if supplied run id exists in the database.
-
-        Args:
-            run_id: The [run_id] to check for
-            complete: Default False. If True, then only check for [run_id]s marked as
-                [complete] = 1. If False, don't check for [complete] status
-
-        Return:
-            None
-
-        Raises:
-            ValueError: If [run_id] does not exist in the database
-        """
+    def _check_run_id(self, run_id: int) -> None:
+        """Check if supplied run id exists in the database and is complete"""
         with self._engine.connect() as con:
             # Ensure supplied run id exists in the database
             query = sql.text(
-                f"""
+                """
                     SELECT CASE WHEN EXISTS (
                         SELECT [run_id] 
                         FROM [metadata].[run] 
                         WHERE [run_id] = :run_id
-                            {"AND [complete] = 1" if complete else ""}
+                            AND [complete] = 1
                     ) THEN 1 ELSE 0 END
                 """
             )
 
             exists = con.execute(query, {"run_id": run_id}).scalar()
             if exists == 0:
-                raise ValueError("run_id does not exist in the database")
+                raise ValueError(
+                    f"Either the [run_id]={run_id} does not exist in the database or "
+                    f"it is not marked as [complete]=1"
+                )
 
     def _validate_config(self) -> None:
         """Validate the contents of the configuration dictionary
@@ -181,7 +172,7 @@ class InputParser:
         # Check that if we are in debug mode...
         if self._config["debug"]["enabled"]:
             # That the provided 'run_id' is valid
-            self._check_run_id(self._config["debug"]["run_id"], complete=True)
+            self._check_run_id(self._config["debug"]["run_id"])
 
             # That a valid module was provided
             if self._config["debug"]["module"] not in _MODULES:
@@ -190,37 +181,34 @@ class InputParser:
                     f"Instead, \"{self._config['debug']['module']}\" was provided."
                 )
 
-            # That the 'year' value conforms with those already in [metadata].[run]
+            # That the 'year' value conforms with the [start_year] and [end_year]
+            # already in [metadata].[run]
             with self._engine.connect() as con:
-                existing_start_year = con.execute(
+                check_year = con.execute(
                     sql.text(
-                        "SELECT [start_year] FROM [metadata].[run] WHERE run_id = :run_id"
+                        """
+                        SELECT
+                            CASE
+                                WHEN :year BETWEEN [start_year] AND [end_year] THEN 1
+                                ELSE 0
+                            END
+                        FROM [metadata].[run]
+                            WHERE [run_id] = :run_id
+                        """
                     ),
-                    {"run_id": self._config["debug"]["run_id"]},
+                    {
+                        "run_id": self._config["debug"]["run_id"],
+                        "year": self._config["debug"]["year"],
+                    },
                 ).scalar()
-            if self._config["debug"]["year"] < existing_start_year:
+            if check_year == 0:
                 raise ValueError(
                     f"The provided debug 'year' of {self._config['debug']['year']} "
-                    f"is less than the [metadata].[run] 'start_year' of "
-                    f"{existing_start_year} for 'run_id' {self._config["debug"]["run_id"]}"
+                    f"is not within the range of [metadata].[run] 'start_year' and "
+                    f"'end_year' for 'run_id' {self._config['debug']['run_id']}"
                 )
             else:
                 self._start_year = self._config["debug"]["year"]
-
-            with self._engine.connect() as con:
-                existing_end_year = con.execute(
-                    sql.text(
-                        "SELECT [end_year] FROM [metadata].[run] WHERE run_id = :run_id"
-                    ),
-                    {"run_id": self._config["debug"]["run_id"]},
-                ).scalar()
-            if self._config["debug"]["year"] > existing_end_year:
-                raise ValueError(
-                    f"The provided debug 'year' of {self._config['debug']['year']} "
-                    f"is greater than the [metadata].[run] 'end_year' of "
-                    f"{existing_end_year} for 'run_id' {self._config["debug"]["run_id"]}"
-                )
-            else:
                 self._end_year = self._config["debug"]["year"]
 
     def _parse_run_id(self) -> int:
@@ -307,7 +295,7 @@ class InputParser:
         # Get mgra version from database if debug mode is enabled
         elif self._config["debug"]["enabled"]:
             # Ensure run id exists in the database
-            self._check_run_id(run_id=self.run_id, complete=True)
+            self._check_run_id(run_id=self.run_id)
 
             with self._engine.connect() as con:
                 query = sql.text(
