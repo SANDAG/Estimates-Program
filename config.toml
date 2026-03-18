@@ -14,8 +14,8 @@ comments = "Example comment"
 
 # The `debug` section contains configuration for running a single module for a single
 # year based on the input data of an existing complete Estimates run. The input module
-# string can be any of startup, housing_and_households, population, population_by_ase,
-# household_characteristics, employment, or staging
+# string can be any of "startup", "housing_and_households", "population",
+# "population_by_ase", "household_characteristics", "employment", or "staging"
 [debug]
 enabled = false
 run_id = 82 # The run_id for the released v24 Estimates
