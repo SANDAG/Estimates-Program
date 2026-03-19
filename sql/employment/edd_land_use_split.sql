@@ -100,13 +100,13 @@ BEGIN
         SELECT 
             [employment] * ISNULL([headquarters].[share], 1) AS [jobs],
             ISNULL([headquarters].[shape], [businesses].[shape]) AS [SHAPE]
-        FROM [ca_edd].[businesses]
-        LEFT JOIN [ca_edd].[headquarters]
+        FROM [EMPCORE].[ca_edd].[businesses]
+        LEFT JOIN [EMPCORE].[ca_edd].[headquarters]
             ON [businesses].[year] = [headquarters].[year]
             AND [businesses].[emp_id] = [headquarters].[emp_id]
         INNER JOIN (
             SELECT [year], [emp_id], [employment]
-            FROM [ca_edd].[employment]
+            FROM [EMPCORE].[ca_edd].[employment]
             WHERE 
                 [month_id] = 14  -- adjusted employment
                 AND [employment] > 0
@@ -121,8 +121,8 @@ BEGIN
         SELECT 
             [employment] * ISNULL([headquarters].[share], 1) AS [jobs],
             ISNULL([headquarters].[shape], [businesses].[shape]) AS [SHAPE]
-        FROM [ca_edd].[businesses]
-        LEFT JOIN [ca_edd].[headquarters]
+        FROM [EMPCORE].[ca_edd].[businesses]
+        LEFT JOIN [EMPCORE].[ca_edd].[headquarters]
             ON [businesses].[year] = [headquarters].[year]
             AND [businesses].[emp_id] = [headquarters].[emp_id]
         INNER JOIN (
@@ -136,7 +136,7 @@ BEGIN
                         + CASE WHEN [17] IS NOT NULL THEN 1 ELSE 0 END
                     ))
 		        AS [employment]
-	        FROM [ca_edd].[employment]
+	        FROM [EMPCORE].[ca_edd].[employment]
 	        PIVOT(SUM([employment]) FOR [month_id] IN ([15], [16], [17])) AS [pivot]
 	        WHERE
 		        [year] = @year AND
@@ -192,13 +192,16 @@ BEGIN
 	    SELECT
 		    ISNULL([xref_edd].[block], [xref_area].[block]) AS [block],
 		    ISNULL([xref_edd].[mgra], [xref_area].[mgra]) AS [mgra],
-		    SUM(CASE WHEN ISNULL([xref_edd].[block_jobs], 0) = 0 THEN 0
+		    SUM(
+                CASE 
+                    WHEN ISNULL([xref_edd].[block_jobs], 0) = 0 THEN 0
 				    ELSE 1.0 * ISNULL([xref_edd].[mgra_jobs], 0) 
                         / ISNULL([xref_edd].[block_jobs], 0)
-				    END) AS [pct_edd],
+				END
+            ) AS [pct_edd],
 			SUM(ISNULL([xref_area].[pct_area], 0)) AS [pct_area]
 	    FROM [xref_edd]
-	    FULL JOIN [xref_area]
+	    FULL OUTER JOIN [xref_area]
 		    ON [xref_edd].[block] = [xref_area].[block]
             AND [xref_edd].[mgra] = [xref_area].[mgra]
 	    GROUP BY 
@@ -209,21 +212,21 @@ BEGIN
     SELECT
 	    [block],
 	    [mgra],
-	    CASE WHEN SUM([pct_edd]) OVER (PARTITION BY [block]) > 0
-	         THEN [pct_edd] * 1/SUM([pct_edd]) OVER (PARTITION BY [block])
-		     ELSE 0 END AS [pct_edd],
+	    CASE 
+            WHEN SUM([pct_edd]) OVER (PARTITION BY [block]) > 0
+	            THEN [pct_edd] * 1/SUM([pct_edd]) OVER (PARTITION BY [block])
+		    ELSE 0 
+        END AS [pct_edd],
 	    [pct_area] * 1/SUM([pct_area]) OVER (PARTITION BY [block]) AS [pct_area],
-        CASE WHEN SUM([pct_edd]) OVER (PARTITION BY [block])> 0 
-            THEN 1 
-            ELSE 0 END AS edd_flag
-    FROM
-	    [results]
-    WHERE
-	    [mgra] IS NOT NULL
+        CASE 
+            WHEN SUM([pct_edd]) OVER (PARTITION BY [block])> 0 THEN 1 
+            ELSE 0 
+        END AS edd_flag
+    FROM [results]
+    WHERE [mgra] IS NOT NULL
     ORDER BY
         [block],
         [mgra]
 END
 
---Drop Temp table
 DROP TABLE IF EXISTS [#edd];

@@ -94,6 +94,12 @@ def _aggregate_lodes_to_mgra(
 ) -> pd.DataFrame:
     """Aggregate LODES data to MGRA level using allocation percentages.
 
+    This function uses edd percentages to allocate jobs from blocks to MGRAs for blocks
+    flagged as edd_flag = 1 and area percentages for blocks flagged as edd_flag = 0.
+    The edd percentages use employment data from the edd to better allocate jobs where
+    edd jobs data is available while the area percentages use land area to allocate jobs
+    for blocks where edd data is not available.
+
     Args:
         combined_data: LODES data with columns: year, block, naics_code, jobs
         xref: Crosswalk with columns: block, mgra, pct_edd, pct_area, edd_flag
