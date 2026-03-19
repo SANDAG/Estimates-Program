@@ -87,7 +87,7 @@ BEGIN
                 + ISNULL([emp_m12], 0)
             AS [emp_total],
             [SHAPE]
-        FROM [ca_edd].[vi_ca_edd_employment]
+        FROM [EMPCORE].[ca_edd].[vi_ca_edd_employment]
         WHERE [year] = @year
     ) AS [tt]
     WHERE
