@@ -370,7 +370,7 @@ def _create_hh_size(
         )
     )
 
-    # The methodolgy to adjust each individual MGRA. Unfortunately, I don't believe
+    # The methodology to adjust each individual MGRA. Unfortunately, I don't believe
     # there's any way to do this in parallel manner, given how each MGRA has a different
     # distribution and different change requirements
     def adjust_mgra(mgra_data: pd.Series) -> pd.Series:
@@ -388,7 +388,7 @@ def _create_hh_size(
 
             # Depending on if we want to increase the max implied hhp or decrease the
             # min implied hhp, we look above or below the household size to decrease.
-            # But we don't want to go too far above/below, or we could overshot then
+            # But we don't want to go too far above/below, or we could overshoot then
             # have to do the opposite adjustment
             if mgra_data["increase_max"] > 0 and hhs_to_decrease != 7:
                 hhs_to_increase = generator.choice(
@@ -459,7 +459,7 @@ def _create_hh_size(
     )
     if (hh_size["decrease_min"] != 0).any() or (hh_size["increase_max"] != 0).any():
         raise ValueError(
-            "Alignment between actual and implied household popuation failed."
+            "Alignment between actual and implied household population failed."
         )
 
     # Reshape and return
