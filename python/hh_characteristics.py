@@ -255,7 +255,7 @@ def _create_hh_income(
 def _create_hh_size(
     hh_size_inputs: dict[str, pd.DataFrame],
 ) -> dict[str, pd.DataFrame]:
-    """Code to compute MGRA households by size
+    """Code to compute MGRA level households by size
 
     Similar to how income works, this function takes MGRA households, applies tract
     level rates, then integerizes the data. But additionally, we control to MGRA hhp.
@@ -264,21 +264,35 @@ def _create_hh_size(
 
     For example, if we had 10 households of size one, 10 households of size two, ...,
     10 households of size 7+, the minimum amount of household population would be 1*10
-    + 2*20 + ... + 7*10 = 280. On the flip side, the maximum amount of household
-    population, assuming the 7+ category all actually average 11 people, would be 1*10
-    + 2*20 + ... + 11*10 = 320. The actual amount of household population in this MGRA
-    must be between these two values
+    + 2*10 + ... + 7*10 = 280. On the flip side, the maximum amount of household
+    population, assuming the 7+ category all maxes out at 11 people, would be 1*10
+    + 2*10 + ... + 11*10 = 320. Thus, the actual amount of household population in this
+    MGRA must be between these 280 and 320. In MGRAs where there are zero 7+ households,
+    the household size distribution implies an exact amount of household population
+    instead of a range.
 
-    To make this adjustment, we basically move singular households up or down a size
-    depending on the direction of adjustment needed. If the actual hhp is more than the
-    max implied hhp, then households are shifted up. We first do HHS1 --> HHS2, then
-    HHS2 --> 3, ..., HHS6 --> HHS7, HHS1 --> HHS2. This is repeated until the max
-    implied hhp equals the actual hhp.
+    In order to perfectly align the implied household population and the actual
+    household population, we have to manually move some households up or down the
+    size distribution, which naturally shifts the implied household population up or
+    down as well.
 
-    If the actual hhp is less than the min implied hhp, we do the reverse process until
-    the min implied hhp equals the actual hhp. In other words, we do HHS7 --> HHS6,
-    then HHS6 --> HHS5, ..., HHS2 --> HHS1, HHS7 --> HHS6.
+    Specifically, if an MGRA needs implied/actual household population adjustment, then
+    first a random household size is chosen, weighted by the number of households in
+    each size. Then, depending on if we need to increase or decrease the implied
+    household population, we choose a second random household size (non-weighted) above
+    or below the first household size. The first household size loses one household,
+    the second household size gains a household. This shifts the implied household
+    population up/down a small amount, which is repeated until the implied/actual
+    household population are consistent
+
+    Finally, note that for household size, the 7+ category can technically include sizes
+    up to ∞. But for the purposes of balancing implied/actual household population, we
+    assume that every household in the 7+ category has 11 people, which is roughly the
+    max we see from San Diego PUMS data. See GitHub for more details:
+    https://github.com/SANDAG/Estimates-Program/issues/112
     """
+    n_people_in_7_plus = 11
+
     hh = hh_size_inputs["hh"]
     tract_hhs_dist = hh_size_inputs["hhs_tract_controls"]
     mgra_controls = hh_size_inputs["hhs_mgra_controls"]
@@ -299,7 +313,7 @@ def _create_hh_size(
         .reset_index(drop=True)
     )
 
-    # To ensure that we pretty much exactly match ACS distributions, we will do two
+    # To ensure that we pretty much exactly match ACS distributions, we will do two-
     # dimensional controlling on the MGRA level data. After splitting the data into
     # separate tracts, row controls will be total households in each MGRA and column
     # controls will be tract level households by size
@@ -331,11 +345,8 @@ def _create_hh_size(
     # Recombine all the data in preparation for the next controlling step
     hh_size = pd.concat(controlled_groups)
 
-    # For every MGRA, compute the minimum and maximum implied household population. The
-    # maximum assumes that every household in the 7+ category is of size 11, which is
-    # what we get from looking at the San Diego region PUMS data. See GitHub for more
-    # info: https://github.com/SANDAG/Estimates-Program/issues/112
-    n_people_in_7_plus = 11
+    # For every MGRA, compute the minimum and maximum implied household population, as
+    # well as how much the actual household population differs from the implied
     hh_size = (
         hh_size.merge(mgra_controls, on=["run_id", "year", "mgra"], how="left")
         .astype({hhs: int for hhs in utils.HOUSEHOLD_SIZES})
@@ -404,6 +415,9 @@ def _create_hh_size(
                         hhs_to_decrease,
                     )
                 )
+            # The final else covers edge cases, such as when we want to increase the
+            # max, but our randomly chosen hhs_to_decrease is already 7+. In such
+            # situations, we restart the loop and choose a new hhs_to_decrease
             else:
                 continue
 
