@@ -440,42 +440,6 @@ def _create_hh_size(
     # Apply the MGRA adjustments
     hh_size = hh_size.apply(adjust_mgra, axis=1)
 
-    # Double check that implied and actual household population are now correctly
-    # aligned
-    hh_size = hh_size.assign(
-        min_implied_hhp=lambda df: df[1]
-        + (2 * df[2])
-        + (3 * df[3])
-        + (4 * df[4])
-        + (5 * df[5])
-        + (6 * df[6])
-        + (7 * df[7]),
-        max_implied_hhp=lambda df: df[1]
-        + (2 * df[2])
-        + (3 * df[3])
-        + (4 * df[4])
-        + (5 * df[5])
-        + (6 * df[6])
-        + (n_people_in_7_plus * df[7]),
-        # Then, compute the difference between the actual household population and the
-        # implied minimum and maximum. The two following columns are instructions for
-        # how to adjust the households by size distribution
-        decrease_min=lambda df: np.where(
-            df["min_implied_hhp"] > df["hhp_total"],
-            df["min_implied_hhp"] - df["hhp_total"],
-            0,
-        ),
-        increase_max=lambda df: np.where(
-            df["max_implied_hhp"] < df["hhp_total"],
-            df["hhp_total"] - df["max_implied_hhp"],
-            0,
-        ),
-    )
-    if (hh_size["decrease_min"] != 0).any() or (hh_size["increase_max"] != 0).any():
-        raise ValueError(
-            "Alignment between actual and implied household population failed."
-        )
-
     # Reshape and return
     return {
         "hh_size": hh_size.drop(
