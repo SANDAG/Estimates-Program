@@ -255,7 +255,7 @@ def _create_hh_income(
 def _create_hh_size(
     hh_size_inputs: dict[str, pd.DataFrame],
 ) -> dict[str, pd.DataFrame]:
-    """Code to compute MGRA households by size
+    """Code to compute MGRA level households by size
 
     Similar to how income works, this function takes MGRA households, applies tract
     level rates, then integerizes the data. But additionally, we control to MGRA hhp.
@@ -264,21 +264,35 @@ def _create_hh_size(
 
     For example, if we had 10 households of size one, 10 households of size two, ...,
     10 households of size 7+, the minimum amount of household population would be 1*10
-    + 2*20 + ... + 7*10 = 280. On the flip side, the maximum amount of household
-    population, assuming the 7+ category all actually average 11 people, would be 1*10
-    + 2*20 + ... + 11*10 = 320. The actual amount of household population in this MGRA
-    must be between these two values
+    + 2*10 + ... + 7*10 = 280. On the flip side, the maximum amount of household
+    population, assuming the 7+ category all maxes out at 11 people, would be 1*10
+    + 2*10 + ... + 11*10 = 320. Thus, the actual amount of household population in this
+    MGRA must be between these 280 and 320. In MGRAs where there are zero 7+ households,
+    the household size distribution implies an exact amount of household population
+    instead of a range.
 
-    To make this adjustment, we basically move singular households up or down a size
-    depending on the direction of adjustment needed. If the actual hhp is more than the
-    max implied hhp, then households are shifted up. We first do HHS1 --> HHS2, then
-    HHS2 --> 3, ..., HHS6 --> HHS7, HHS1 --> HHS2. This is repeated until the max
-    implied hhp equals the actual hhp.
+    In order to perfectly align the implied household population and the actual
+    household population, we have to manually move some households up or down the
+    size distribution, which naturally shifts the implied household population up or
+    down as well.
 
-    If the actual hhp is less than the min implied hhp, we do the reverse process until
-    the min implied hhp equals the actual hhp. In other words, we do HHS7 --> HHS6,
-    then HHS6 --> HHS5, ..., HHS2 --> HHS1, HHS7 --> HHS6.
+    Specifically, if an MGRA needs implied/actual household population adjustment, then
+    first a random household size is chosen, weighted by the number of households in
+    each size. Then, depending on if we need to increase or decrease the implied
+    household population, we choose a second random household size (non-weighted) above
+    or below the first household size. The first household size loses one household,
+    the second household size gains a household. This shifts the implied household
+    population up/down a small amount, which is repeated until the implied/actual
+    household population are consistent
+
+    Finally, note that for household size, the 7+ category can technically include sizes
+    up to ∞. But for the purposes of balancing implied/actual household population, we
+    assume that every household in the 7+ category has 11 people, which is roughly the
+    max we see from San Diego PUMS data. See GitHub for more details:
+    https://github.com/SANDAG/Estimates-Program/issues/112
     """
+    n_people_in_7_plus = 11
+
     hh = hh_size_inputs["hh"]
     tract_hhs_dist = hh_size_inputs["hhs_tract_controls"]
     mgra_controls = hh_size_inputs["hhs_mgra_controls"]
@@ -299,7 +313,7 @@ def _create_hh_size(
         .reset_index(drop=True)
     )
 
-    # To ensure that we pretty much exactly match ACS distributions, we will do two
+    # To ensure that we pretty much exactly match ACS distributions, we will do two-
     # dimensional controlling on the MGRA level data. After splitting the data into
     # separate tracts, row controls will be total households in each MGRA and column
     # controls will be tract level households by size
@@ -328,68 +342,121 @@ def _create_hh_size(
         group[utils.HOUSEHOLD_SIZES] = controlled_data
         controlled_groups.append(group)
 
-    # Coerce the controlled data back into the original format. Note that pd.melt()
-    # does not include the "tract" column, which functionally drops it
+    # Recombine all the data in preparation for the next controlling step
+    hh_size = pd.concat(controlled_groups)
+
+    # For every MGRA, compute the minimum and maximum implied household population, as
+    # well as how much the actual household population differs from the implied
     hh_size = (
-        pd.concat(controlled_groups).melt(
+        hh_size.merge(mgra_controls, on=["run_id", "year", "mgra"], how="left")
+        .astype({hhs: int for hhs in utils.HOUSEHOLD_SIZES})
+        .assign(
+            min_implied_hhp=lambda df: df[1]
+            + (2 * df[2])
+            + (3 * df[3])
+            + (4 * df[4])
+            + (5 * df[5])
+            + (6 * df[6])
+            + (7 * df[7]),
+            max_implied_hhp=lambda df: df[1]
+            + (2 * df[2])
+            + (3 * df[3])
+            + (4 * df[4])
+            + (5 * df[5])
+            + (6 * df[6])
+            + (n_people_in_7_plus * df[7]),
+            # Then, compute the difference between the actual household population and the
+            # implied minimum and maximum. The two following columns are instructions for
+            # how to adjust the households by size distribution
+            decrease_min=lambda df: np.where(
+                df["min_implied_hhp"] > df["hhp_total"],
+                df["min_implied_hhp"] - df["hhp_total"],
+                0,
+            ),
+            increase_max=lambda df: np.where(
+                df["max_implied_hhp"] < df["hhp_total"],
+                df["hhp_total"] - df["max_implied_hhp"],
+                0,
+            ),
+        )
+    )
+
+    # The methodology to adjust each individual MGRA. Unfortunately, I don't believe
+    # there's any way to do this in parallel manner, given how each MGRA has a different
+    # distribution and different change requirements
+    def adjust_mgra(mgra_data: pd.Series) -> pd.Series:
+        if mgra_data["increase_max"] == 0 and mgra_data["decrease_min"] == 0:
+            return mgra_data
+        while True:
+            # Choose a random household size to decrease, weighted by the number of
+            # households in the size. Note the weighting ensures that a household size
+            # with non-zero households will always be chosen
+            hhs_to_decrease = generator.choice(
+                utils.HOUSEHOLD_SIZES,
+                p=mgra_data[utils.HOUSEHOLD_SIZES]
+                / mgra_data[utils.HOUSEHOLD_SIZES].sum(),
+            )
+
+            # Depending on if we want to increase the max implied hhp or decrease the
+            # min implied hhp, we look above or below the household size to decrease.
+            # But we don't want to go too far above/below, or we could overshoot then
+            # have to do the opposite adjustment
+            if mgra_data["increase_max"] > 0 and hhs_to_decrease != 7:
+                hhs_to_increase = generator.choice(
+                    range(
+                        hhs_to_decrease + 1,
+                        np.min([hhs_to_decrease + mgra_data["increase_max"], 7]) + 1,
+                    )
+                )
+            elif mgra_data["decrease_min"] > 0 and hhs_to_decrease != 1:
+                hhs_to_increase = generator.choice(
+                    range(
+                        np.max([1, hhs_to_decrease - mgra_data["decrease_min"]]),
+                        hhs_to_decrease,
+                    )
+                )
+            # The final else covers edge cases, such as when we want to increase the
+            # max, but our randomly chosen hhs_to_decrease is already 7+. In such
+            # situations, we restart the loop and choose a new hhs_to_decrease
+            else:
+                continue
+
+            # Execute the change and recompute the remaining change needed
+            mgra_data[hhs_to_decrease] -= 1
+            mgra_data[hhs_to_increase] += 1
+            if mgra_data["increase_max"] > 0:
+                mgra_data["increase_max"] -= (hhs_to_increase - hhs_to_decrease) + (
+                    n_people_in_7_plus - 7 if hhs_to_increase == 7 else 0
+                )
+            else:
+                mgra_data["decrease_min"] += hhs_to_increase - hhs_to_decrease
+
+            # Check if we are done with this MGRA. Note, the "increase_max" is allowed
+            # to overshoot since if the increase size is seven, we actually change the
+            # implied hhp by an additional four
+            if mgra_data["increase_max"] <= 0 and mgra_data["decrease_min"] == 0:
+                return mgra_data
+
+    # Apply the MGRA adjustments
+    hh_size = hh_size.apply(adjust_mgra, axis=1)
+
+    # Reshape and return
+    return {
+        "hh_size": hh_size.drop(
+            columns=[
+                "tract",
+                "hhp_total",
+                "min_implied_hhp",
+                "max_implied_hhp",
+                "decrease_min",
+                "increase_max",
+            ]
+        ).melt(
             id_vars=["run_id", "year", "mgra"],
-            value_vars=utils.HOUSEHOLD_SIZES,
             var_name="household_size",
             value_name="hh",
         )
-        # For some reason, melt forces the household_size column to object type, even
-        # though all values are integer
-        .astype(int)
-    )
-
-    # Control each MGRA to align with household population
-    controlled_groups = []
-    for mgra, group in hh_size.groupby("mgra"):
-        control = mgra_controls[mgra_controls["mgra"] == mgra]
-        hhp_total = control["hhp_total"].values[0]
-
-        # Compute the minimum and maximum implied hhp from the hhs distribution. The
-        # maximum assumes that every household in the 7+ category is of size 11, which
-        # is what we get from looking at the San Diego region PUMS data. See GitHub
-        # for more info: https://github.com/SANDAG/Estimates-Program/issues/112
-        n_people_in_7_plus = 11
-        min_implied_hhp = (group["hh"] * group["household_size"]).sum()
-        max_implied_hhp = (
-            group["hh"] * group["household_size"].replace(7, n_people_in_7_plus)
-        ).sum()
-
-        # If the maximum implied hhp is smaller than the actual hhp, then we need to
-        # shift some households from smaller sizes to larger sizes. Specifically, we
-        # will shift one household from 1-->2, 2-->3, 6-->7+, 1-->2, etc. until
-        # satisfied
-        if max_implied_hhp < hhp_total:
-            size_to_change = 1
-            while max_implied_hhp < hhp_total:
-                if group[group["household_size"] == size_to_change]["hh"].values[0] > 0:
-                    group.loc[group["household_size"] == size_to_change, "hh"] -= 1
-                    group.loc[group["household_size"] == size_to_change + 1, "hh"] += 1
-                    max_implied_hhp += 1
-                    if size_to_change == 6:
-                        max_implied_hhp += n_people_in_7_plus - 7
-                # Increase the size by one, but keep it in the inclusive range 1-6
-                size_to_change = (size_to_change % 6) + 1
-
-        # If the minimum implied hhp is greater than the actual hhp, then we need to
-        # shift some households from larger sizes to smaller sizes
-        if min_implied_hhp > hhp_total:
-            size_to_change = 7
-            while min_implied_hhp > hhp_total:
-                if group[group["household_size"] == size_to_change]["hh"].values[0] > 0:
-                    group.loc[group["household_size"] == size_to_change, "hh"] -= 1
-                    group.loc[group["household_size"] == size_to_change - 1, "hh"] += 1
-                    min_implied_hhp -= 1
-                # Decrease size by one, but keep it in the inclusive range 2-7
-                size_to_change = (size_to_change - 3) % 6 + 2
-
-        # Store the controlled group
-        controlled_groups.append(group)
-
-    return {"hh_size": pd.concat(controlled_groups)}
+    }
 
 
 def _validate_hh_income_outputs(hh_income_outputs: dict[str, pd.DataFrame]) -> None:
