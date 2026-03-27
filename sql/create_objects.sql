@@ -33,6 +33,7 @@ CREATE TABLE [inputs].[controls_ase] (
     CONSTRAINT [fk_inputs_controls_ase_run_id] FOREIGN KEY ([run_id]) REFERENCES [metadata].[run] ([run_id]),
     CONSTRAINT [chk_non_negative_inputs_controls_ase] CHECK ([value] >= 0)
 )
+GO
 
 CREATE TABLE [inputs].[controls_tract] (
     [run_id] INT NOT NULL,
@@ -45,6 +46,7 @@ CREATE TABLE [inputs].[controls_tract] (
     CONSTRAINT [fk_inputs_controls_tract_run_id] FOREIGN KEY ([run_id]) REFERENCES [metadata].[run] ([run_id]),
     CONSTRAINT [chk_non_negative_inputs_controls_tract] CHECK ([value] >= 0)
 )
+GO
 
 CREATE TABLE [inputs].[controls_city] (
     [run_id] INT NOT NULL,
@@ -57,10 +59,13 @@ CREATE TABLE [inputs].[controls_city] (
     CONSTRAINT [fk_inputs_controls_city_run_id] FOREIGN KEY ([run_id]) REFERENCES [metadata].[run] ([run_id]),
     CONSTRAINT [chk_non_negative_inputs_controls_city] CHECK ([value] >= 0)
 )
+GO
 
 CREATE TABLE [inputs].[mgra] (
     [run_id] INT NOT NULL,
     [mgra] INT NOT NULL,
+    [2010_census_blockgroup] NVARCHAR(12) NOT NULL,
+    [2020_census_blockgroup] NVARCHAR(12) NOT NULL,
     [2010_census_tract] NVARCHAR(11) NOT NULL,
     [2020_census_tract] NVARCHAR(11) NOT NULL,
     [puma00] nvarchar(5) NOT NULL,
@@ -72,6 +77,7 @@ CREATE TABLE [inputs].[mgra] (
     CONSTRAINT [fk_inputs_mgra_run_id] FOREIGN KEY ([run_id]) REFERENCES [metadata].[run] ([run_id])
     -- No non-negative CHECK here as these values are directly pulled from [GeoDepot]
 ) WITH (DATA_COMPRESSION = PAGE)
+GO
 
 CREATE TABLE [inputs].[special_mgras] (
     [id] INT IDENTITY(1,1),
@@ -142,6 +148,7 @@ CREATE TABLE [outputs].[ase] (
     CONSTRAINT [fk_outputs_ase_mgra] FOREIGN KEY ([run_id], [mgra]) REFERENCES [inputs].[mgra] ([run_id], [mgra]),
     CONSTRAINT [chk_non_negative_outputs_ase] CHECK ([value] >= 0)
 )
+GO
 
 -- For purposes of data insertion speed, only non-zero ASE data is inserted into
 -- [outputs].[ase]. In case you want the full table with zeros, you can use the below
@@ -222,6 +229,7 @@ BEGIN
         AND [shell].[ethnicity] = [ase].[ethnicity]
     RETURN;
 END
+GO
 
 CREATE TABLE [outputs].[gq] (
     [run_id] INT NOT NULL,
@@ -235,6 +243,7 @@ CREATE TABLE [outputs].[gq] (
     CONSTRAINT [fk_outputs_gq_mgra] FOREIGN KEY ([run_id], [mgra]) REFERENCES [inputs].[mgra] ([run_id], [mgra]),
     CONSTRAINT [chk_non_negative_outputs_gq] CHECK ([value] >= 0)
 )
+GO
 
 CREATE TABLE [outputs].[hh] (
     [run_id] INT NOT NULL,
@@ -248,6 +257,7 @@ CREATE TABLE [outputs].[hh] (
     CONSTRAINT [fk_outputs_hh_mgra] FOREIGN KEY ([run_id], [mgra]) REFERENCES [inputs].[mgra] ([run_id], [mgra]),
     CONSTRAINT [chk_non_negative_outputs_hh] CHECK ([value] >= 0)
 )
+GO
 
 CREATE TABLE [outputs].[hh_characteristics] (
     [run_id] INT NOT NULL,
@@ -261,6 +271,7 @@ CREATE TABLE [outputs].[hh_characteristics] (
     CONSTRAINT [fk_outputs_hh_characteristics_mgra] FOREIGN KEY ([run_id], [mgra]) REFERENCES [inputs].[mgra] ([run_id], [mgra]),
     CONSTRAINT [chk_non_negative_outputs_hh_characteristics] CHECK ([value] >= 0)
 )
+GO
 
 CREATE TABLE [outputs].[hs] (
     [run_id] INT NOT NULL,
