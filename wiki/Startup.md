@@ -6,7 +6,7 @@ The Startup module has no inputs.
 
 ## MGRA Geography and Cross-Reference (`[inputs].[mgra]`)
 
-Create the Master Geographic Reference Area (MGRA) geography and cross-reference, used for every year of an Estimates run. The MGRA is the base unit of geography and nests within the larger geographies used by the Estimates Program. As of now, these geographies are the census tracts and jurisdictions within San Diego County. Cross-references are pulled from SANDAG's internal `[GeoAnalyst]` database, which contains the documentation and methodology used to generate the cross-references.
+Create the Master Geographic Reference Area (MGRA) geography and cross-reference, used for every year of an Estimates run. The MGRA is the base unit of geography and nests within the larger geographies used by the Estimates Program. As of now, these geographies are the census blockgroups, census tracts, and jurisdictions within San Diego County. Cross-references are pulled from SANDAG's internal `[GeoAnalyst]` database, which contains the documentation and methodology used to generate the cross-references. The `[GeoAnalyst]` repository is private, for SANDAG internal use only, and is located [here](https://github.com/SANDAG/GeoAnalyst).
 
 ## Special MGRAs (`[inputs].[special_mgras]`)
 
