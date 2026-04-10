@@ -715,6 +715,7 @@ def read_sql_query_fallback(max_lookback: int = 1, **kwargs: dict) -> pd.DataFra
     # Messages that trigger year lookback
     lookback_messages = [
         "ACS 5-Year Table does not exist",
+        "ACS 1-Year Table does not exist",
         "LODES data does not exist",
         "EDD point-level data does not exist",
         "QCEW data does not exist",

@@ -34,7 +34,7 @@ _DISTINCT_COUNTS = {
         "2010_tract": 627,
         "2020_tract": 736,
         "city": 19,
-        "naics_code": 21,
+        "naics_code": 22,
     },
     "mgra15": {
         "mgra": 24321,
