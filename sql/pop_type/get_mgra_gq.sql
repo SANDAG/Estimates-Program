@@ -26,11 +26,11 @@ INTO [#tt_shell]
 FROM [inputs].[mgra]
 CROSS JOIN (
     SELECT [gq_type] FROM (
-    	VALUES
-    		('Group Quarters - College'),
-    		('Group Quarters - Military'),
-    		('Group Quarters - Institutional Correctional Facilities'),
-    		('Group Quarters - Other')
+        VALUES
+            ('Group Quarters - College'),
+            ('Group Quarters - Military'),
+            ('Group Quarters - Institutional Correctional Facilities'),
+            ('Group Quarters - Other')
     ) AS [tt] ([gq_type])
 ) AS [gq_type]
 WHERE [run_id] = @run_id
@@ -69,40 +69,40 @@ SELECT
 FROM [#tt_shell]
 LEFT OUTER JOIN (
     SELECT
-    	[mgra], 
-    	SUM([gqCivCol]) AS [Group Quarters - College],
-    	SUM([gqMil]) AS [Group Quarters - Military],
-    	SUM(
-    		CASE WHEN [special_mgras].[pop_type] = 'Group Quarters - Institutional Correctional Facilities'
-    			 THEN [gqOther]
-    			 ELSE 0 END
-    	) AS [Group Quarters - Institutional Correctional Facilities],
-    	SUM(
-    		CASE WHEN [special_mgras].[pop_type] != 'Group Quarters - Institutional Correctional Facilities'
-    				OR [special_mgras].[pop_type] IS NULL
-    			 THEN [gqOther]
-    			 ELSE 0 END
-    	) AS [Group Quarters - Other]
+        [mgra], 
+        SUM([gqCivCol]) AS [Group Quarters - College],
+        SUM([gqMil]) AS [Group Quarters - Military],
+        SUM(
+            CASE WHEN [special_mgras].[pop_type] = 'Group Quarters - Institutional Correctional Facilities'
+                 THEN [gqOther]
+                 ELSE 0 END
+        ) AS [Group Quarters - Institutional Correctional Facilities],
+        SUM(
+            CASE WHEN [special_mgras].[pop_type] != 'Group Quarters - Institutional Correctional Facilities'
+                    OR [special_mgras].[pop_type] IS NULL
+                 THEN [gqOther]
+                 ELSE 0 END
+        ) AS [Group Quarters - Other]
     FROM [inputs].[mgra]
     LEFT OUTER JOIN (
-    	SELECT
-    		[mgra15],
-    		[pop_type]
-    	FROM [inputs].[special_mgras]
-    	WHERE @year BETWEEN [start_year] AND [end_year]
+        SELECT
+            [mgra15],
+            [pop_type]
+        FROM [inputs].[special_mgras]
+        WHERE @year BETWEEN [start_year] AND [end_year]
     ) AS [special_mgras]
-    	ON [mgra].[mgra] = CASE WHEN @mgra_version = 'mgra15' THEN [special_mgras].[mgra15] END
+        ON [mgra].[mgra] = CASE WHEN @mgra_version = 'mgra15' THEN [special_mgras].[mgra15] END
     INNER JOIN [#gq]
-    	ON [mgra].[Shape].STIntersects([#gq].[Shape]) = 1
+        ON [mgra].[Shape].STIntersects([#gq].[Shape]) = 1
     WHERE [run_id] = @run_id
     GROUP BY [mgra]
 ) AS [pivot]
 UNPIVOT (
     [value] FOR [gq_type] IN (
-    	[Group Quarters - College],
-    	[Group Quarters - Military],
-    	[Group Quarters - Institutional Correctional Facilities],
-    	[Group Quarters - Other]
+        [Group Quarters - College],
+        [Group Quarters - Military],
+        [Group Quarters - Institutional Correctional Facilities],
+        [Group Quarters - Other]
     )
 ) AS [unpivot]
     ON [#tt_shell].[mgra] = [unpivot].[mgra]

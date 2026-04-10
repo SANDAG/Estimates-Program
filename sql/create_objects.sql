@@ -51,7 +51,7 @@ GO
 CREATE TABLE [inputs].[controls_city] (
     [run_id] INT NOT NULL,
     [year] INT NOT NULL,
-    [city]  NVARCHAR(15) NOT NULL,
+    [city]  NVARCHAR(31) NOT NULL,
     [metric] NVARCHAR(100) NOT NULL,
     [value] FLOAT NOT NULL, 
     INDEX [ccsi_inputs_controls_city] CLUSTERED COLUMNSTORE,
@@ -71,7 +71,7 @@ CREATE TABLE [inputs].[mgra] (
     [puma00] nvarchar(5) NOT NULL,
     [puma10] nvarchar(5) NOT NULL,
     [puma20] nvarchar(5) NOT NULL,
-    [cities_2020] NVARCHAR(15) NOT NULL,
+    [cities_2020] NVARCHAR(31) NOT NULL,
     [shape] geometry NOT NULL,
     CONSTRAINT [pk_inputs_mgra] PRIMARY KEY ([run_id], [mgra]),
     CONSTRAINT [fk_inputs_mgra_run_id] FOREIGN KEY ([run_id]) REFERENCES [metadata].[run] ([run_id])
