@@ -126,21 +126,21 @@ BEGIN
             ON [businesses].[year] = [headquarters].[year]
             AND [businesses].[emp_id] = [headquarters].[emp_id]
         INNER JOIN (
-	        SELECT
-		        [year],
-		        [emp_id],
-		        1.0 * ((ISNULL([15], 0) + ISNULL([16], 0) + ISNULL([17], 0)) 
+            SELECT
+                [year],
+                [emp_id],
+                1.0 * ((ISNULL([15], 0) + ISNULL([16], 0) + ISNULL([17], 0)) 
                     /
-			        (CASE WHEN [15] IS NOT NULL THEN 1 ELSE 0 END 
+                    (CASE WHEN [15] IS NOT NULL THEN 1 ELSE 0 END 
                         + CASE WHEN [16] IS NOT NULL THEN 1 ELSE 0 END 
                         + CASE WHEN [17] IS NOT NULL THEN 1 ELSE 0 END
                     ))
-		        AS [employment]
-	        FROM [EMPCORE].[ca_edd].[employment]
-	        PIVOT(SUM([employment]) FOR [month_id] IN ([15], [16], [17])) AS [pivot]
-	        WHERE
-		        [year] = @year AND
-		        ([15] IS NOT NULL OR [16] IS NOT NULL OR [17] IS NOT NULL)
+                AS [employment]
+            FROM [EMPCORE].[ca_edd].[employment]
+            PIVOT(SUM([employment]) FOR [month_id] IN ([15], [16], [17])) AS [pivot]
+            WHERE
+                [year] = @year AND
+                ([15] IS NOT NULL OR [16] IS NOT NULL OR [17] IS NOT NULL)
         ) AS [employment]
             ON [businesses].[year] = [employment].[year]
             AND [businesses].[emp_id] = [employment].[emp_id]
@@ -149,8 +149,7 @@ END
 
 -- Send error message if no data exists --------------------------------------
 IF NOT EXISTS (
-    SELECT TOP (1) *
-	FROM [#edd]
+    SELECT TOP (1) * FROM [#edd]
 )
 SELECT @msg AS [msg]
 ELSE
@@ -162,8 +161,8 @@ BEGIN
         SELECT
             [CENSUSBLOCKS].[GEOID20] AS [block],
             [MGRA15].[MGRA] AS [mgra],
-	        SUM([jobs]) AS [mgra_jobs],
-	        SUM(SUM([jobs])) OVER (PARTITION BY [CENSUSBLOCKS].[GEOID20]) 
+            SUM([jobs]) AS [mgra_jobs],
+            SUM(SUM([jobs])) OVER (PARTITION BY [CENSUSBLOCKS].[GEOID20]) 
             AS [block_jobs]
         FROM [#edd]
         INNER JOIN [GeoDepot].[sde].[CENSUSBLOCKS]
@@ -175,49 +174,49 @@ BEGIN
     ),
     -- Get % area overlap of Census 2020 Block area and MGRAs
     [xref_area] AS (
-		SELECT
-			[CENSUSBLOCKS].[GEOID20] AS [block],
-			[MGRA15].[MGRA] AS [mgra],
-			([CENSUSBLOCKS].[Shape].STIntersection([MGRA15].[Shape]).STArea() 
+        SELECT
+            [CENSUSBLOCKS].[GEOID20] AS [block],
+            [MGRA15].[MGRA] AS [mgra],
+            ([CENSUSBLOCKS].[Shape].STIntersection([MGRA15].[Shape]).STArea() 
                 / [CENSUSBLOCKS].[Shape].STArea()) 
             AS [pct_area]
-		FROM [GeoDepot].[sde].[CENSUSBLOCKS]
-		LEFT JOIN [GeoDepot].[sde].[MGRA15] 
-			ON [CENSUSBLOCKS].[Shape].STIntersects([MGRA15].[Shape]) = 1
-		WHERE ([CENSUSBLOCKS].[Shape].STIntersection([MGRA15].[Shape]).STArea() 
+        FROM [GeoDepot].[sde].[CENSUSBLOCKS]
+        LEFT JOIN [GeoDepot].[sde].[MGRA15] 
+            ON [CENSUSBLOCKS].[Shape].STIntersects([MGRA15].[Shape]) = 1
+        WHERE ([CENSUSBLOCKS].[Shape].STIntersection([MGRA15].[Shape]).STArea() 
             / [CENSUSBLOCKS].[Shape].STArea()) > 0.01
     ),
     -- Combine results and calculate % allocations of Census 2020 blocks to MGRAs
     [results] AS (
-	    SELECT
-		    ISNULL([xref_edd].[block], [xref_area].[block]) AS [block],
-		    ISNULL([xref_edd].[mgra], [xref_area].[mgra]) AS [mgra],
-		    SUM(
+        SELECT
+            ISNULL([xref_edd].[block], [xref_area].[block]) AS [block],
+            ISNULL([xref_edd].[mgra], [xref_area].[mgra]) AS [mgra],
+            SUM(
                 CASE 
                     WHEN ISNULL([xref_edd].[block_jobs], 0) = 0 THEN 0
-				    ELSE 1.0 * ISNULL([xref_edd].[mgra_jobs], 0) 
+                    ELSE 1.0 * ISNULL([xref_edd].[mgra_jobs], 0) 
                         / ISNULL([xref_edd].[block_jobs], 0)
-				END
+                END
             ) AS [pct_edd],
-			SUM(ISNULL([xref_area].[pct_area], 0)) AS [pct_area]
-	    FROM [xref_edd]
-	    FULL OUTER JOIN [xref_area]
-		    ON [xref_edd].[block] = [xref_area].[block]
+            SUM(ISNULL([xref_area].[pct_area], 0)) AS [pct_area]
+        FROM [xref_edd]
+        FULL OUTER JOIN [xref_area]
+            ON [xref_edd].[block] = [xref_area].[block]
             AND [xref_edd].[mgra] = [xref_area].[mgra]
-	    GROUP BY 
-	        ISNULL([xref_edd].[block], [xref_area].[block]),
-	        ISNULL([xref_edd].[mgra], [xref_area].[mgra])
+        GROUP BY 
+            ISNULL([xref_edd].[block], [xref_area].[block]),
+            ISNULL([xref_edd].[mgra], [xref_area].[mgra])
     )
     -- Return results ensuring % allocations add to 1 within each Census 2020 Block
     SELECT
-	    [block],
-	    [mgra],
-	    CASE 
+        [block],
+        [mgra],
+        CASE 
             WHEN SUM([pct_edd]) OVER (PARTITION BY [block]) > 0
-	            THEN [pct_edd] * 1/SUM([pct_edd]) OVER (PARTITION BY [block])
-		    ELSE 0 
+                THEN [pct_edd] * 1/SUM([pct_edd]) OVER (PARTITION BY [block])
+            ELSE 0 
         END AS [pct_edd],
-	    [pct_area] * 1/SUM([pct_area]) OVER (PARTITION BY [block]) AS [pct_area],
+        [pct_area] * 1/SUM([pct_area]) OVER (PARTITION BY [block]) AS [pct_area],
         CASE 
             WHEN SUM([pct_edd]) OVER (PARTITION BY [block])> 0 THEN 1 
             ELSE 0 

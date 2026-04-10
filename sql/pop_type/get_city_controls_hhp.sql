@@ -8,9 +8,9 @@ with [dof] AS (
     -- E-8 Estimates - 2010-2019
     SELECT
         [year],
-    	CASE
+        CASE
             WHEN [area_name] = 'Balance of County' THEN 'Unincorporated San Diego County'
-    		ELSE CONCAT('City of ', [area_name])
+            ELSE CONCAT('City of ', [area_name])
         END AS [city],
         [household_population]
     FROM [socioec_data].[ca_dof].[estimates_e8]
@@ -25,10 +25,10 @@ with [dof] AS (
     -- E-5 Estimates - 2020+
     SELECT
         [year],
-    	CASE
+        CASE
             WHEN [area_name] = 'Balance of County' THEN 'Unincorporated San Diego County'
             WHEN [area_name] = 'National City' THEN 'City of National City'
-    		ELSE CONCAT('City of ', REPLACE([area_name], ' City', ''))
+            ELSE CONCAT('City of ', REPLACE([area_name], ' City', ''))
         END AS [city],
         [household_population]
     FROM [socioec_data].[ca_dof].[estimates_e5]
