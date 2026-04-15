@@ -2,7 +2,7 @@
 
 -- Initialize parameters -----------------------------------------------------
 DECLARE @year INTEGER = :year;
-DECLARE @msg nvarchar(25) = 'ACS 5-Year Table does not exist';
+DECLARE @msg nvarchar(31) = 'ACS 5-Year Table does not exist';
 
 -- Send error message if no data exists --------------------------------------
 IF NOT EXISTS (
@@ -33,7 +33,7 @@ BEGIN
         ON [values].[table_id] = [tables].[table_id]
     WHERE
         [tables].[name] = 'B24080'
-        AND [tables].[product] = '5y'
+        AND [tables].[product] = '5Y'
         -- TODO: currently excluding "self-employed in own incorporated business workers", is this correct?
         AND REPLACE([variables].[label], ':', '') IN (
             'Estimate!!Total!!Male!!Self-employed in own not incorporated business workers',

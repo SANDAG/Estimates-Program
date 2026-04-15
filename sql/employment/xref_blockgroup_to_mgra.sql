@@ -12,7 +12,7 @@ following methodology.
 -- Initialize parameters -----------------------------------------------------
 DECLARE @run_id INTEGER = :run_id;
 DECLARE @year INTEGER = :year;
-DECLARE @msg nvarchar(25) = 'ACS 5-Year Table does not exist';
+DECLARE @msg nvarchar(31) = 'ACS 5-Year Table does not exist';
 
 -- Send error message if no data exists --------------------------------------
 IF NOT EXISTS (
@@ -69,7 +69,7 @@ BEGIN
             AND [value] > 0
         GROUP BY [mgra]
     ),
-    -- Exxhaustive list of MGRAs and Blockgroups
+    -- Exhaustive list of MGRAs and Blockgroups
     [mgras] AS (
         SELECT
             [mgra],

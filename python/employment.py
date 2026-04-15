@@ -174,7 +174,10 @@ def _aggregate_self_emp_to_mgra(
         elif row.get("flag") == "pct_split":
             return row["value"] * row["pct_split"]
         else:
-            return 0.0
+            raise ValueError(
+                f"Unexpected allocation flag {row.get('flag')!r}; "
+                "expected one of {'pct_18_64', 'pct_pop', 'pct_split'}"
+            )
 
     merged["weighted_value"] = merged.apply(calc_weighted_value, axis=1)
 
@@ -298,8 +301,8 @@ def _validate_jobs_inputs(jobs_inputs: dict[str, pd.DataFrame]) -> None:
         negative={},
         null={},
     )
-    # Self Employed only includes blocks with self-employed individuals therefore no row
-    # count validation performed (Confirm this makes sense)
+    # Self Employed only includes block groups with self-employed individuals therefore
+    # no row count validation performed
     tests.validate_data(
         "Self-employed block group data",
         jobs_inputs["self_emp_bg"],

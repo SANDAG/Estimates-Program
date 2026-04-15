@@ -2,7 +2,7 @@
 
 -- Initialize parameters -----------------------------------------------------
 DECLARE @year INTEGER = :year;
-DECLARE @msg nvarchar(25) = 'ACS 1-Year Table does not exist';
+DECLARE @msg nvarchar(31) = 'ACS 1-Year Table does not exist';
 
 -- Send error message if no data exists --------------------------------------
 IF NOT EXISTS (
@@ -13,8 +13,8 @@ IF NOT EXISTS (
         AND [year] = @year
         AND 
             (
-            [tables].[product] = '1y' 
-            OR ([tables].[year] = 2020 AND [tables].[product] = '5y')
+            [tables].[product] = '1Y' 
+            OR ([tables].[year] = 2020 AND [tables].[product] = '5Y')
             )
 )
 SELECT @msg AS [msg]
@@ -38,8 +38,8 @@ BEGIN
         -- there is no 1-year data release for 2020
         AND 
             (
-            [tables].[product] = '1y' 
-            OR ([tables].[year] = 2020 AND [tables].[product] = '5y')
+            [tables].[product] = '1Y' 
+            OR ([tables].[year] = 2020 AND [tables].[product] = '5Y')
             )
         -- TODO: currently excluding "self-employed in own incorporated business workers", is this correct?
         AND REPLACE([variables].[label], ':', '') IN (
