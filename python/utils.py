@@ -761,3 +761,6 @@ def read_sql_query_fallback(max_lookback: int = 1, **kwargs: dict) -> pd.DataFra
                 df["year"] = original_year
 
         return df
+    raise ValueError(
+        f"Data not found for year={original_year} within max_lookback={max_lookback}."
+    )
