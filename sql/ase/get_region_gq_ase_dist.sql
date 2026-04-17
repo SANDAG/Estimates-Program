@@ -143,7 +143,7 @@ BEGIN
 
 
     -- Calculate age/sex/ethnicity distributions from 5-year ACS PUMS --------
-    with [acs_data] AS (
+    WITH [acs_data] AS (
         SELECT  
             CASE
                 WHEN (@pums_year BETWEEN 2010 AND 2011 AND [SCHG] IN ('6', '7'))
