@@ -34,7 +34,10 @@ SET NOCOUNT ON;
 -- Initialize parameters -----------------------------------------------------
 DECLARE @run_id integer = :run_id;
 DECLARE @year integer = :year;
-DECLARE @msg nvarchar(45) = 'ACS 5-Year Table does not exist';
+DECLARE @msg nvarchar(45) = 'PUMS 5-Year does not exist';
+-- Maximum 5-Year PUMS data that has been reviewed and incorporated
+-- Field definitions may change so new releases must be reviewed
+DECLARE @max_year integer = 2024  
 
 -- Pre-2012 PUMS does not contain the [DIS] field requiring use of 2012
 -- https://github.com/SANDAG/Estimates-Program/issues/203.
@@ -52,6 +55,10 @@ IF NOT EXISTS (
         AND [TABLE_NAME] = 'vi_5y_' + CONVERT(nvarchar, @pums_year-4) + '_' + CONVERT(nvarchar, @pums_year) + '_persons_sd'
 )
 SELECT @msg AS [msg]
+ELSE IF @year > @max_year
+BEGIN
+    SELECT 'PUMS data exists but has not been reviewed' AS [msg]
+END
 ELSE
 BEGIN
     -- Create shell table of required categories -----------------------------
@@ -119,7 +126,7 @@ BEGIN
         CASE 
             WHEN @pums_year BETWEEN 2010 AND 2011 THEN 'SELECT [SCHG], [ESR], NULL AS [DIS], [AGEP], [SEX], [HISP], [RAC1P], NULL AS [RELSHIPP], [RELP], [PWGTP] FROM [acs].[pums].[vi_5y_' + CONVERT(nvarchar, @pums_year-4) + '_' + CONVERT(nvarchar, @pums_year) + '_persons_sd]'
             WHEN @pums_year BETWEEN 2012 AND 2018 THEN 'SELECT [SCHG], [ESR], [DIS], [AGEP], [SEX], [HISP], [RAC1P], NULL AS [RELSHIPP], [RELP], [PWGTP] FROM [acs].[pums].[vi_5y_' + CONVERT(nvarchar, @pums_year-4) + '_' + CONVERT(nvarchar, @pums_year) + '_persons_sd]'
-            WHEN @pums_year BETWEEN 2019 AND 2024 THEN 'SELECT [SCHG], [ESR], [DIS], [AGEP], [SEX], [HISP], [RAC1P], [RELSHIPP], NULL AS [RELP], [PWGTP] FROM [acs].[pums].[vi_5y_' + CONVERT(nvarchar, @pums_year-4) + '_' + CONVERT(nvarchar, @pums_year) + '_persons_sd]'
+            WHEN @pums_year BETWEEN 2019 AND @max_year THEN 'SELECT [SCHG], [ESR], [DIS], [AGEP], [SEX], [HISP], [RAC1P], [RELSHIPP], NULL AS [RELP], [PWGTP] FROM [acs].[pums].[vi_5y_' + CONVERT(nvarchar, @pums_year-4) + '_' + CONVERT(nvarchar, @pums_year) + '_persons_sd]'
         ELSE NULL END;
 
     -- Declare temporary table to receive results of ACS PUMS query
@@ -147,13 +154,13 @@ BEGIN
         SELECT  
             CASE
                 WHEN (@pums_year BETWEEN 2010 AND 2011 AND [SCHG] IN ('6', '7'))
-                    OR (@pums_year BETWEEN 2012 AND 2024 AND [SCHG] IN ('15','16'))
+                    OR (@pums_year BETWEEN 2012 AND @max_year AND [SCHG] IN ('15','16'))
                 THEN 'Group Quarters - College'
                 WHEN [ESR] IN ('4','5') THEN 'Group Quarters - Military'
                 WHEN 
                     (@pums_year BETWEEN 2010 AND 2011 AND [RELP] = '13' AND [AGEP] >= 10)
                     OR (@pums_year BETWEEN 2012 AND 2018 AND [RELP] = '16' AND [DIS] = '2' AND [AGEP] >= 10)
-                    OR (@pums_year BETWEEN 2019 AND 2024 AND [RELSHIPP] = '37' AND [DIS] = '2' AND [AGEP] >= 10)
+                    OR (@pums_year BETWEEN 2019 AND @max_year AND [RELSHIPP] = '37' AND [DIS] = '2' AND [AGEP] >= 10)
                 THEN 'Group Quarters - Institutional Correctional Facilities'
                 ELSE 'Group Quarters - Other'
                 END AS [gq_type],
@@ -200,7 +207,7 @@ BEGIN
         WHERE 
             (@pums_year BETWEEN 2010 AND 2011 AND [RELP] IN ('13','14'))
             OR (@pums_year BETWEEN 2012 AND 2018 AND [RELP] IN ('16','17'))
-            OR (@pums_year BETWEEN 2019 AND 2024 AND [RELSHIPP] IN ('37','38'))
+            OR (@pums_year BETWEEN 2019 AND @max_year AND [RELSHIPP] IN ('37','38'))
     ),
     [population] AS (
         SELECT
