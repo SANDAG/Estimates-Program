@@ -146,6 +146,52 @@ def _aggregate_lodes_to_mgra(
     return jobs
 
 
+def _aggregate_self_emp_to_mgra(
+    bg_data: pd.DataFrame, xref: pd.DataFrame
+) -> pd.DataFrame:
+    """Aggregate self-employed block group data to MGRA level using allocation
+        percentages.
+
+    Args:
+        bg_data: DataFrame with block group self-employed data. Must include columns:
+            year, blockgroup, naics_code, value
+        xref: Crosswalk DataFrame with columns: blockgroup, mgra, flag, pct_18_64,
+            pct_pop, pct_split
+
+    Returns:
+        Aggregated data at MGRA level with columns: run_id, year, mgra, naics_code,
+            value
+    """
+    # Merge block group data to MGRA crosswalk
+    merged = bg_data.merge(xref, on="blockgroup", how="inner")
+
+    # Calculate weighted value based on flag
+    def calc_weighted_value(row):
+        if row.get("flag") == "pct_18_64":
+            return row["value"] * row["pct_18_64"]
+        elif row.get("flag") == "pct_pop":
+            return row["value"] * row["pct_pop"]
+        elif row.get("flag") == "pct_split":
+            return row["value"] * row["pct_split"]
+        else:
+            raise ValueError(
+                f"Unexpected allocation flag {row.get('flag')!r}; "
+                "expected one of {'pct_18_64', 'pct_pop', 'pct_split'}"
+            )
+
+    merged["weighted_value"] = merged.apply(calc_weighted_value, axis=1)
+
+    # Group by year, mgra, naics_code and sum, then assign run_id and reorder columns
+    self_emp = (
+        merged.groupby(["year", "mgra", "naics_code"], as_index=False)["weighted_value"]
+        .sum()
+        .rename(columns={"weighted_value": "value"})
+        .assign(run_id=utils.RUN_ID)
+    )[["run_id", "year", "mgra", "naics_code", "value"]]
+
+    return self_emp
+
+
 def _get_jobs_inputs(year: int) -> dict[str, pd.DataFrame]:
     """Get input data related to jobs for a specified year.
 
@@ -181,10 +227,65 @@ def _get_jobs_inputs(year: int) -> dict[str, pd.DataFrame]:
                     "year": year,
                 },
             )
+
+        # get self-employed totals and append to control_totals
+        with open(utils.SQL_FOLDER / "employment/get_regional_self_emp.sql") as file:
+            self_emp_control = utils.read_sql_query_fallback(
+                sql=sql.text(file.read()),
+                con=con,
+                params={
+                    "year": year,
+                },
+            )
+        # Only append if self_emp_control is not empty and has expected columns
+        if not self_emp_control.empty:
+            jobs_inputs["control_totals"] = pd.concat(
+                [
+                    jobs_inputs["control_totals"],
+                    self_emp_control[
+                        jobs_inputs["control_totals"].columns.intersection(
+                            self_emp_control.columns
+                        )
+                    ],
+                ],
+                ignore_index=True,
+            )
+
+        # get self-employed block group data
+        with open(utils.SQL_FOLDER / "employment/get_self_emp_bg_data.sql") as file:
+            jobs_inputs["self_emp_bg"] = utils.read_sql_query_fallback(
+                sql=sql.text(file.read()),
+                con=con,
+                params={
+                    "year": year,
+                },
+            )
+
+        # get block group to MGRA crosswalk
+        with open(utils.SQL_FOLDER / "employment/xref_blockgroup_to_mgra.sql") as file:
+            jobs_inputs["xref_bg_to_mgra"] = utils.read_sql_query_fallback(
+                sql=sql.text(file.read()),
+                con=con,
+                params={
+                    "run_id": utils.RUN_ID,
+                    "year": year,
+                },
+            )
+
     jobs_inputs["control_totals"]["run_id"] = utils.RUN_ID
 
     jobs_inputs["lehd_jobs"] = _aggregate_lodes_to_mgra(
         jobs_inputs["lodes_data"], jobs_inputs["xref_block_to_mgra"], year
+    )
+
+    self_emp = _aggregate_self_emp_to_mgra(
+        jobs_inputs["self_emp_bg"], jobs_inputs["xref_bg_to_mgra"]
+    )
+
+    # join jobs_inputs["lehd_jobs"] and self_emp
+    jobs_inputs["lehd_jobs"] = pd.concat(
+        [jobs_inputs["lehd_jobs"], self_emp],
+        ignore_index=True,
     )
 
     return jobs_inputs
@@ -200,11 +301,27 @@ def _validate_jobs_inputs(jobs_inputs: dict[str, pd.DataFrame]) -> None:
         negative={},
         null={},
     )
+    # Self Employed only includes block groups with self-employed individuals therefore
+    # no row count validation performed
+    tests.validate_data(
+        "Self-employed block group data",
+        jobs_inputs["self_emp_bg"],
+        negative={},
+        null={},
+    )
     # No row count validation performed as xref is many-to-many
     # check
     tests.validate_data(
-        "xref",
+        "xref_block_to_mgra",
         jobs_inputs["xref_block_to_mgra"],
+        negative={},
+        null={},
+    )
+    # No row count validation performed as xref is many-to-many
+    # check
+    tests.validate_data(
+        "xref_bg_to_mgra",
+        jobs_inputs["xref_bg_to_mgra"],
         negative={},
         null={},
     )
@@ -235,6 +352,7 @@ def _create_jobs_output(
     Returns:
         Controlled employment data.
     """
+
     # Sort the input data and get unique naics codes
     sorted_jobs = jobs_inputs["lehd_jobs"].sort_values(by=["mgra", "naics_code"])
     naics_codes = sorted_jobs["naics_code"].unique()
