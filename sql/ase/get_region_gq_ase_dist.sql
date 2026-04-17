@@ -228,6 +228,6 @@ BEGIN
         [age_group],
         [sex],
         [ethnicity],
-        1.0 * [population] / SUM([population]) OVER (PARTITION BY [gq_type]) AS [distribution]
+        1.0 * [population] / NULLIF(SUM([population]) OVER (PARTITION BY [gq_type]), 0) AS [distribution]
     FROM [population]
 END
