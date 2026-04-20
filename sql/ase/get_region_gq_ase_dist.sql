@@ -57,7 +57,7 @@ IF NOT EXISTS (
 SELECT @msg AS [msg]
 ELSE IF @year > @max_year
 BEGIN
-    SELECT 'PUMS data exists but has not been reviewed' AS [msg]
+    THROW 50000, 'PUMS data exists but has not been reviewed', 1;
 END
 ELSE
 BEGIN
