@@ -366,15 +366,17 @@ def _create_jobs_output(
     # Create list to store controlled values for each industry
     results = []
 
-    # Apply integerize_1d to each naics code
+    # Apply integerize_1d to each industry_code
     for industry_code in naics_codes:
-        # Filter for this naics code
-        naics_mask = sorted_jobs.query("industry_code == @industry_code")
+        # Filter for this industry_code
+        naics_mask = sorted_jobs.loc[sorted_jobs["industry_code"] == industry_code]
 
         # Get control value and apply integerize_1d
         control_value = (
             jobs_inputs["control_totals"]
-            .query("industry_code == @industry_code")["value"]
+            .loc[
+                jobs_inputs["control_totals"]["industry_code"] == industry_code, "value"
+            ]
             .iloc[0]
         )
 
