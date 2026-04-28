@@ -357,7 +357,7 @@ def integerize_1d(
                 f"Input parameter 'generator' must be provided when the 'methodology' "
                 f"is '{methodology}'"
             )
-        if type(generator) != np.random.Generator:
+        if not isinstance(generator, np.random.Generator):
             raise ValueError(
                 f"Input parameter 'generator' must be of type 'np.random.Generator', "
                 f"not {type(generator)}"
