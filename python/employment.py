@@ -12,7 +12,7 @@ generator = np.random.default_rng(utils.RANDOM_SEED)
 
 
 def run_employment(year: int, debug: bool):
-    """Control function to create jobs data by naics_code (NAICS) at the MGRA level.
+    """Control function to create jobs data by industry_code at the MGRA level.
 
     Get the LEHD LODES data, aggregate to the MGRA level using the block to MGRA
     crosswalk, then apply control totals from QCEW using integerization.
@@ -20,7 +20,7 @@ def run_employment(year: int, debug: bool):
     Functionality is split apart for code encapsulation (function inputs not included):
         _get_jobs_inputs - Get all input data related to jobs, including LODES data,
             block to MGRA crosswalk, and control totals from QCEW. Then process the
-            LODES data to the MGRA level by naics_code.
+            LODES data to the MGRA level by industry_code.
         _validate_jobs_inputs - Validate the input tables from the above function
         _create_jobs_output - Apply control totals to employment data using
             utils.integerize_1d() and create output table
@@ -41,7 +41,7 @@ def run_employment(year: int, debug: bool):
 
 
 def _get_lodes_data(year: int) -> pd.DataFrame:
-    """Retrieve LEHD LODES data for a specified year and split naics_code 72 into
+    """Retrieve LEHD LODES data for a specified year and split industry_code 72 into
         721 and 722 using split percentages.
 
     Args:
@@ -68,23 +68,23 @@ def _get_lodes_data(year: int) -> pd.DataFrame:
                 params={"year": year},
             )
 
-    # Split naics_code 72 and combine with other industries
-    lodes_72_split = lodes_data.loc[lambda df: df["naics_code"] == "72"].merge(
+    # Split industry_code 72 and combine with other industries
+    lodes_72_split = lodes_data.loc[lambda df: df["industry_code"] == "72"].merge(
         split_naics_72, on="block", how="left"
     )
 
     combined_data = pd.concat(
         [
-            lodes_data.loc[lambda df: df["naics_code"] != "72"],
+            lodes_data.loc[lambda df: df["industry_code"] != "72"],
             lodes_72_split.assign(
-                naics_code="721", jobs=lambda df: df["jobs"] * df["pct_721"]
+                industry_code="721", jobs=lambda df: df["jobs"] * df["pct_721"]
             ),
             lodes_72_split.assign(
-                naics_code="722", jobs=lambda df: df["jobs"] * df["pct_722"]
+                industry_code="722", jobs=lambda df: df["jobs"] * df["pct_722"]
             ),
         ],
         ignore_index=True,
-    )[["year", "block", "naics_code", "jobs"]]
+    )[["year", "block", "industry_code", "jobs"]]
 
     return combined_data
 
@@ -100,13 +100,13 @@ def _aggregate_lodes_to_mgra(
     MGRAs.
 
     Args:
-        combined_data: LODES data with columns: year, block, naics_code, jobs
+        combined_data: LODES data with columns: year, block, industry_code, jobs
         xref: Crosswalk with columns: block, mgra, pct_edd, pct_area, edd_flag
         year: The year for which to aggregate data
 
     Returns:
         Aggregated data at MGRA level with columns: run_id, year, mgra,
-            naics_code, value
+            industry_code, value
     """
     # Get MGRA data from SQL
     with utils.ESTIMATES_ENGINE.connect() as con:
@@ -124,9 +124,9 @@ def _aggregate_lodes_to_mgra(
         )
 
     # Get unique industry codes and cross join with MGRA data
-    unique_industries = combined_data["naics_code"].unique()
+    unique_industries = combined_data["industry_code"].unique()
     jobs = (
-        mgra_data.merge(pd.DataFrame({"naics_code": unique_industries}), how="cross")
+        mgra_data.merge(pd.DataFrame({"industry_code": unique_industries}), how="cross")
         .assign(year=year)
         .merge(
             combined_data.merge(xref, on="block", how="inner")
@@ -134,13 +134,15 @@ def _aggregate_lodes_to_mgra(
                 value=lambda df: df["jobs"]
                 * np.where(df["edd_flag"] == 1, df["pct_edd"], df["pct_area"])
             )
-            .groupby(["year", "mgra", "naics_code"], as_index=False)["value"]
+            .groupby(["year", "mgra", "industry_code"], as_index=False)["value"]
             .sum(),
-            on=["year", "mgra", "naics_code"],
+            on=["year", "mgra", "industry_code"],
             how="left",
         )
         .fillna({"value": 0})
-        .assign(run_id=utils.RUN_ID)[["run_id", "year", "mgra", "naics_code", "value"]]
+        .assign(run_id=utils.RUN_ID)[
+            ["run_id", "year", "mgra", "industry_code", "value"]
+        ]
     )
 
     return jobs
@@ -154,41 +156,47 @@ def _distribute_self_emp_to_mgra(
 
     Args:
         bg_data: DataFrame with block group self-employed data. Must include columns:
-            year, blockgroup, naics_code, value
+            year, blockgroup, industry_code, value
         xref: Crosswalk DataFrame with columns: blockgroup, mgra, flag, pct_18_64,
             pct_pop, pct_split
 
     Returns:
-        Self-Emp Data at MGRA level with columns: run_id, year, mgra, naics_code, value
+        Self-Emp Data at MGRA level with columns: run_id, year, mgra, industry_code, value
     """
     # Merge block group data to MGRA crosswalk
     merged = bg_data.merge(xref, on="blockgroup", how="inner")
 
     # Calculate weighted value based on flag
-    conditions = [
-        merged["flag"] == "pct_18_64",
-        merged["flag"] == "pct_pop",
-        merged["flag"] == "pct_split",
-    ]
-    choices = [
-        merged["value"] * merged["pct_18_64"],
-        merged["value"] * merged["pct_pop"],
-        merged["value"] * merged["pct_split"],
-    ]
-    merged["weighted_value"] = np.select(conditions, choices, default=np.nan)
+    merged = merged.assign(
+        weighted_value=np.select(
+            [
+                merged["flag"] == "pct_18_64",
+                merged["flag"] == "pct_pop",
+                merged["flag"] == "pct_split",
+            ],
+            [
+                merged["value"] * merged["pct_18_64"],
+                merged["value"] * merged["pct_pop"],
+                merged["value"] * merged["pct_split"],
+            ],
+            default=np.nan,
+        )
+    )
 
     if merged["weighted_value"].isna().any():
         raise ValueError(
             "Unexpected allocation flag found; expected one of {'pct_18_64', 'pct_pop', 'pct_split'}"
         )
 
-    # Group by year, mgra, naics_code and sum, then assign run_id and reorder columns
+    # Group by year, mgra, industry_code and sum, then assign run_id and reorder columns
     self_emp = (
-        merged.groupby(["year", "mgra", "naics_code"], as_index=False)["weighted_value"]
+        merged.groupby(["year", "mgra", "industry_code"], as_index=False)[
+            "weighted_value"
+        ]
         .sum()
         .rename(columns={"weighted_value": "value"})
         .assign(run_id=utils.RUN_ID)
-    )[["run_id", "year", "mgra", "naics_code", "value"]]
+    )[["run_id", "year", "mgra", "industry_code", "value"]]
 
     return self_emp
 
@@ -326,14 +334,14 @@ def _validate_jobs_inputs(jobs_inputs: dict[str, pd.DataFrame]) -> None:
     tests.validate_data(
         "QCEW control totals",
         jobs_inputs["control_totals"],
-        row_count={"key_columns": {"naics_code"}},
+        row_count={"key_columns": {"industry_code"}},
         negative={},
         null={},
     )
     tests.validate_data(
         "LEHD jobs at MGRA level",
         jobs_inputs["lehd_jobs"],
-        row_count={"key_columns": {"mgra", "naics_code"}},
+        row_count={"key_columns": {"mgra", "industry_code"}},
         negative={},
         null={},
     )
@@ -352,21 +360,21 @@ def _create_jobs_output(
     """
 
     # Sort the input data and get unique naics codes
-    sorted_jobs = jobs_inputs["lehd_jobs"].sort_values(by=["mgra", "naics_code"])
-    naics_codes = sorted_jobs["naics_code"].unique()
+    sorted_jobs = jobs_inputs["lehd_jobs"].sort_values(by=["mgra", "industry_code"])
+    naics_codes = sorted_jobs["industry_code"].unique()
 
     # Create list to store controlled values for each industry
     results = []
 
     # Apply integerize_1d to each naics code
-    for naics_code in naics_codes:
+    for industry_code in naics_codes:
         # Filter for this naics code
-        naics_mask = sorted_jobs.query("naics_code == @naics_code")
+        naics_mask = sorted_jobs.query("industry_code == @industry_code")
 
         # Get control value and apply integerize_1d
         control_value = (
             jobs_inputs["control_totals"]
-            .query("naics_code == @naics_code")["value"]
+            .query("industry_code == @industry_code")["value"]
             .iloc[0]
         )
 
@@ -389,7 +397,7 @@ def _validate_jobs_outputs(jobs_outputs: dict[str, pd.DataFrame]) -> None:
     tests.validate_data(
         "Controlled jobs data",
         jobs_outputs["results"],
-        row_count={"key_columns": {"mgra", "naics_code"}},
+        row_count={"key_columns": {"mgra", "industry_code"}},
         negative={},
         null={},
     )

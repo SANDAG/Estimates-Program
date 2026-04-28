@@ -13,7 +13,7 @@ ELSE
 BEGIN
     SELECT 
         [year],
-        [industry_code] AS [naics_code],
+        [industry_code],
         'jobs' AS [metric],
         SUM([annual_avg_emplvl]) AS [value]
     FROM [socioec_data].[bls].[qcew_by_area_annual]

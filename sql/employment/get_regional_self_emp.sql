@@ -24,7 +24,7 @@ BEGIN
     -- Get the ACS data --------------------------------------------------------
     SELECT
         @year AS [year],
-        'SE' AS [naics_code], -- assign to 'SE' (Self Employed) NAICS category
+        'SE' AS [industry_code], -- assign to 'SE' (Self Employed) NAICS category
         'jobs' AS [metric],
         SUM([value]) AS [value]
     FROM [acs].[detailed].[values]

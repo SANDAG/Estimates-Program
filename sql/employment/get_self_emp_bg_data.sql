@@ -21,7 +21,7 @@ BEGIN
     SELECT
         @year AS [year],
         [blockgroup],
-        'SE' AS [naics_code],
+        'SE' AS [industry_code],
         SUM([value]) AS [value]
     FROM [acs].[detailed].[values]
     INNER JOIN [acs].[detailed].[geography]

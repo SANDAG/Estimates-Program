@@ -34,11 +34,12 @@ _DISTINCT_COUNTS = {
         "2010_tract": 627,
         "2020_tract": 736,
         "city": 19,
-        # The naics_code is variable to groups employment data into. Almost all codes
-        # are 2-digit naics codes. The 2-digit 72 code was split into 721 and 722
-        # 3-digit naics code. Self employment data is not natively have a naics code so
-        # therefore assigned it to 'SE' as the naics codes are being treated as strings.
-        "naics_code": 22,
+        # The industry_code is a variable to group employment data into. Almost all
+        # codes are 2-digit naics codes. The 2-digit naics code 72 was split into 721
+        # and 722 3-digit naics code. Self employment data does not natively have a
+        # naics code so it is therefore assigned to 'SE' as the naics codes are being
+        # treated as strings.
+        "industry_code": 22,
     },
     "mgra15": {
         "mgra": 24321,

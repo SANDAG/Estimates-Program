@@ -29,7 +29,7 @@ BEGIN
 END
 ELSE
 BEGIN
-    -- Build the return table of QCEW control Totals by naics_code (NAICS) ---
+    -- Build the return table of QCEW control Totals by industry_code (NAICS) ---
     SELECT 
         [YEAR] AS [year],
         -- https://github.com/SANDAG/Estimates-Program/issues/193
@@ -39,7 +39,7 @@ BEGIN
                 THEN '060730183012010'
             ELSE [w_geocode]
         END AS [block],
-        [naics_code],
+        [industry_code],
         SUM([value]) AS [jobs]
     FROM [socioec_data].[lehd].[lodes_8_wac]
     CROSS APPLY (
@@ -64,7 +64,7 @@ BEGIN
             ('72',   [CNS18]),
             ('81',   [CNS19]),
             ('92',   [CNS20])
-    ) AS u([naics_code], [value]) 
+    ) AS u([industry_code], [value]) 
     WHERE 
         [SEG] = 'S000' -- 'S000' = 'Total number of jobs' 
         AND [TYPE] = 'JT00' -- 'JT00' = 'All Jobs' 
@@ -79,10 +79,10 @@ BEGIN
                 THEN '060730183012010'
             ELSE [w_geocode]
         END, 
-        [naics_code]
+        [industry_code]
     ORDER BY 
         [year],
         [block],
-        [naics_code]
+        [industry_code]
 END
 ------------------------------------------------------------------------------
