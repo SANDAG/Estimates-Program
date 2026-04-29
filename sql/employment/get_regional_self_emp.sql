@@ -41,7 +41,6 @@ BEGIN
             [tables].[product] = '1Y' 
             OR ([tables].[year] = 2020 AND [tables].[product] = '5Y')
             )
-        -- TODO: currently excluding "self-employed in own incorporated business workers", is this correct?
         AND REPLACE([variables].[label], ':', '') IN (
             'Estimate!!Total!!Male!!Self-employed in own not incorporated business workers',
             'Estimate!!Total!!Female!!Self-employed in own not incorporated business workers'

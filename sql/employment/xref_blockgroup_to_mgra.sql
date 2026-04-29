@@ -12,16 +12,15 @@ following methodology.
 -- Initialize parameters -----------------------------------------------------
 DECLARE @run_id INTEGER = :run_id;
 DECLARE @year INTEGER = :year;
-DECLARE @msg nvarchar(31) = 'ACS 5-Year Table does not exist';
+DECLARE @msg nvarchar(31) = 'ASE data does not exist';
 
 -- Send error message if no data exists --------------------------------------
 IF NOT EXISTS (
     SELECT TOP (1) *
-    FROM [acs].[detailed].[tables]
+    FROM [outputs].[ase]
     WHERE 
-        [name] = 'B24080'
+        [run_id] = @run_id
         AND [year] = @year
-        AND [product] = '5Y'
 )
 SELECT @msg AS [msg]
 ELSE

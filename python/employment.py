@@ -34,7 +34,7 @@ def run_employment(year: int, debug: bool):
     jobs_inputs = _get_jobs_inputs(year)
     _validate_jobs_inputs(jobs_inputs)
 
-    jobs_outputs = _create_jobs_output(jobs_inputs)
+    jobs_outputs = _create_jobs_output(jobs_inputs, year)
     _validate_jobs_outputs(jobs_outputs)
 
     _insert_jobs(jobs_inputs, jobs_outputs, debug)
@@ -271,7 +271,7 @@ def _get_jobs_inputs(year: int) -> dict[str, pd.DataFrame]:
 
         # Get block group to MGRA crosswalk
         with open(utils.SQL_FOLDER / "employment/xref_blockgroup_to_mgra.sql") as file:
-            jobs_inputs["xref_bg_to_mgra"] = utils.read_sql_query_fallback(
+            jobs_inputs["xref_bg_to_mgra"] = pd.read_sql_query(
                 sql=sql.text(file.read()),
                 con=con,
                 params={
@@ -281,20 +281,6 @@ def _get_jobs_inputs(year: int) -> dict[str, pd.DataFrame]:
             )
 
     jobs_inputs["control_totals"]["run_id"] = utils.RUN_ID
-
-    jobs_inputs["lehd_jobs"] = _aggregate_lodes_to_mgra(
-        jobs_inputs["lodes_data"], jobs_inputs["xref_block_to_mgra"], year
-    )
-
-    self_emp = _distribute_self_emp_to_mgra(
-        jobs_inputs["self_emp_bg"], jobs_inputs["xref_bg_to_mgra"]
-    )
-
-    # Join jobs_inputs["lehd_jobs"] and self_emp
-    jobs_inputs["lehd_jobs"] = pd.concat(
-        [jobs_inputs["lehd_jobs"], self_emp],
-        ignore_index=True,
-    )
 
     return jobs_inputs
 
@@ -338,17 +324,10 @@ def _validate_jobs_inputs(jobs_inputs: dict[str, pd.DataFrame]) -> None:
         negative={},
         null={},
     )
-    tests.validate_data(
-        "LEHD jobs at MGRA level",
-        jobs_inputs["lehd_jobs"],
-        row_count={"key_columns": {"mgra", "industry_code"}},
-        negative={},
-        null={},
-    )
 
 
 def _create_jobs_output(
-    jobs_inputs: dict[str, pd.DataFrame],
+    jobs_inputs: dict[str, pd.DataFrame], year: int
 ) -> dict[str, pd.DataFrame]:
     """Apply control totals to employment data using utils.integerize_1d().
 
@@ -358,9 +337,23 @@ def _create_jobs_output(
     Returns:
         Controlled employment data.
     """
+    # aggregate lodes jobs data to MGRA level
+    mgra_jobs = _aggregate_lodes_to_mgra(
+        jobs_inputs["lodes_data"], jobs_inputs["xref_block_to_mgra"], year
+    )
+    # distribute self employent data to MGRA level
+    self_emp = _distribute_self_emp_to_mgra(
+        jobs_inputs["self_emp_bg"], jobs_inputs["xref_bg_to_mgra"]
+    )
+
+    # Join mgra_jobs and self_emp
+    mgra_jobs = pd.concat(
+        [mgra_jobs, self_emp],
+        ignore_index=True,
+    )
 
     # Sort the input data and get unique naics codes
-    sorted_jobs = jobs_inputs["lehd_jobs"].sort_values(by=["mgra", "industry_code"])
+    sorted_jobs = mgra_jobs.sort_values(by=["mgra", "industry_code"])
     naics_codes = sorted_jobs["industry_code"].unique()
 
     # Create list to store controlled values for each industry
