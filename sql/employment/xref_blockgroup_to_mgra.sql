@@ -12,7 +12,6 @@ following methodology.
 -- Initialize parameters -----------------------------------------------------
 DECLARE @run_id INTEGER = :run_id;
 DECLARE @year INTEGER = :year;
-DECLARE @msg nvarchar(31) = 'ASE data does not exist';
 
 -- Send error message if no data exists --------------------------------------
 IF NOT EXISTS (
@@ -22,7 +21,9 @@ IF NOT EXISTS (
         [run_id] = @run_id
         AND [year] = @year
 )
-SELECT @msg AS [msg]
+BEGIN
+    THROW 50000, 'Age/Sex/Ethnicity data does not exist for this run.', 1;
+END
 ELSE
 BEGIN
 

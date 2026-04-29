@@ -216,7 +216,7 @@ def _get_jobs_inputs(year: int) -> dict[str, pd.DataFrame]:
 
     with utils.GIS_ENGINE.connect() as con:
         # Get crosswalk from Census blocks to MGRAs
-        with open(utils.SQL_FOLDER / "employment/edd_land_use_split.sql") as file:
+        with open(utils.SQL_FOLDER / "employment/get_xref_block_to_mgra.sql") as file:
             jobs_inputs["xref_block_to_mgra"] = utils.read_sql_query_fallback(
                 sql=sql.text(file.read()),
                 con=con,
@@ -228,7 +228,7 @@ def _get_jobs_inputs(year: int) -> dict[str, pd.DataFrame]:
 
     with utils.ESTIMATES_ENGINE.connect() as con:
         # Get regional employment control totals from QCEW
-        with open(utils.SQL_FOLDER / "employment/QCEW_control.sql") as file:
+        with open(utils.SQL_FOLDER / "employment/get_regional_qcew.sql") as file:
             jobs_inputs["control_totals"] = utils.read_sql_query_fallback(
                 sql=sql.text(file.read()),
                 con=con,
@@ -248,19 +248,14 @@ def _get_jobs_inputs(year: int) -> dict[str, pd.DataFrame]:
             )
 
             jobs_inputs["control_totals"] = pd.concat(
-                [
-                    jobs_inputs["control_totals"],
-                    self_emp_control[
-                        jobs_inputs["control_totals"].columns.intersection(
-                            self_emp_control.columns
-                        )
-                    ],
-                ],
+                [jobs_inputs["control_totals"], self_emp_control],
                 ignore_index=True,
             )
 
+            jobs_inputs["control_totals"]["run_id"] = utils.RUN_ID
+
         # Get self-employed block group data
-        with open(utils.SQL_FOLDER / "employment/get_self_emp_bg_data.sql") as file:
+        with open(utils.SQL_FOLDER / "employment/get_B24080.sql") as file:
             jobs_inputs["self_emp_bg"] = utils.read_sql_query_fallback(
                 sql=sql.text(file.read()),
                 con=con,
@@ -279,8 +274,6 @@ def _get_jobs_inputs(year: int) -> dict[str, pd.DataFrame]:
                     "year": year,
                 },
             )
-
-    jobs_inputs["control_totals"]["run_id"] = utils.RUN_ID
 
     return jobs_inputs
 
@@ -337,32 +330,28 @@ def _create_jobs_output(
     Returns:
         Controlled employment data.
     """
-    # aggregate lodes jobs data to MGRA level
-    mgra_jobs = _aggregate_lodes_to_mgra(
-        jobs_inputs["lodes_data"], jobs_inputs["xref_block_to_mgra"], year
-    )
-    # distribute self employent data to MGRA level
-    self_emp = _distribute_self_emp_to_mgra(
-        jobs_inputs["self_emp_bg"], jobs_inputs["xref_bg_to_mgra"]
-    )
-
-    # Join mgra_jobs and self_emp
+    # Create MGRA level jobs data by combining LODES and self-employment data
     mgra_jobs = pd.concat(
-        [mgra_jobs, self_emp],
+        [
+            # Aggregate LODES jobs to MGRA level
+            _aggregate_lodes_to_mgra(
+                jobs_inputs["lodes_data"], jobs_inputs["xref_block_to_mgra"], year
+            ),
+            # Distribute self-employment data to MGRA level
+            _distribute_self_emp_to_mgra(
+                jobs_inputs["self_emp_bg"], jobs_inputs["xref_bg_to_mgra"]
+            ),
+        ],
         ignore_index=True,
-    )
-
-    # Sort the input data and get unique naics codes
-    sorted_jobs = mgra_jobs.sort_values(by=["mgra", "industry_code"])
-    naics_codes = sorted_jobs["industry_code"].unique()
+    ).sort_values(by=["mgra", "industry_code"])
 
     # Create list to store controlled values for each industry
     results = []
 
     # Apply integerize_1d to each industry_code
-    for industry_code in naics_codes:
+    for industry_code in mgra_jobs["industry_code"].unique():
         # Filter for this industry_code
-        naics_mask = sorted_jobs.loc[sorted_jobs["industry_code"] == industry_code]
+        naics_mask = mgra_jobs.loc[mgra_jobs["industry_code"] == industry_code]
 
         # Get control value and apply integerize_1d
         control_value = (
