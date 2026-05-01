@@ -709,6 +709,10 @@ def read_sql_query_fallback(max_lookback: int = 1, **kwargs: dict) -> pd.DataFra
         ValueError: If data is not found after max_lookback year is reached or if an
             unexpected message is returned
     """
+    # Ensure max_lookback is >= 0 to ensure at least 1 attempt is made
+    if max_lookback < 0:
+        raise ValueError(f"max_lookback must be >= 0, got {max_lookback}")
+
     # Store original year for potential relabeling
     original_year = kwargs["params"]["year"]
 
@@ -716,6 +720,7 @@ def read_sql_query_fallback(max_lookback: int = 1, **kwargs: dict) -> pd.DataFra
     lookback_messages = [
         "ACS 5-Year Table does not exist",
         "ACS 1-Year Table does not exist",
+        "PUMS 5-Year does not exist",
         "LODES data does not exist",
         "EDD point-level data does not exist",
         "QCEW data does not exist",
@@ -762,3 +767,7 @@ def read_sql_query_fallback(max_lookback: int = 1, **kwargs: dict) -> pd.DataFra
                 df["year"] = original_year
 
         return df
+
+    raise ValueError(
+        f"Data not found for year={original_year} within max_lookback={max_lookback}."
+    )
