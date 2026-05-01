@@ -216,7 +216,7 @@ def _get_jobs_inputs(year: int) -> dict[str, pd.DataFrame]:
 
     with utils.GIS_ENGINE.connect() as con:
         # Get crosswalk from Census blocks to MGRAs
-        with open(utils.SQL_FOLDER / "employment/get_xref_block_to_mgra.sql") as file:
+        with open(utils.SQL_FOLDER / "employment/xref_block_to_mgra.sql") as file:
             jobs_inputs["xref_block_to_mgra"] = utils.read_sql_query_fallback(
                 sql=sql.text(file.read()),
                 con=con,
@@ -228,7 +228,7 @@ def _get_jobs_inputs(year: int) -> dict[str, pd.DataFrame]:
 
     with utils.ESTIMATES_ENGINE.connect() as con:
         # Get regional employment control totals from QCEW
-        with open(utils.SQL_FOLDER / "employment/get_regional_qcew.sql") as file:
+        with open(utils.SQL_FOLDER / "employment/get_region_qcew.sql") as file:
             jobs_inputs["control_totals"] = utils.read_sql_query_fallback(
                 sql=sql.text(file.read()),
                 con=con,
@@ -238,7 +238,7 @@ def _get_jobs_inputs(year: int) -> dict[str, pd.DataFrame]:
             )
 
         # Get self-employed totals and append to control_totals
-        with open(utils.SQL_FOLDER / "employment/get_regional_self_emp.sql") as file:
+        with open(utils.SQL_FOLDER / "employment/get_region_self_emp.sql") as file:
             self_emp_control = utils.read_sql_query_fallback(
                 sql=sql.text(file.read()),
                 con=con,
@@ -256,7 +256,7 @@ def _get_jobs_inputs(year: int) -> dict[str, pd.DataFrame]:
 
         # Get self-employed block group data
         with open(utils.SQL_FOLDER / "employment/get_B24080.sql") as file:
-            jobs_inputs["self_emp_bg"] = utils.read_sql_query_fallback(
+            jobs_inputs["B24080"] = utils.read_sql_query_fallback(
                 sql=sql.text(file.read()),
                 con=con,
                 params={
@@ -265,7 +265,7 @@ def _get_jobs_inputs(year: int) -> dict[str, pd.DataFrame]:
             )
 
         # Get block group to MGRA crosswalk
-        with open(utils.SQL_FOLDER / "employment/xref_blockgroup_to_mgra.sql") as file:
+        with open(utils.SQL_FOLDER / "employment/xref_bg_to_mgra.sql") as file:
             jobs_inputs["xref_bg_to_mgra"] = pd.read_sql_query(
                 sql=sql.text(file.read()),
                 con=con,
@@ -292,7 +292,7 @@ def _validate_jobs_inputs(jobs_inputs: dict[str, pd.DataFrame]) -> None:
     # no row count validation performed
     tests.validate_data(
         "Self-employed block group data",
-        jobs_inputs["self_emp_bg"],
+        jobs_inputs["B24080"],
         negative={},
         null={},
     )
@@ -339,7 +339,7 @@ def _create_jobs_output(
             ),
             # Distribute self-employment data to MGRA level
             _distribute_self_emp_to_mgra(
-                jobs_inputs["self_emp_bg"], jobs_inputs["xref_bg_to_mgra"]
+                jobs_inputs["B24080"], jobs_inputs["xref_bg_to_mgra"]
             ),
         ],
         ignore_index=True,
