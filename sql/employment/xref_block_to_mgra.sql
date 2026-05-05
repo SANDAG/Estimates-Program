@@ -129,6 +129,9 @@ BEGIN
             SELECT
                 [year],
                 [emp_id],
+                -- 15, 16, 17 are mpnths from [employment] table where data was 
+                -- stored in [emp1], [emp2], [emp3] but actual month unknown
+                -- check [EMPCORE].[ca_edd].[month] for more detail
                 1.0 * ((ISNULL([15], 0) + ISNULL([16], 0) + ISNULL([17], 0)) 
                     /
                     (CASE WHEN [15] IS NOT NULL THEN 1 ELSE 0 END 
