@@ -357,7 +357,7 @@ def integerize_1d(
                 f"Input parameter 'generator' must be provided when the 'methodology' "
                 f"is '{methodology}'"
             )
-        if type(generator) != np.random.Generator:
+        if not isinstance(generator, np.random.Generator):
             raise ValueError(
                 f"Input parameter 'generator' must be of type 'np.random.Generator', "
                 f"not {type(generator)}"
@@ -653,7 +653,7 @@ def integerize_2d(
             # If nearest_neighbors is exhausted, allow adjustment to all columns
             elif relax_skip_condition == "Nearest Neighbors":
                 relax_skip_condition = "Allow all Columns"
-                msg = f"Skip condition relaxed to '{relax_skip_condition}' for 2d-integerizer."
+                msg = f"Skip condition relaxed to '{relax_skip_condition}' for 2-d integerizer."
                 for n in nearest_neighbors:
                     if n > neighborhood:
                         relax_skip_condition = "Nearest Neighbors"
