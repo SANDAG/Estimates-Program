@@ -19,7 +19,7 @@ needing to handle the shape attribute.
 SET NOCOUNT ON;
 DECLARE @insert_switch BIT = :insert_switch;
 DECLARE @run_id INTEGER = :run_id;
-DECLARE @mgra_version NVARCHAR(10) = :mgra_version;
+DECLARE @mgra_version INTEGER = :mgra_version;
 
 
 -- Get MGRA data from [GeoAnalyst] and INSERT to temporary table
@@ -31,14 +31,14 @@ WITH [mgra] AS (
     FROM [GeoAnalyst].[geography].[zone]
     INNER JOIN [GeoAnalyst].[geography].[geography]
         ON [zone].[geography_id] = [geography].[geography_id]
-    WHERE [geography].[alias] = @mgra_version
+    WHERE [geography].[alias] = 'mgra' + CAST(@mgra_version AS NVARCHAR(2))
 ),
 [xref_2010_census_blockgroup] AS (
     SELECT
         [from_zone] AS [mgra],
         [to_zone] AS [2010_census_blockgroup]
     FROM [GeoAnalyst].[geography].[fn_xref_zones](
-        CASE WHEN @mgra_version = 'mgra15' THEN 87 ELSE NULL END
+        CASE WHEN @mgra_version = 15 THEN 87 ELSE NULL END
     )
 ),
 [xref_2020_census_blockgroup] AS (
@@ -46,7 +46,7 @@ WITH [mgra] AS (
         [from_zone] AS [mgra],
         [to_zone] AS [2020_census_blockgroup]
     FROM [GeoAnalyst].[geography].[fn_xref_zones](
-        CASE WHEN @mgra_version = 'mgra15' THEN 90 ELSE NULL END
+        CASE WHEN @mgra_version = 15 THEN 90 ELSE NULL END
     )
 ),
 [xref_2010_census_tract] AS (
@@ -54,7 +54,7 @@ WITH [mgra] AS (
         [from_zone] AS [mgra],
         [to_zone] AS [2010_census_tract]
     FROM [GeoAnalyst].[geography].[fn_xref_zones](
-        CASE WHEN @mgra_version = 'mgra15' THEN 25 ELSE NULL END
+        CASE WHEN @mgra_version = 15 THEN 25 ELSE NULL END
     )
 ),
 [xref_2020_census_tract] AS (
@@ -62,7 +62,7 @@ WITH [mgra] AS (
         [from_zone] AS [mgra],
         [to_zone] AS [2020_census_tract]
     FROM [GeoAnalyst].[geography].[fn_xref_zones](
-        CASE WHEN @mgra_version = 'mgra15' THEN 16 ELSE NULL END
+        CASE WHEN @mgra_version = 15 THEN 16 ELSE NULL END
     )
 ),
 [xref_puma00] AS (
@@ -70,7 +70,7 @@ WITH [mgra] AS (
         [from_zone] AS [mgra],
         [to_zone] AS [puma00]
     FROM [GeoAnalyst].[geography].[fn_xref_zones](
-        CASE WHEN @mgra_version = 'mgra15' THEN 43 ELSE NULL END
+        CASE WHEN @mgra_version = 15 THEN 43 ELSE NULL END
     )
 ),
 [xref_puma10] AS (
@@ -78,7 +78,7 @@ WITH [mgra] AS (
         [from_zone] AS [mgra],
         [to_zone] AS [puma10]
     FROM [GeoAnalyst].[geography].[fn_xref_zones](
-        CASE WHEN @mgra_version = 'mgra15' THEN 42 ELSE NULL END
+        CASE WHEN @mgra_version = 15 THEN 42 ELSE NULL END
     )
 ),
 [xref_puma20] AS (
@@ -86,7 +86,7 @@ WITH [mgra] AS (
         [from_zone] AS [mgra],
         [to_zone] AS [puma20]
     FROM [GeoAnalyst].[geography].[fn_xref_zones](
-        CASE WHEN @mgra_version = 'mgra15' THEN 41 ELSE NULL END
+        CASE WHEN @mgra_version = 15 THEN 41 ELSE NULL END
     )
 ),
 [xref_cities_2020] AS (
@@ -94,7 +94,7 @@ WITH [mgra] AS (
         [from_zone] AS [mgra],
         [to_name] AS [cities_2020]
     FROM [GeoAnalyst].[geography].[fn_xref_zones](
-        CASE WHEN @mgra_version = 'mgra15' THEN 74 ELSE NULL END
+        CASE WHEN @mgra_version = 15 THEN 74 ELSE NULL END
     )
 )
 SELECT

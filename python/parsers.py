@@ -133,7 +133,7 @@ class InputParser:
                 "type": "dict",
                 "schema": {
                     "enabled": {"type": "boolean"},
-                    "mgra": {"type": "string", "allowed": ["mgra15"]},
+                    "series": {"type": "integer", "allowed": [15]},
                     "start_year": {"type": "integer", "min": min_max_years[0]},
                     "end_year": {"type": "integer", "max": min_max_years[1]},
                     "version": {"type": "string", "allowed": versions},
@@ -243,7 +243,7 @@ class InputParser:
                         """
                             INSERT INTO [metadata].[run] (
                                 [run_id], 
-                                [mgra], 
+                                [series], 
                                 [start_year], 
                                 [end_year],
                                 [user], 
@@ -254,7 +254,7 @@ class InputParser:
                                 [complete]
                             ) VALUES (
                                 :run_id, 
-                                :mgra, 
+                                :series, 
                                 :start_year, 
                                 :end_year, 
                                 USER_NAME(),
@@ -268,7 +268,7 @@ class InputParser:
                     ),
                     {
                         "run_id": run_id,
-                        "mgra": self._config["run"]["mgra"],
+                        "series": self._config["run"]["series"],
                         "start_year": self._start_year,
                         "end_year": self._end_year,
                         "version": self._config["run"]["version"],
@@ -290,7 +290,7 @@ class InputParser:
         """Parse the MGRA version from the configuration file."""
         # Use the supplied mgra version if standard run mode is enabled
         if self._config["run"]["enabled"]:
-            return self._config["run"]["mgra"]
+            return self._config["run"]["series"]
 
         # Get mgra version from database if debug mode is enabled
         elif self._config["debug"]["enabled"]:
@@ -299,6 +299,6 @@ class InputParser:
 
             with self._engine.connect() as con:
                 query = sql.text(
-                    "SELECT [mgra] FROM [metadata].[run] WHERE run_id = :run_id"
+                    "SELECT [series] FROM [metadata].[run] WHERE run_id = :run_id"
                 )
                 return con.execute(query, {"run_id": self.run_id}).scalar()

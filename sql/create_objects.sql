@@ -3,7 +3,7 @@ GO
 
 CREATE TABLE [metadata].[run] (
     [run_id] INT NOT NULL,
-    [mgra] nvarchar(10) NOT NULL,
+    [series] INT NOT NULL,
     [start_year] INT NOT NULL,
     [end_year] INT NOT NULL,
     [user] NVARCHAR(100) NOT NULL, 
@@ -81,7 +81,8 @@ GO
 
 CREATE TABLE [inputs].[special_mgras] (
     [id] INT IDENTITY(1,1),
-    [mgra15] INT NOT NULL,
+    [series] INT NOT NULL,
+    [mgra] INT NOT NULL,
     [start_year] INT NOT NULL,
     [end_year] INT NOT NULL,
     [pop_type] nvarchar(75) NOT NULL,
@@ -90,28 +91,28 @@ CREATE TABLE [inputs].[special_mgras] (
     [max_age] INT NULL,
     [comment] NVARCHAR(max) NOT NULL,
     CONSTRAINT [pk_inputs_special_mgras] PRIMARY KEY ([id]),
-    CONSTRAINT [ixuq_inputs_special_mgras] UNIQUE ([mgra15], [start_year], [end_year], [pop_type], [sex], [min_age], [max_age]),
+    CONSTRAINT [ixuq_inputs_special_mgras] UNIQUE ([series], [mgra], [start_year], [end_year], [pop_type], [sex], [min_age], [max_age]),
     CONSTRAINT [chk_valid_sex_special_mgras] CHECK ([sex] IN ('Male', 'Female'))
 ) WITH (DATA_COMPRESSION = PAGE)
 
 INSERT INTO [inputs].[special_mgras] VALUES
-    (619, 2017, 2024, 'Group Quarters - Institutional Correctional Facilities', 'Male', 18, NULL, 'CAI Boston Avenue'),
-    (751, 2010, 2024, 'Group Quarters - Institutional Correctional Facilities', NULL, 18, NULL, 'Metropolitan Correctional Center, San Diego (MCC San Diego)'),
-    (1625, 2010, 2024, 'Group Quarters - Institutional Correctional Facilities', NULL, 18, NULL, 'Western Region Detention Facility'),
-    (1729, 2010, 2024, 'Group Quarters - Institutional Correctional Facilities', 'Male', 18, NULL, 'San Diego Central Jail'),
-    (5994, 2010, 2024, 'Group Quarters - Institutional Correctional Facilities', 'Female', 18, NULL, 'Las Colinas Detention Facility'),
-    (7474, 2010, 2024, 'Group Quarters - Institutional Correctional Facilities', 'Male', 18, NULL, 'Richard J. Donovan Correctional Facility (RJD)'),
-    (7569, 2010, 2024, 'Group Quarters - Institutional Correctional Facilities', NULL, 10, 18, 'Kearney Mesa Juvenile Detention Facility'),
-    (8155, 2010, 2024, 'Group Quarters - Institutional Correctional Facilities', 'Male', 18, NULL, 'South Bay Detention Facility'),
-    (9413, 2019, 2024, 'Group Quarters - Institutional Correctional Facilities', NULL, 18, NULL, 'Otay Mesa Detention Center'),
-    (9596, 2010, 2024, 'Group Quarters - Institutional Correctional Facilities', 'Male', 18, NULL, 'Richard J. Donovan Correctional Facility (RJD)'),
-    (9632, 2010, 2024, 'Group Quarters - Institutional Correctional Facilities', 'Male', 18, NULL, 'Richard J. Donovan Correctional Facility (RJD)'),
-    (10112, 2010, 2024, 'Group Quarters - Institutional Correctional Facilities', 'Male', 10, NULL, 'Includes the Rock Mountain Detention Facility (RMDF), 
+    (15, 619, 2017, 2024, 'Group Quarters - Institutional Correctional Facilities', 'Male', 18, NULL, 'CAI Boston Avenue'),
+    (15, 751, 2010, 2024, 'Group Quarters - Institutional Correctional Facilities', NULL, 18, NULL, 'Metropolitan Correctional Center, San Diego (MCC San Diego)'),
+    (15, 1625, 2010, 2024, 'Group Quarters - Institutional Correctional Facilities', NULL, 18, NULL, 'Western Region Detention Facility'),
+    (15, 1729, 2010, 2024, 'Group Quarters - Institutional Correctional Facilities', 'Male', 18, NULL, 'San Diego Central Jail'),
+    (15, 5994, 2010, 2024, 'Group Quarters - Institutional Correctional Facilities', 'Female', 18, NULL, 'Las Colinas Detention Facility'),
+    (15, 7474, 2010, 2024, 'Group Quarters - Institutional Correctional Facilities', 'Male', 18, NULL, 'Richard J. Donovan Correctional Facility (RJD)'),
+    (15, 7569, 2010, 2024, 'Group Quarters - Institutional Correctional Facilities', NULL, 10, 18, 'Kearney Mesa Juvenile Detention Facility'),
+    (15, 8155, 2010, 2024, 'Group Quarters - Institutional Correctional Facilities', 'Male', 18, NULL, 'South Bay Detention Facility'),
+    (15, 9413, 2019, 2024, 'Group Quarters - Institutional Correctional Facilities', NULL, 18, NULL, 'Otay Mesa Detention Center'),
+    (15, 9596, 2010, 2024, 'Group Quarters - Institutional Correctional Facilities', 'Male', 18, NULL, 'Richard J. Donovan Correctional Facility (RJD)'),
+    (15, 9632, 2010, 2024, 'Group Quarters - Institutional Correctional Facilities', 'Male', 18, NULL, 'Richard J. Donovan Correctional Facility (RJD)'),
+    (15, 10112, 2010, 2024, 'Group Quarters - Institutional Correctional Facilities', 'Male', 10, NULL, 'Includes the Rock Mountain Detention Facility (RMDF), 
         George Bailey Detention Facility (GBDF), East Mesa Reentry Facility (EMRF), and the East Mesa
         Juvenile Detention Facility (EMJDF). Note that the EMJDF is a juvenile facility that allows women.
         The determination was made that juveniles would be allowed in this MGRA but women would not due
         to the facility being majority male and all other facilities being male only.'),
-    (18741, 2010, 2024, 'Group Quarters - Institutional Correctional Facilities', 'Male', 18, NULL, 'Vista Detention Facility (VDF) operates as both a male and
+    (15, 18741, 2010, 2024, 'Group Quarters - Institutional Correctional Facilities', 'Male', 18, NULL, 'Vista Detention Facility (VDF) operates as both a male and
         female facility intake facility but the majority of housed inmates are male as women are
         transferred to the Las Colinas Detention Facility.')
 GO

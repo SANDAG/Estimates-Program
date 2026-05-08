@@ -40,8 +40,8 @@ The default version of the runtime configuration file is copied here, with comme
 # Whether to use the 'run' section. Mutually exclusive with 'debug' mode
 enabled = false
 
-# The MGRA series to use for this run. Currently only 'mgra15' is valid
-mgra = "mgra15"
+# The MGRA series to use for this run. Currently only '15' is valid
+series = 15
 
 # The first year inclusive to start running from
 start_year = 2020
@@ -87,7 +87,7 @@ direction TB
 
     metadata_run {
         run_id INT PK
-        mgra NVARCHAR(10)
+        series INT
         start_year INT
         end_year INT
         user NVARCHAR(100)
@@ -135,7 +135,8 @@ direction TB
 
     inputs_special_mgras {
         id INT PK
-        mgra15 INT UK
+        series INT UK
+        mgra INT UK
         start_year INT UK
         end_year INT UK
         pop_type NVARCHAR(75) UK
