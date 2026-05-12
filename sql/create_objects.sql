@@ -87,7 +87,17 @@ CREATE TABLE [inputs].[special_mgras] (
     CONSTRAINT [chk_valid_sex_special_mgras] CHECK ([sex] IN ('Male', 'Female'))
 ) WITH (DATA_COMPRESSION = PAGE)
 
-INSERT INTO [inputs].[special_mgras] VALUES
+INSERT INTO [inputs].[special_mgras] (
+    [series],
+    [mgra],
+    [start_year],
+    [end_year],
+    [pop_type],
+    [sex],
+    [min_age],
+    [max_age],
+    [comment]
+) VALUES
     (15, 619, 2017, 2024, 'Group Quarters - Institutional Correctional Facilities', 'Male', 18, NULL, 'CAI Boston Avenue'),
     (15, 751, 2010, 2024, 'Group Quarters - Institutional Correctional Facilities', NULL, 18, NULL, 'Metropolitan Correctional Center, San Diego (MCC San Diego)'),
     (15, 1625, 2010, 2024, 'Group Quarters - Institutional Correctional Facilities', NULL, 18, NULL, 'Western Region Detention Facility'),
