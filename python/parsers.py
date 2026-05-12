@@ -286,7 +286,7 @@ class InputParser:
         # Return the [run_id] this Estimates Program run is using
         return run_id
 
-    def _parse_mgra_version(self) -> str:
+    def _parse_mgra_version(self) -> int:
         """Parse the MGRA version from the configuration file."""
         # Use the supplied mgra version if standard run mode is enabled
         if self._config["run"]["enabled"]:
