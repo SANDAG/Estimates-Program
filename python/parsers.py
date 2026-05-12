@@ -302,3 +302,6 @@ class InputParser:
                     "SELECT [series] FROM [metadata].[run] WHERE run_id = :run_id"
                 )
                 return con.execute(query, {"run_id": self.run_id}).scalar()
+            
+        else:
+            raise ValueError("MGRA version could not be parsed from the configuration")
