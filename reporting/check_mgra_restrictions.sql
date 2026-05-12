@@ -11,7 +11,7 @@ FROM (
     -- Check sex restrictions ---------------------------------------------------------
     SELECT 
         [mgra_sex].[year],
-        [special_mgras].[mgra15] AS [mgra],
+        [special_mgras].[mgra],
         [special_mgras].[pop_type],
         'Allowed Sex - ' + [special_mgras].[sex] AS [metric],
         [mgra_sex].[pop] AS [invalid_pop]
@@ -26,12 +26,14 @@ FROM (
             FROM [outputs].[ase]
             WHERE [run_id] = @run_id
             GROUP BY [year], [mgra], [sex], [pop_type]
-        ) AS [mgra_sex]
-        ON [mgra_sex].[mgra] = CASE WHEN @mgra_version = 'mgra15' THEN [special_mgras].[mgra15] ELSE NULL END
+    ) AS [mgra_sex]
+        ON [mgra_sex].[mgra] = [special_mgras].[mgra]
         AND [special_mgras].[sex] != [mgra_sex].[sex]
         AND [special_mgras].[pop_type] = [mgra_sex].[pop_type]
-    WHERE [special_mgras].[sex] IS NOT NULL
+    WHERE
+        [special_mgras].[sex] IS NOT NULL
         AND [mgra_sex].[pop] > 0
+        AND [special_mgras].[series] = (SELECT [series] FROM [metadata].[run] WHERE [run_id] = @run_id)
 
     UNION ALL 
 
@@ -46,12 +48,14 @@ FROM (
     LEFT JOIN [demographic_warehouse].[dim].[age_group]
         ON [ase].[age_group] = [age_group].[name]
     LEFT JOIN [inputs].[special_mgras]
-        ON [ase].[mgra] = CASE WHEN @mgra_version = 'mgra15' THEN [special_mgras].[mgra15] ELSE NULL END
+        ON [ase].[mgra] = [special_mgras].[mgra]
         AND [ase].[pop_type] = [special_mgras].[pop_type]
-    WHERE [run_id] = @run_id
+    WHERE
+        [run_id] = @run_id
         AND [special_mgras].[min_age] IS NOT NULL
         AND [upper_bound] < [min_age]
         AND [value] > 0
+        AND [special_mgras].[series] = (SELECT [series] FROM [metadata].[run] WHERE [run_id] = @run_id)
     GROUP BY [ase].[year], [ase].[mgra], [ase].[pop_type], [min_age]
 
     UNION ALL 
@@ -67,12 +71,14 @@ FROM (
     LEFT JOIN [demographic_warehouse].[dim].[age_group]
         ON [ase].[age_group] = [age_group].[name]
     LEFT JOIN [inputs].[special_mgras]
-        ON [ase].[mgra] = CASE WHEN @mgra_version = 'mgra15' THEN [special_mgras].[mgra15] ELSE NULL END
+        ON [ase].[mgra] = [special_mgras].[mgra]
         AND [ase].[pop_type] = [special_mgras].[pop_type]
-    WHERE [run_id] = @run_id
+    WHERE
+        [run_id] = @run_id
         AND [special_mgras].[max_age] IS NOT NULL
         AND [lower_bound] > [max_age]
         AND [value] > 0
+        AND [special_mgras].[series] = (SELECT [series] FROM [metadata].[run] WHERE [run_id] = @run_id)
     GROUP BY [ase].[year], [ase].[mgra], [ase].[pop_type], [max_age]
 ) AS [error_rows]
 ORDER BY [mgra], [metric], [pop_type], [year]
