@@ -27,14 +27,16 @@ WITH [population] AS (
 )
 SELECT
     [population].[mgra],
-    CASE
-        WHEN @year BETWEEN 2010 AND 2019 THEN [2010_census_tract]
-        WHEN @year BETWEEN 2020 AND 2029 THEN [2020_census_tract]
-        ELSE NULL
-    END AS [tract],
+    [tract],
     [pop_type],
     [value]
 FROM [population]
 INNER JOIN [inputs].[mgra]
     ON [mgra].[run_id] = @run_id
     AND [population].[mgra] = [mgra].[mgra]
+INNER JOIN [demographic_warehouse].[dim].[mgra] AS [dw_mgra]
+    ON [mgra].[mgra] = [dw_mgra].[mgra]
+    AND [dw_mgra].[series] = (SELECT [series] FROM [metadata].[run] WHERE [run_id] = @run_id)
+INNER JOIN [demographic_warehouse].[dim].[mgra_xref]
+    ON [dw_mgra].[mgra_id] = [mgra_xref].[mgra_id]
+    AND [mgra_xref].[xref_year] = @year

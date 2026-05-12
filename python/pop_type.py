@@ -20,19 +20,19 @@ def run_pop(year: int, debug: bool):
     top of this file for additional details.
 
     Functionality is split apart for code encapsulation (function inputs not included):
-        _get_gq_inputs - Get city level group quarter controls (DOF E-5) and GQ point
+        _get_gq_inputs - Get jurisdiction level group quarter controls (DOF E-5) and GQ point
             data pre-aggregated into MGRAs
         _validate_gq_inputs - Validate the data from the above function
-        _create_gq_outputs - Control MGRA level GQ data to the city level group
+        _create_gq_outputs - Control MGRA level GQ data to the jurisdiction level group
             quarter controls
         _validate_gq_outputs - Validate the data from the above function
-        _insert_gq - Store both the city level control data and controlled
+        _insert_gq - Store both the jurisdiction level control data and controlled
             MGRA level GQ data into the production database
-        _get_hhp_inputs - Get city level household population controls (DOF E-5),
+        _get_hhp_inputs - Get jurisdiction level household population controls (DOF E-5),
             MGRA level households, and tract level household size
         _validate_hhp_inputs - Validate the data from the above function
         _create_hhp_outputs - Compute MGRA household population, then control to
-            city level household population
+            jurisdiction level household population
         _validate_hhp_outputs - Validate the data from the above function
         _insert_hhp - Store certain household population input/output data to
             the production database
@@ -69,9 +69,9 @@ def _get_gq_inputs(year: int) -> dict[str, pd.DataFrame]:
     gq_inputs = {}
 
     with utils.ESTIMATES_ENGINE.connect() as con:
-        # Get city total group quarters controls
-        with open(utils.SQL_FOLDER / "pop_type/get_city_controls_gq.sql") as file:
-            gq_inputs["city_controls"] = pd.read_sql_query(
+        # Get jurisdiction total group quarters controls
+        with open(utils.SQL_FOLDER / "pop_type/get_jurisdiction_controls_gq.sql") as file:
+            gq_inputs["jurisdiction_controls"] = pd.read_sql_query(
                 sql=sql.text(file.read()),
                 con=con,
                 params={
@@ -88,7 +88,6 @@ def _get_gq_inputs(year: int) -> dict[str, pd.DataFrame]:
                 params={
                     "run_id": utils.RUN_ID,
                     "year": year,
-                    "mgra_version": utils.MGRA_VERSION,
                     "gis_server": utils.GIS_SERVER,
                 },
             )
@@ -99,9 +98,9 @@ def _get_gq_inputs(year: int) -> dict[str, pd.DataFrame]:
 def _validate_gq_inputs(gq_inputs: dict[str, pd.DataFrame]) -> None:
     """Validate the GQ input data"""
     tests.validate_data(
-        "City Controls GQ",
-        gq_inputs["city_controls"],
-        row_count={"key_columns": {"city"}},
+        "Jurisdiction Controls GQ",
+        gq_inputs["jurisdiction_controls"],
+        row_count={"key_columns": {"jurisdiction"}},
         negative={},
         null={},
     )
@@ -118,38 +117,38 @@ def _create_gq_outputs(gq_inputs: dict[str, pd.DataFrame]) -> dict[str, pd.DataF
     """Create MGRA group quarters"""
 
     # Load input data into separate variables for cleaner manipulation
-    city_controls = gq_inputs["city_controls"]
+    jurisdiction_controls = gq_inputs["jurisdiction_controls"]
     gq = gq_inputs["gq"]
 
     # Store results here
     results = []
 
     # Control and integerize group quarters data
-    for city in np.sort(gq["city"].unique()):
+    for jurisdiction in np.sort(gq["jurisdiction"].unique()):
 
-        # Copy the necessary input data for this city
-        city_gq = (
-            gq[gq["city"] == city]
+        # Copy the necessary input data for this jurisdiction
+        jurisdiction_gq = (
+            gq[gq["jurisdiction"] == jurisdiction]
             .copy(deep=True)
             .sort_values(by=["mgra", "gq_type"])
             .reset_index(drop=True)
         )
-        city_control = city_controls[city_controls["city"] == city]["value"].values[0]
+        jurisdiction_control = jurisdiction_controls[jurisdiction_controls["jurisdiction"] == jurisdiction]["value"].values[0]
 
         # Scale values to match control
-        if city_control > 0:
-            multiplier = city_control / city_gq["value"].sum()
-            city_gq["value"] *= multiplier
-            city_gq["value"] = utils.integerize_1d(
-                city_gq["value"], generator=generator
+        if jurisdiction_control > 0:
+            multiplier = jurisdiction_control / jurisdiction_gq["value"].sum()
+            jurisdiction_gq["value"] *= multiplier
+            jurisdiction_gq["value"] = utils.integerize_1d(
+                jurisdiction_gq["value"], generator=generator
             )
         else:
-            city_gq["value"] = 0
+            jurisdiction_gq["value"] = 0
 
-        # Store results for this city
-        results.append(city_gq)
+        # Store results for this jurisdiction
+        results.append(jurisdiction_gq)
 
-    # Combine the data for each city together
+    # Combine the data for each jurisdiction together
     return {"gq": pd.concat(results, ignore_index=True)}
 
 
@@ -171,24 +170,24 @@ def _insert_gq(
 
     # Save locally if in debug mode
     if debug:
-        gq_inputs["city_controls"].to_csv(
-            utils.DEBUG_OUTPUT_FOLDER / "inputs_controls_city_gq.csv", index=False
+        gq_inputs["jurisdiction_controls"].to_csv(
+            utils.DEBUG_OUTPUT_FOLDER / "inputs_controls_jurisdiction_gq.csv", index=False
         )
-        gq_outputs["gq"].drop(columns="city").to_csv(
+        gq_outputs["gq"].drop(columns="jurisdiction").to_csv(
             utils.DEBUG_OUTPUT_FOLDER / "outputs_gq.csv", index=False
         )
 
     # Otherwise, insert controls and group quarters results to database
     else:
         with utils.ESTIMATES_ENGINE.connect() as con:
-            gq_inputs["city_controls"].to_sql(
-                name="controls_city",
+            gq_inputs["jurisdiction_controls"].to_sql(
+                name="controls_jurisdiction",
                 con=con,
                 schema="inputs",
                 if_exists="append",
                 index=False,
             )
-            gq_outputs["gq"].drop(columns="city").to_sql(
+            gq_outputs["gq"].drop(columns="jurisdiction").to_sql(
                 name="gq",
                 con=con,
                 schema="outputs",
@@ -201,9 +200,9 @@ def _get_hhp_inputs(year: int) -> dict[str, pd.DataFrame]:
     """Get input data related to MGRA household population"""
 
     with utils.ESTIMATES_ENGINE.connect() as con:
-        # Get city total household population controls
-        with open(utils.SQL_FOLDER / "pop_type/get_city_controls_hhp.sql") as file:
-            city_controls = pd.read_sql_query(
+        # Get jurisdiction total household population controls
+        with open(utils.SQL_FOLDER / "pop_type/get_jurisdiction_controls_hhp.sql") as file:
+            jurisdiction_controls = pd.read_sql_query(
                 sql=sql.text(file.read()),
                 con=con,
                 params={
@@ -231,20 +230,19 @@ def _get_hhp_inputs(year: int) -> dict[str, pd.DataFrame]:
                 params={
                     "run_id": utils.RUN_ID,
                     "year": year,
-                    "mgra_version": utils.MGRA_VERSION,
                 },
             )
 
-    return {"city_controls": city_controls, "tract_controls": tract_controls, "hh": hh}
+    return {"jurisdiction_controls": jurisdiction_controls, "tract_controls": tract_controls, "hh": hh}
 
 
 def _validate_hhp_inputs(year: int, hhp_inputs: dict[str, pd.DataFrame]) -> None:
-    """Validate the GQ input data"""
+    """Validate the HHP input data"""
 
     tests.validate_data(
-        "City Controls HHP",
-        hhp_inputs["city_controls"],
-        row_count={"key_columns": {"city"}},
+        "Jurisdiction Controls HHP",
+        hhp_inputs["jurisdiction_controls"],
+        row_count={"key_columns": {"jurisdiction"}},
         negative={},
         null={},
     )
@@ -292,19 +290,19 @@ def _create_hhp_outputs(hhp_inputs: dict[str, pd.DataFrame]) -> dict[str, pd.Dat
     """Calculate MGRA level household population controlled to DOF"""
 
     # Load input data into separate variables for cleaner manipulation
-    city_controls = hhp_inputs["city_controls"]
+    jurisdiction_controls = hhp_inputs["jurisdiction_controls"]
     tract_controls = hhp_inputs["tract_controls"]
     hh = hhp_inputs["hh"]
 
-    # Control the household population in each city to DOF. Store results separately
+    # Control the household population in each jurisdiction to DOF. Store results separately
     # and join together at the end for cleaner code
     results = []
-    for city in np.sort(hh["city"].unique()):
+    for jurisdiction in np.sort(hh["jurisdiction"].unique()):
 
         # Get an initial decimal estimate of the household population in each MGRA by
         # applying tract level household size to MGRA level households
         hhp = (
-            hh[hh["city"] == city]
+            hh[hh["jurisdiction"] == jurisdiction]
             .merge(tract_controls, on=["run_id", "year", "tract"])
             .rename(columns={"hh": "value_hh", "value": "value_hhs"})
             .assign(value_hhp=lambda df: df["value_hh"] * df["value_hhs"])
@@ -316,7 +314,7 @@ def _create_hhp_outputs(hhp_inputs: dict[str, pd.DataFrame]) -> dict[str, pd.Dat
         # Compute the difference between our initial estimate of HHP and the control
         # value from DOF
         current_hhp = hhp["value_hhp"].sum()
-        control_hhp = city_controls[city_controls["city"] == city]["value"].values[0]
+        control_hhp = jurisdiction_controls[jurisdiction_controls["jurisdiction"] == jurisdiction]["value"].values[0]
         multiplier = control_hhp / current_hhp
         hhp["value_hhp"] *= multiplier
 
@@ -369,14 +367,14 @@ def _create_hhp_outputs(hhp_inputs: dict[str, pd.DataFrame]) -> dict[str, pd.Dat
             else:
                 raise ValueError("Cannot balance households.")
 
-        # Append results for this city
+        # Append results for this jurisdiction
         results.append(
-            hhp.drop(columns=["city", "value_hh"]).rename(
+            hhp.drop(columns=["jurisdiction", "value_hh"]).rename(
                 columns={"value_hhp": "value"}
             )
         )
 
-    # UNION ALL the results for each city together
+    # UNION ALL the results for each jurisdiction together
     return {"hhp": pd.concat(results, ignore_index=True)}
 
 
@@ -400,8 +398,8 @@ def _insert_hhp(
 
     # Save locally if in debug mode
     if debug:
-        hhp_inputs["city_controls"].to_csv(
-            utils.DEBUG_OUTPUT_FOLDER / "inputs_controls_city_pop.csv", index=False
+        hhp_inputs["jurisdiction_controls"].to_csv(
+            utils.DEBUG_OUTPUT_FOLDER / "inputs_controls_jurisdiction_pop.csv", index=False
         )
         hhp_inputs["tract_controls"].assign(metric="Household Size").to_csv(
             utils.DEBUG_OUTPUT_FOLDER / "inputs_controls_tract.csv", index=False
@@ -413,8 +411,8 @@ def _insert_hhp(
     # Otherwise, insert to database
     else:
         with utils.ESTIMATES_ENGINE.connect() as con:
-            hhp_inputs["city_controls"].to_sql(
-                name="controls_city",
+            hhp_inputs["jurisdiction_controls"].to_sql(
+                name="controls_jurisdiction",
                 con=con,
                 schema="inputs",
                 if_exists="append",

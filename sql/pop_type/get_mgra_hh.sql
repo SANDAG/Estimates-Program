@@ -11,7 +11,6 @@ SET NOCOUNT ON;
 -- Initialize parameters and return table ------------------------------------
 DECLARE @run_id INTEGER = :run_id;
 DECLARE @year INTEGER = :year;
-DECLARE @mgra_version INTEGER = :mgra_version;
 
 -- Pull the data from the relevant table
 SELECT
@@ -19,22 +18,21 @@ SELECT
     [year],
     [hh].[mgra],
     [tract],
-    [city],
+    [jurisdiction],
     SUM([value]) AS [hh]
 FROM [outputs].[hh]
 LEFT OUTER JOIN (
     SELECT
-        [mgra],
-        CASE
-            WHEN @year BETWEEN 2010 AND 2019 THEN [2010_census_tract]
-            WHEN @year BETWEEN 2020 AND 2029 THEN [2020_census_tract]
-            ELSE NULL
-        END AS [tract],
-        CASE
-            WHEN @mgra_version = 15 THEN [cities_2020]
-            ELSE NULL
-        END AS [city]
+        [mgra].[mgra],
+        [tract],
+        [jurisdiction]
     FROM [inputs].[mgra]
+    INNER JOIN [demographic_warehouse].[dim].[mgra] AS [dw_mgra]
+        ON [mgra].[mgra] = [dw_mgra].[mgra]
+        AND [dw_mgra].[series] = (SELECT [series] FROM [metadata].[run] WHERE [run_id] = @run_id)
+    INNER JOIN [demographic_warehouse].[dim].[mgra_xref]
+        ON [dw_mgra].[mgra_id] = [mgra_xref].[mgra_id]
+        AND [mgra_xref].[xref_year] = @year
     WHERE [run_id] = @run_id
 ) AS [tracts]
     ON [hh].[mgra] = [tracts].[mgra]
@@ -45,4 +43,4 @@ GROUP BY
     [year],
     [hh].[mgra],
     [tract],
-    [city]
+    [jurisdiction]

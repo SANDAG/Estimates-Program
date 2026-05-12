@@ -14,16 +14,21 @@ SET NOCOUNT ON;
 -- Initialize parameters and return table ------------------------------------
 DECLARE @run_id INTEGER = :run_id;
 DECLARE @year INTEGER = :year;
-DECLARE @mgra_version INTEGER = :mgra_version;
 DECLARE @gis_server NVARCHAR(20) = :gis_server;
 
 -- Build the expected return table MGRA x GQ Type
-SELECT 
-    [mgra],
-    CASE WHEN @mgra_version = 15 THEN [cities_2020] ELSE NULL END AS [city],
+SELECT
+    [mgra].[mgra],
+    [jurisdiction],
     [gq_type]
 INTO [#tt_shell]
 FROM [inputs].[mgra]
+INNER JOIN [demographic_warehouse].[dim].[mgra] AS [dw_mgra]
+    ON [mgra].[mgra] = [dw_mgra].[mgra]
+    AND [dw_mgra].[series] = (SELECT [series] FROM [metadata].[run] WHERE [run_id] = @run_id)
+INNER JOIN [demographic_warehouse].[dim].[mgra_xref]
+    ON [dw_mgra].[mgra_id] = [mgra_xref].[mgra_id]
+    AND [mgra_xref].[xref_year] = @year
 CROSS JOIN (
     SELECT [gq_type] FROM (
         VALUES
@@ -63,7 +68,7 @@ SELECT
     @run_id AS [run_id],
     @year AS [year],
     [#tt_shell].[mgra],
-    [#tt_shell].[city],
+    [#tt_shell].[jurisdiction],
     [#tt_shell].[gq_type],
     ISNULL([value], 0) AS [value]
 FROM [#tt_shell]
@@ -91,7 +96,7 @@ LEFT OUTER JOIN (
         FROM [inputs].[special_mgras]
         WHERE
             @year BETWEEN [start_year] AND [end_year]
-            AND [special_mgras].[series] = @mgra_version
+            AND [special_mgras].[series] = (SELECT [series] FROM [metadata].[run] WHERE [run_id] = @run_id)
     ) AS [special_mgras]
         ON [mgra].[mgra] = [special_mgras].[mgra]
     INNER JOIN [#gq]

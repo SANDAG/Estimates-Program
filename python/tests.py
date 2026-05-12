@@ -31,9 +31,11 @@ _DISTINCT_COUNTS = {
         "structure_type": 4,
         "income_category": 10,
         "household_size": 7,
-        "2010_tract": 627,
-        "2020_tract": 736,
-        "city": 19,
+        "tract": {
+            2010: 627,
+            2020: 736,
+        },
+        "jurisdiction": 19,
         # The industry_code is a variable to group employment data into. Almost all
         # codes are 2-digit naics codes. The 2-digit naics code 72 was split into 721
         # and 722 3-digit naics code. Self employment data does not natively have a
@@ -199,7 +201,7 @@ def _validate_row_count(
             raise ValueError(
                 f"'{table_name}' is missing the required key column '{column}'"
             )
-        if column not in _DISTINCT_COUNTS.keys() and column != "tract":
+        if column not in _DISTINCT_COUNTS.keys():
             raise ValueError(
                 f"'tests.py' is missing data for the key column '{column}'. Fill in the "
                 f"corresponding value in the variable '_DISTINCT_COUNTS'"
@@ -210,7 +212,10 @@ def _validate_row_count(
     unique_key_values = {}
     for column in key_columns:
         if column == "tract":
-            unique_key_values["tract"] = _DISTINCT_COUNTS[f"{year // 10 * 10}_tract"]
+            if 2010 <= year < 2020:
+                unique_key_values["tract"] = _DISTINCT_COUNTS["tract"][2010]
+            elif 2020 <= year < 2030:
+                unique_key_values["tract"] = _DISTINCT_COUNTS["tract"][2020]
         else:
             unique_key_values[column] = _DISTINCT_COUNTS[column]
 

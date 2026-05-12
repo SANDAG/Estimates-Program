@@ -78,9 +78,8 @@ def _get_hh_income_inputs(year: int) -> dict[str, pd.DataFrame]:
                 params={
                     "run_id": utils.RUN_ID,
                     "year": year,
-                    "mgra_version": utils.MGRA_VERSION,
                 },  # type: ignore
-            ).drop(columns=["city"])
+            ).drop(columns=["jurisdiction"])
 
         # Tract level household income distributions
         with open(
@@ -112,9 +111,8 @@ def _get_hh_size_inputs(year: int) -> dict[str, pd.DataFrame]:
                 params={
                     "run_id": utils.RUN_ID,
                     "year": year,
-                    "mgra_version": utils.MGRA_VERSION,
                 },  # type: ignore
-            ).drop(columns=["city"])
+            ).drop(columns=["jurisdiction"])
 
         # Tract level households by household size distributions
         with open(
