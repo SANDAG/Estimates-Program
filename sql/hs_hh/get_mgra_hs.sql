@@ -8,7 +8,7 @@ SET NOCOUNT ON;
 -- Initialize parameters and return table ------------------------------------
 DECLARE @run_id INTEGER = :run_id;
 DECLARE @year INTEGER = :year;
-DECLARE @mgra_version NVARCHAR(10) = :mgra_version;
+DECLARE @mgra_version INTEGER = :mgra_version;
 DECLARE @gis_server NVARCHAR(20) = :gis_server;
 DECLARE @override_date DATE = (SELECT CONVERT(DATE, [start_date]) FROM [metadata].[run] WHERE [run_id] = @run_id);
 
@@ -146,7 +146,7 @@ LEFT OUTER JOIN (
             ELSE NULL
         END AS [tract],
         CASE 
-            WHEN @mgra_version = 'mgra15' THEN [cities_2020] 
+            WHEN @mgra_version = 15 THEN [cities_2020]
             ELSE NULL 
         END AS [city]
     FROM [inputs].[mgra]

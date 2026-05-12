@@ -9,9 +9,9 @@ module.
 
 SET NOCOUNT ON;
 -- Initialize parameters and return table ------------------------------------
-DECLARE @run_id integer = :run_id;
-DECLARE @year integer = :year;
-DECLARE @mgra_version nvarchar(10) = :mgra_version;
+DECLARE @run_id INTEGER = :run_id;
+DECLARE @year INTEGER = :year;
+DECLARE @mgra_version INTEGER = :mgra_version;
 
 -- Pull the data from the relevant table
 SELECT
@@ -31,7 +31,7 @@ LEFT OUTER JOIN (
             ELSE NULL
         END AS [tract],
         CASE
-            WHEN @mgra_version = 'mgra15' THEN [cities_2020]
+            WHEN @mgra_version = 15 THEN [cities_2020]
             ELSE NULL
         END AS [city]
     FROM [inputs].[mgra]

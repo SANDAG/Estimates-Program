@@ -12,15 +12,15 @@ and "Group Quarters - Other".
 
 SET NOCOUNT ON;
 -- Initialize parameters and return table ------------------------------------
-DECLARE @run_id integer = :run_id;
-DECLARE @year integer = :year;
-DECLARE @mgra_version nvarchar(10) = :mgra_version;
-DECLARE @gis_server nvarchar(20) = :gis_server;
+DECLARE @run_id INTEGER = :run_id;
+DECLARE @year INTEGER = :year;
+DECLARE @mgra_version INTEGER = :mgra_version;
+DECLARE @gis_server NVARCHAR(20) = :gis_server;
 
 -- Build the expected return table MGRA x GQ Type
 SELECT 
     [mgra],
-    CASE WHEN @mgra_version = 'mgra15' THEN [cities_2020] ELSE NULL END AS [city],
+    CASE WHEN @mgra_version = 15 THEN [cities_2020] ELSE NULL END AS [city],
     [gq_type]
 INTO [#tt_shell]
 FROM [inputs].[mgra]
@@ -69,7 +69,7 @@ SELECT
 FROM [#tt_shell]
 LEFT OUTER JOIN (
     SELECT
-        [mgra], 
+        [mgra].[mgra], 
         SUM([gqCivCol]) AS [Group Quarters - College],
         SUM([gqMil]) AS [Group Quarters - Military],
         SUM(
@@ -86,16 +86,18 @@ LEFT OUTER JOIN (
     FROM [inputs].[mgra]
     LEFT OUTER JOIN (
         SELECT
-            [mgra15],
+            [mgra],
             [pop_type]
         FROM [inputs].[special_mgras]
-        WHERE @year BETWEEN [start_year] AND [end_year]
+        WHERE
+            @year BETWEEN [start_year] AND [end_year]
+            AND [special_mgras].[series] = @mgra_version
     ) AS [special_mgras]
-        ON [mgra].[mgra] = CASE WHEN @mgra_version = 'mgra15' THEN [special_mgras].[mgra15] END
+        ON [mgra].[mgra] = [special_mgras].[mgra]
     INNER JOIN [#gq]
         ON [mgra].[Shape].STIntersects([#gq].[Shape]) = 1
     WHERE [run_id] = @run_id
-    GROUP BY [mgra]
+    GROUP BY [mgra].[mgra]
 ) AS [pivot]
 UNPIVOT (
     [value] FOR [gq_type] IN (
