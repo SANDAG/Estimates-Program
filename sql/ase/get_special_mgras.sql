@@ -1,6 +1,6 @@
 -- Initialize parameters -----------------------------------------------------
-DECLARE @year integer = :year;
-DECLARE @mgra_version integer = :mgra_version;
+DECLARE @year INTEGER = :year;
+DECLARE @series INTEGER = :series;
 
 
 -- Get special MGRAs ---------------------------------------------------------
@@ -13,4 +13,4 @@ SELECT
 FROM [inputs].[special_mgras]
 WHERE
     @year BETWEEN [start_year] AND [end_year]
-    AND [series] = @mgra_version
+    AND [series] = @series

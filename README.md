@@ -116,10 +116,10 @@ direction TB
         value FLOAT
     }
 
-    inputs_controls_city {
+    inputs_controls_jurisdiction {
         run_id INT UK, FK
         year INT UK
-        city NVARCHAR(15) UK
+        jurisdiction NVARCHAR(15) UK
         metric NVARCHAR(100) UK
         value FLOAT
     }
@@ -127,9 +127,6 @@ direction TB
     inputs_mgra {
         run_id INT PK, FK
         mgra INT PK
-        _2010_census_tract NVARCHAR(11)
-        _2020_census_tract NVARCHAR(11)
-        cities_2020 NVARCHAR(15)
         shape geometry
     }
 
@@ -199,7 +196,7 @@ direction TB
     %% Relationships
     metadata_run ||--o{ inputs_controls_ase : "run_id"
     metadata_run ||--o{ inputs_controls_tract : "run_id"
-    metadata_run ||--o{ inputs_controls_city : "run_id"
+    metadata_run ||--o{ inputs_controls_jurisdiction : "run_id"
     metadata_run ||--o{ inputs_mgra : "run_id"
     metadata_run ||--o{ outputs_ase : "run_id"
     metadata_run ||--o{ outputs_gq : "run_id"

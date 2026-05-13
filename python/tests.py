@@ -43,7 +43,7 @@ _DISTINCT_COUNTS = {
         # treated as strings.
         "industry_code": 22,
     },
-    "mgra_version": {
+    "series": {
         15: {
             "mgra": 24321,
         },
@@ -52,7 +52,7 @@ _DISTINCT_COUNTS = {
 
 # For ease of access, combine the constants part of the dictionary with the current
 # MGRA series
-_DISTINCT_COUNTS = _DISTINCT_COUNTS["constants"] | _DISTINCT_COUNTS["mgra_version"][utils.MGRA_VERSION]
+_DISTINCT_COUNTS = _DISTINCT_COUNTS["constants"] | _DISTINCT_COUNTS["series"][utils.SERIES]
 
 
 #########

@@ -2,10 +2,10 @@
 
 | Input                                          | Module Source  | Usage                                                                              |
 |------------------------------------------------|----------------|------------------------------------------------------------------------------------| 
-| MGRA cross-reference (`[inputs].[mgra]`)       | Startup        | Used to merge MGRA values with census tract rates and city controls                |
+| MGRA cross-reference (`[inputs].[mgra]`)       | Startup        | Used to merge MGRA values with census tract rates and jurisdiction controls                |
 | Point geometry housing stock by land use       | External (LUDU)| Generate counts of housing units by structure type within each MGRA                |
 | Census tract occupancy rates by structure type | External (ACS) | Apply to housing units to create households by structure type within each MGRA     |
-| City total occupancy rate controls             | External (DOF) | Adjust households to match overall occupancy rate by city                          |
+| Jurisdiction total occupancy rate controls     | External (DOF) | Adjust households to match overall occupancy rate by jurisdiction                          |
 
 ## MGRA cross-reference (`[inputs].[mgra]`)
 See [Startup](https://github.com/SANDAG/Estimates-Program/wiki/Startup).
@@ -49,12 +49,12 @@ To avoid division by zero errors, the occupancy rate is set to `NULL` if housing
 \forall st \in \text{Structure Types}; \text{Regional Occupancy Rate}_{st} = \frac{\sum \text{Households}_{st}}{\sum \text{Housing Structures}_{st}}
 ```
 
-## City total occupancy rate controls
+## Jurisdiction total occupancy rate controls
 
-City-level total occupancy controls are directly pulled from the [California Department of Finance (DOF) Estimates](https://dof.ca.gov/forecasting/demographics/estimates/). For years 2010-2019, data is pulled from the most recent E-8 product at the time. For years 2020+, data is pulled from the most recent E-5 product at the time. Note the DOF provides vacancy rates, so occupancy rates are derived by simple subtraction.
+Jurisdiction-level total occupancy controls are directly pulled from the [California Department of Finance (DOF) Estimates](https://dof.ca.gov/forecasting/demographics/estimates/). For years 2010-2019, data is pulled from the most recent E-8 product at the time. For years 2020+, data is pulled from the most recent E-5 product at the time. Note the DOF provides vacancy rates, so occupancy rates are derived by simple subtraction.
 
 ```math
-\forall c \in \text{San Diego Cities}; \text{Occupancy Rate}_c = 1 - \text{Vacancy Rate}_c
+\forall c \in \text{San Diego Jurisdictions}; \text{Occupancy Rate}_c = 1 - \text{Vacancy Rate}_c
 ```
 
 # Outputs
@@ -72,7 +72,7 @@ Each row of this table contains the following information:
 | `[value]`          | Number of housing units                                          |
 
 ## Households by structure type in each MGRA (`[outputs].[hh]`)
-MGRA households by structure type. Calculated by applying census tract occupancy rates by structure type to MGRA housing stock by structure type and controlling overall occupancy rates at the city-level to controls from the DOF.
+MGRA households by structure type. Calculated by applying census tract occupancy rates by structure type to MGRA housing stock by structure type and controlling overall occupancy rates at the jurisdiction-level to controls from the DOF.
 
 Each row of this table contains the following information:
 

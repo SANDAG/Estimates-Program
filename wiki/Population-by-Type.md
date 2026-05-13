@@ -2,13 +2,13 @@
 
 | Input                                      | Module Source          | Usage                                                                      |
 |--------------------------------------------|------------------------|----------------------------------------------------------------------------| 
-| MGRA cross-reference (`[inputs].[mgra]`)   | Startup                | Used to merge MGRA-level values with census tract rates and city controls  |
+| MGRA cross-reference (`[inputs].[mgra]`)   | Startup                | Used to merge MGRA-level values with census tract rates and jurisdiction controls  |
 | Special MGRAs (`[inputs].[special_mgras]`) | Startup                | Identifies "Group Quarters - Institutional Correctional Facilities"        |
 | Point geometry group quarters by type      | External (LUDU)        | Generate counts of group quarters by type within each MGRA                 |
-| City total group quarters controls         | External (DOF)         | Apply to group quarters to match total group quarters by city              |
+| Jurisdiction total group quarters controls | External (DOF)         | Apply to group quarters to match total group quarters by jurisdiction              |
 | Households in each MGRA (`[outputs].[hh]`) | Housing and Households | Used to generate household population                                      |
 | Census tract average household size        | External (ACS)         | Apply to households to create household population                         |
-| City household population controls         | External (DOF)         | Adjust household population to match household population by city          |
+| Jurisdiction household population controls | External (DOF)         | Adjust household population to match household population by jurisdiction          |
 
 ## MGRA cross-reference (`[inputs].[mgra]`)
 See [Startup](https://github.com/SANDAG/Estimates-Program/wiki/Startup).
@@ -19,9 +19,9 @@ See [Startup](https://github.com/SANDAG/Estimates-Program/wiki/Startup).
 ## Point geometry group quarters by type
 MGRA group quarters by type is aggregated from SANDAG's point geometry group quarters dataset to the MGRA-level. To ensure that group quarters by type is assigned to the correct MGRA, a spatial join is used to match the group quarters point geometries to MGRA polygons. The special MGRAs table (`[inputs].[special_mgras]`) is used to identify instances of "Group Quarters - Other" that should be mapped to "Group Quarters - Institutional Correctional Facilities".
 
-## City total group quarters controls
+## Jurisdiction total group quarters controls
 
-City-level total group quarters controls are directly pulled from the [California Department of Finance (DOF) Estimates](https://dof.ca.gov/forecasting/demographics/estimates/). For years 2010-2019, data is pulled from the most recent E-8 product at the time. For years 2020+, data is pulled from the most recent E-5 product at the time.
+Jurisdiction-level total group quarters controls are directly pulled from the [California Department of Finance (DOF) Estimates](https://dof.ca.gov/forecasting/demographics/estimates/). For years 2010-2019, data is pulled from the most recent E-8 product at the time. For years 2020+, data is pulled from the most recent E-5 product at the time.
 
 ## Households in each MGRA (`[outputs].[hh]`)
 See [Housing and Households](https://github.com/SANDAG/Estimates-Program/wiki/Housing-and-Households).
@@ -40,13 +40,13 @@ To avoid division by zero errors, the average household size is set to `NULL` if
 \text{Regional Household Size} = \frac{\sum \text{Household Population}}{\sum \text{Households}}
 ```
 
-## City household population controls
+## Jurisdiction household population controls
 
-City-level household population controls are directly pulled from the [California Department of Finance (DOF) Estimates](https://dof.ca.gov/forecasting/demographics/estimates/). For years 2010-2019, data is pulled from the most recent E-8 product at the time. For years 2020+, data is pulled from the most recent E-5 product at the time.
+Jurisdiction-level household population controls are directly pulled from the [California Department of Finance (DOF) Estimates](https://dof.ca.gov/forecasting/demographics/estimates/). For years 2010-2019, data is pulled from the most recent E-8 product at the time. For years 2020+, data is pulled from the most recent E-5 product at the time.
 
 # Outputs
 ## Population by housing type in each MGRA
-MGRA population by housing type. Group quarters housing types calculated by aggregating group quarters points to MGRAs and controlling overall group quarters at the city-level to controls from the DOF. Household population calculated by taking MGRA households, applying census tract average household sizes, and controlling household population at the city-level to controls from the DOF.
+MGRA population by housing type. Group quarters housing types calculated by aggregating group quarters points to MGRAs and controlling overall group quarters at the jurisdiction-level to controls from the DOF. Household population calculated by taking MGRA households, applying census tract average household sizes, and controlling household population at the jurisdiction-level to controls from the DOF.
 
 ### Group Quarters population by housing type in each MGRA (`[outputs].[gq]`)
 Each row of this table contains the following information:

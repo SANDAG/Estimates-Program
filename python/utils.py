@@ -103,11 +103,11 @@ input_parser.parse_config()
 # Get data from the parsed and validated configuration file
 RUN_INSTRUCTIONS = input_parser.run_instructions
 RUN_ID = input_parser.run_id
-MGRA_VERSION = input_parser.mgra_version
+SERIES = input_parser.series
 DEBUG = input_parser.debug
 
 logger.info(f"RUN_ID: {RUN_ID}")
-logger.info(f"MGRA_VERSION: {MGRA_VERSION}")
+logger.info(f"SERIES: {SERIES}")
 logger.info(f"DEBUG: {DEBUG}")
 logger.info(f"RUN_INSTRUCTIONS: {RUN_INSTRUCTIONS}")
 

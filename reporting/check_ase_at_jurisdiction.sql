@@ -1,5 +1,4 @@
--- SQL scrip to get ASE population aggregated at the city level, based on the input
--- population type
+-- SQL script to get ASE population aggregated at the jurisdiction level
 DECLARE @run_id INTEGER = :run_id;
 DECLARE @pop_type NVARCHAR(32) = :pop_type;
 DECLARE @series INTEGER = (SELECT [series] FROM [metadata].[run] WHERE [run_id] = @run_id);

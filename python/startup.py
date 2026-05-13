@@ -39,7 +39,7 @@ def _get_startup_inputs() -> pd.DataFrame:
                 con=con,
                 params={
                     "run_id": utils.RUN_ID,
-                    "mgra_version": utils.MGRA_VERSION,
+                    "series": utils.SERIES,
                     "insert_switch": 0,  # return tabular data only
                 },  # type: ignore
             )
@@ -72,7 +72,7 @@ def _insert_startup_outputs(mgra: pd.DataFrame, debug: bool) -> None:
                     query,
                     {
                         "run_id": utils.RUN_ID,
-                        "mgra_version": utils.MGRA_VERSION,
+                        "series": utils.SERIES,
                         "insert_switch": 1,  # write data to database
                     },
                 )

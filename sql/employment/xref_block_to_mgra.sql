@@ -17,12 +17,12 @@ Notes:
 SET NOCOUNT ON;
 -- Initialize parameters and return table ------------------------------------
 DECLARE @year INTEGER = :year;
-DECLARE @mgra_version INTEGER = :mgra_version;
+DECLARE @series INTEGER = :series;
 DECLARE @msg nvarchar(45) = 'EDD point-level data does not exist';
 
 
--- Check for MGRA version and stop execution if not Series 15
-IF @mgra_version != 15
+-- Check for MGRA series and stop execution if not Series 15
+IF @series != 15
 BEGIN
     RAISERROR('EDD xref only valid for Series 15 MGRAs',16,1)
     RETURN

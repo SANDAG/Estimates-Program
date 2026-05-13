@@ -10,7 +10,7 @@ needing to handle the shape attribute.
 SET NOCOUNT ON;
 DECLARE @insert_switch BIT = :insert_switch;
 DECLARE @run_id INTEGER = :run_id;
-DECLARE @mgra_version INTEGER = :mgra_version;
+DECLARE @series INTEGER = :series;
 
 
 -- Get MGRA data from [GeoAnalyst] and INSERT to temporary table
@@ -23,7 +23,7 @@ INTO [#inputs_mgra]
 FROM [GeoAnalyst].[geography].[zone]
 INNER JOIN [GeoAnalyst].[geography].[geography]
     ON [zone].[geography_id] = [geography].[geography_id]
-WHERE [geography].[alias] = 'mgra' + CAST(@mgra_version AS NVARCHAR(2))
+WHERE [geography].[alias] = 'mgra' + CAST(@series AS NVARCHAR(2))
 
 
 -- INSERT data into [inputs].[mgra] if @insert switch is set

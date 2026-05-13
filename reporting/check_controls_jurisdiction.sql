@@ -1,5 +1,4 @@
--- SQL script to check that all data in a given [run_id] matches city level control
--- totals
+-- SQL script to check that all data matches jurisdiction level control totals
 DECLARE @run_id INTEGER = :run_id;
 DECLARE @series INTEGER = (SELECT [series] FROM [metadata].[run] WHERE [run_id] = @run_id);
 
@@ -7,7 +6,7 @@ DECLARE @series INTEGER = (SELECT [series] FROM [metadata].[run] WHERE [run_id] 
 -- from the control occupancy rate to raise an error
 DECLARE @threshold FLOAT = .01;
 
--- Get non-ASE city level controls from the DOF ---------------------------------------
+-- Get non-ASE jurisdiction level controls from the DOF -------------------------------
 WITH [dof_controls] AS (
         SELECT *
         FROM (
@@ -49,7 +48,7 @@ WITH [dof_controls] AS (
         ) AS [dof]
     ), 
 
-    -- Aggregate MGRA level data to the city level
+    -- Aggregate MGRA level data to the jurisdiction level
     [mgra_hhp] AS (
         SELECT 
             [year],
