@@ -18,6 +18,7 @@ SET NOCOUNT ON;
 -- Initialize parameters ---------------------------------------------------------------
 DECLARE @run_id integer = :run_id;
 DECLARE @year integer = :year;
+DECLARE @series INTEGER = (SELECT [series] FROM [metadata].[run] WHERE [run_id] = @run_id);
 
 -- Send error message if no data exists ------------------------------------------------
 DECLARE @msg nvarchar(45) = 'ACS 5-Year Table does not exist';
@@ -44,7 +45,7 @@ BEGIN
         FROM [inputs].[mgra]
         INNER JOIN [demographic_warehouse].[dim].[mgra] AS [dw_mgra]
             ON [mgra].[mgra] = [dw_mgra].[mgra]
-            AND [dw_mgra].[series] = (SELECT [series] FROM [metadata].[run] WHERE [run_id] = @run_id)
+            AND [dw_mgra].[series] = @series
         INNER JOIN [demographic_warehouse].[dim].[mgra_xref]
             ON [dw_mgra].[mgra_id] = [mgra_xref].[mgra_id]
             AND [mgra_xref].[xref_year] = @year

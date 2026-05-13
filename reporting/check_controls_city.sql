@@ -1,6 +1,7 @@
 -- SQL script to check that all data in a given [run_id] matches city level control
 -- totals
 DECLARE @run_id INTEGER = :run_id;
+DECLARE @series INTEGER = (SELECT [series] FROM [metadata].[run] WHERE [run_id] = @run_id);
 
 -- The threshold variable determines how far away the aggregated occupancy rate must be
 -- from the control occupancy rate to raise an error
@@ -107,7 +108,7 @@ WITH [dof_controls] AS (
             AND [mgra].[run_id] = @run_id
         LEFT JOIN [demographic_warehouse].[dim].[mgra] AS [dw_mgra]
             ON [mgra_hhp].[mgra] = [dw_mgra].[mgra]
-            AND [dw_mgra].[series] = (SELECT [series] FROM [metadata].[run] WHERE [run_id] = @run_id)
+            AND [dw_mgra].[series] = @series
         LEFT JOIN [demographic_warehouse].[dim].[mgra_xref]
             ON [dw_mgra].[mgra_id] = [mgra_xref].[mgra_id]
             AND [mgra_xref].[xref_year] = [mgra_hhp].[year]

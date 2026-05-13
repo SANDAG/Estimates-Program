@@ -2,6 +2,7 @@
 -- population type
 DECLARE @run_id INTEGER = :run_id;
 DECLARE @pop_type NVARCHAR(32) = :pop_type;
+DECLARE @series INTEGER = (SELECT [series] FROM [metadata].[run] WHERE [run_id] = @run_id);
 
 -- Since 'Total' is not technically a [pop_type] in [outputs].[ase], we need to do it 
 -- separately
@@ -20,7 +21,7 @@ BEGIN
             AND [ase].[run_id] = [mgra].[run_id]
         LEFT JOIN [demographic_warehouse].[dim].[mgra] AS [dw_mgra]
             ON [mgra].[mgra] = [dw_mgra].[mgra]
-            AND [dw_mgra].[series] = (SELECT [series] FROM [metadata].[run] WHERE [run_id] = @run_id)
+            AND [dw_mgra].[series] = @series
         LEFT JOIN [demographic_warehouse].[dim].[mgra_xref]
             ON [dw_mgra].[mgra_id] = [mgra_xref].[mgra_id]
             AND [mgra_xref].[xref_year] = [ase].[year]
@@ -40,7 +41,7 @@ BEGIN
             AND [ase].[run_id] = [mgra].[run_id]
         LEFT JOIN [demographic_warehouse].[dim].[mgra] AS [dw_mgra]
             ON [mgra].[mgra] = [dw_mgra].[mgra]
-            AND [dw_mgra].[series] = (SELECT [series] FROM [metadata].[run] WHERE [run_id] = @run_id)
+            AND [dw_mgra].[series] = @series
         LEFT JOIN [demographic_warehouse].[dim].[mgra_xref]
             ON [dw_mgra].[mgra_id] = [mgra_xref].[mgra_id]
             AND [mgra_xref].[xref_year] = [ase].[year]
@@ -60,7 +61,7 @@ BEGIN
             AND [ase].[run_id] = [mgra].[run_id]
         LEFT JOIN [demographic_warehouse].[dim].[mgra] AS [dw_mgra]
             ON [mgra].[mgra] = [dw_mgra].[mgra]
-            AND [dw_mgra].[series] = (SELECT [series] FROM [metadata].[run] WHERE [run_id] = @run_id)
+            AND [dw_mgra].[series] = @series
         LEFT JOIN [demographic_warehouse].[dim].[mgra_xref]
             ON [dw_mgra].[mgra_id] = [mgra_xref].[mgra_id]
             AND [mgra_xref].[xref_year] = [ase].[year]
@@ -86,7 +87,7 @@ BEGIN
             AND [ase].[run_id] = [mgra].[run_id]
         LEFT JOIN [demographic_warehouse].[dim].[mgra] AS [dw_mgra]
             ON [mgra].[mgra] = [dw_mgra].[mgra]
-            AND [dw_mgra].[series] = (SELECT [series] FROM [metadata].[run] WHERE [run_id] = @run_id)
+            AND [dw_mgra].[series] = @series
         LEFT JOIN [demographic_warehouse].[dim].[mgra_xref]
             ON [dw_mgra].[mgra_id] = [mgra_xref].[mgra_id]
             AND [mgra_xref].[xref_year] = [ase].[year]
@@ -108,7 +109,7 @@ BEGIN
             AND [ase].[run_id] = [mgra].[run_id]
         LEFT JOIN [demographic_warehouse].[dim].[mgra] AS [dw_mgra]
             ON [mgra].[mgra] = [dw_mgra].[mgra]
-            AND [dw_mgra].[series] = (SELECT [series] FROM [metadata].[run] WHERE [run_id] = @run_id)
+            AND [dw_mgra].[series] = @series
         LEFT JOIN [demographic_warehouse].[dim].[mgra_xref]
             ON [dw_mgra].[mgra_id] = [mgra_xref].[mgra_id]
             AND [mgra_xref].[xref_year] = [ase].[year]
@@ -130,7 +131,7 @@ BEGIN
             AND [ase].[run_id] = [mgra].[run_id]
         LEFT JOIN [demographic_warehouse].[dim].[mgra] AS [dw_mgra]
             ON [mgra].[mgra] = [dw_mgra].[mgra]
-            AND [dw_mgra].[series] = (SELECT [series] FROM [metadata].[run] WHERE [run_id] = @run_id)
+            AND [dw_mgra].[series] = @series
         LEFT JOIN [demographic_warehouse].[dim].[mgra_xref]
             ON [dw_mgra].[mgra_id] = [mgra_xref].[mgra_id]
             AND [mgra_xref].[xref_year] = [ase].[year]

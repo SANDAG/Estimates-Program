@@ -1,10 +1,6 @@
 -- SQL script to check the MGRA restrictions present in [inputs].[special_mgras]
 DECLARE @run_id INTEGER = :run_id;
-DECLARE @mgra_version nvarchar(6) = (
-    SELECT [mgra]
-    FROM [metadata].[run]
-    WHERE [run_id] = @run_id
-);
+DECLARE @series INTEGER = (SELECT [series] FROM [metadata].[run] WHERE [run_id] = @run_id);
 
 SELECT *
 FROM (
@@ -33,7 +29,7 @@ FROM (
     WHERE
         [special_mgras].[sex] IS NOT NULL
         AND [mgra_sex].[pop] > 0
-        AND [special_mgras].[series] = (SELECT [series] FROM [metadata].[run] WHERE [run_id] = @run_id)
+        AND [special_mgras].[series] = @series
 
     UNION ALL 
 
@@ -55,7 +51,7 @@ FROM (
         AND [special_mgras].[min_age] IS NOT NULL
         AND [upper_bound] < [min_age]
         AND [value] > 0
-        AND [special_mgras].[series] = (SELECT [series] FROM [metadata].[run] WHERE [run_id] = @run_id)
+        AND [special_mgras].[series] = @series
     GROUP BY [ase].[year], [ase].[mgra], [ase].[pop_type], [min_age]
 
     UNION ALL 
@@ -78,7 +74,7 @@ FROM (
         AND [special_mgras].[max_age] IS NOT NULL
         AND [lower_bound] > [max_age]
         AND [value] > 0
-        AND [special_mgras].[series] = (SELECT [series] FROM [metadata].[run] WHERE [run_id] = @run_id)
+        AND [special_mgras].[series] = @series
     GROUP BY [ase].[year], [ase].[mgra], [ase].[pop_type], [max_age]
 ) AS [error_rows]
 ORDER BY [mgra], [metric], [pop_type], [year]
