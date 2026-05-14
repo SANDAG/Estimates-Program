@@ -1,14 +1,18 @@
 # Inputs
 
-| Input                                          | Module Source  | Usage                                                                              |
-|------------------------------------------------|----------------|------------------------------------------------------------------------------------| 
-| MGRA cross-reference (`[inputs].[mgra]`)       | Startup        | Used to merge MGRA values with census tract rates and jurisdiction controls                |
-| Point geometry housing stock by land use       | External (LUDU)| Generate counts of housing units by structure type within each MGRA                |
-| Census tract occupancy rates by structure type | External (ACS) | Apply to housing units to create households by structure type within each MGRA     |
-| Jurisdiction total occupancy rate controls     | External (DOF) | Adjust households to match overall occupancy rate by jurisdiction                          |
+| Input                                          | Module Source         | Usage                                                                             |
+|------------------------------------------------|-----------------------|-----------------------------------------------------------------------------------| 
+| MGRA Geography (`[inputs].[mgra]`)             | Startup               | Used to merge MGRA-level values with census tract rates and jurisdiction controls |
+| MGRA Cross References                          | Demographic Warehouse | Provides cross reference from MGRAs to census tracts and jurisdictions            |
+| Point geometry housing stock by land use       | External (LUDU)       | Generate counts of housing units by structure type within each MGRA               |
+| Census tract occupancy rates by structure type | External (ACS)        | Apply to housing units to create households by structure type within each MGRA    |
+| Jurisdiction total occupancy rate controls     | External (DOF)        | Adjust households to match overall occupancy rate by jurisdiction                 |
 
-## MGRA cross-reference (`[inputs].[mgra]`)
+## MGRA Geography (`[inputs].[mgra]`)
 See [Startup](https://github.com/SANDAG/Estimates-Program/wiki/Startup).
+
+## MGRA Cross References
+See private SANDAG repository [Demographic Warehouse](https://github.com/SANDAG/demographic-warehouse).
 
 ## Point geometry housing stock by land use
 

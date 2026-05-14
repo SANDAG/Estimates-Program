@@ -1,20 +1,24 @@
 # Inputs
 
-| Input                                      | Module Source          | Usage                                                                      |
-|--------------------------------------------|------------------------|----------------------------------------------------------------------------| 
-| MGRA cross-reference (`[inputs].[mgra]`)   | Startup                | Used to merge MGRA-level values with census tract rates and jurisdiction controls  |
-| Special MGRAs (`[inputs].[special_mgras]`) | Startup                | Identifies "Group Quarters - Institutional Correctional Facilities"        |
-| Point geometry group quarters by type      | External (LUDU)        | Generate counts of group quarters by type within each MGRA                 |
-| Jurisdiction total group quarters controls | External (DOF)         | Apply to group quarters to match total group quarters by jurisdiction              |
-| Households in each MGRA (`[outputs].[hh]`) | Housing and Households | Used to generate household population                                      |
-| Census tract average household size        | External (ACS)         | Apply to households to create household population                         |
-| Jurisdiction household population controls | External (DOF)         | Adjust household population to match household population by jurisdiction          |
+| Input                                      | Module Source          | Usage                                                                             |
+|--------------------------------------------|------------------------|-----------------------------------------------------------------------------------| 
+| MGRA Geography (`[inputs].[mgra]`)         | Startup                | Used to merge MGRA-level values with census tract rates and jurisdiction controls |
+| Special MGRAs (`[inputs].[special_mgras]`) | Startup                | Identifies "Group Quarters - Institutional Correctional Facilities"               |
+| MGRA Cross References                      | Demographic Warehouse  | Provides cross reference from MGRAs to census tracts and jurisdictions            |
+| Point geometry group quarters by type      | External (LUDU)        | Generate counts of group quarters by type within each MGRA                        |
+| Jurisdiction total group quarters controls | External (DOF)         | Apply to group quarters to match total group quarters by jurisdiction             |
+| Households in each MGRA (`[outputs].[hh]`) | Housing and Households | Used to generate household population                                             |
+| Census tract average household size        | External (ACS)         | Apply to households to create household population                                |
+| Jurisdiction household population controls | External (DOF)         | Adjust household population to match household population by jurisdiction         |
 
-## MGRA cross-reference (`[inputs].[mgra]`)
+## MGRA Geography (`[inputs].[mgra]`)
 See [Startup](https://github.com/SANDAG/Estimates-Program/wiki/Startup).
 
 ## Special MGRAs (`[inputs].[special_mgras]`)
 See [Startup](https://github.com/SANDAG/Estimates-Program/wiki/Startup).
+
+## MGRA Cross References
+See private SANDAG repository [Demographic Warehouse](https://github.com/SANDAG/demographic-warehouse).
 
 ## Point geometry group quarters by type
 MGRA group quarters by type is aggregated from SANDAG's point geometry group quarters dataset to the MGRA-level. To ensure that group quarters by type is assigned to the correct MGRA, a spatial join is used to match the group quarters point geometries to MGRA polygons. The special MGRAs table (`[inputs].[special_mgras]`) is used to identify instances of "Group Quarters - Other" that should be mapped to "Group Quarters - Institutional Correctional Facilities".

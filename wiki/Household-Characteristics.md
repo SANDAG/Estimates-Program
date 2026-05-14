@@ -1,15 +1,19 @@
 # Inputs
 
-| Input                                                 | Module Source          | Usage                                                             |
-|-------------------------------------------------------|------------------------|-------------------------------------------------------------------| 
-| MGRA cross-reference (`[inputs].[mgra]`)              | Startup                | Used to merge MGRA-level values with census tract rates           |
-| Households in each MGRA (`[outputs].[hh]`)            | Housing and Households | Used to generate household characteristics                        |
-| Household population in each MGRA (`[outputs].[hhp]`) | Housing and Households | Used to balance household size implied household population       |
-| Census tract household income distribution            | External (ACS)         | Apply to households to create households by income categories     |
-| Census tract households by size distribution          | External (ACS)         | Apply to households to create households by size categories       |
+| Input                                                 | Module Source          | Usage                                                         |
+|-------------------------------------------------------|------------------------|---------------------------------------------------------------| 
+| MGRA Geography (`[inputs].[mgra]`)                    | Startup                | Used to merge MGRA-level values with census tract rates       |
+| MGRA Cross References                                 | Demographic Warehouse  | Provides cross reference from MGRAs to census tracts          |
+| Households in each MGRA (`[outputs].[hh]`)            | Housing and Households | Used to generate household characteristics                    |
+| Household population in each MGRA (`[outputs].[hhp]`) | Housing and Households | Used to balance household size implied household population   |
+| Census tract household income distribution            | External (ACS)         | Apply to households to create households by income categories |
+| Census tract households by size distribution          | External (ACS)         | Apply to households to create households by size categories   |
 
-## MGRA cross-reference (`[inputs].[mgra]`)
+## MGRA Geography (`[inputs].[mgra]`)
 See [Startup](https://github.com/SANDAG/Estimates-Program/wiki/Startup).
+
+## MGRA Cross References
+See private SANDAG repository [Demographic Warehouse](https://github.com/SANDAG/demographic-warehouse).
 
 ## Households in each MGRA (`[outputs].[hh]`)
 See [Housing and Households](https://github.com/SANDAG/Estimates-Program/wiki/Housing-and-Households).

@@ -5,8 +5,9 @@ The population by age/sex/ethnicity by housing type module is the most complex m
 |--------------------------------------------|------------------------|---------------------------------------------------------------------| 
 | Regional age/sex/ethnicity controls by housing type | Population by Age/Sex/Ethnicity | Regional controls used in IPF procedure to generate MGRA-level population by age/sex/ethnicity by housing type |
 | Census tract age/sex/ethnicity seed data | Population by Age/Sex/Ethnicity | Census tract age/sex/ethnicity distributions used as seed data in IPF procedure to generate MGRA-level population by age/sex/ethnicity by housing type |
-| MGRA cross-reference (`[inputs].[mgra]`)   | Startup                | Used to merge MGRA-level values with census tract seed data |
+| MGRA Geography (`[inputs].[mgra]`)         | Startup                | Used to merge MGRA-level values with census tract seed data |
 | Special MGRAs (`[inputs].[special_mgras]`) | Startup                | Used to restrict age/sex categories in identified housing types |
+| MGRA Cross References                      | Demographic Warehouse  | Provides cross reference from MGRAs to census tracts |
 | Households in each MGRA (`[outputs].[hh]`) | Housing and Households | Used to balance the number of householders (age 15+) in each MGRA |
 | Population by housing type in each MGRA (`[outputs].[gq]` and `[outputs].[hhp]`) | Population by Type | MGRA controls used in IPF procedure to generate MGRA-level population by age/sex/ethnicity by housing type |
 
@@ -16,11 +17,14 @@ See the sub-page [Regional age/sex/ethnicity controls by housing type](https://g
 ## Census tract age/sex/ethnicity seed data
 See the sub-page [Census tract age/sex/ethnicity seed data](https://github.com/SANDAG/Estimates-Program/wiki/Census-Tract-Age-Sex-Ethnicity-Seed).
 
-## MGRA cross-reference (`[inputs].[mgra]`)
+## MGRA Geography (`[inputs].[mgra]`)
 See [Startup](https://github.com/SANDAG/Estimates-Program/wiki/Startup).
 
 ## Special MGRAs (`[inputs].[special_mgras]`)
 See [Startup](https://github.com/SANDAG/Estimates-Program/wiki/Startup).
+
+## MGRA Cross References
+See private SANDAG repository [Demographic Warehouse](https://github.com/SANDAG/demographic-warehouse).
 
 ## Households in each MGRA (`[outputs].[hh]`)
 See [Housing and Households](https://github.com/SANDAG/Estimates-Program/wiki/Housing-and-Households).
