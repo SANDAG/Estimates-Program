@@ -73,16 +73,13 @@ BEGIN
     -- Exhaustive list of MGRAs and Blockgroups
     [mgras] AS (
         SELECT
-            [mgra].[mgra],
+            [mgra],
             [blockgroup]
-        FROM [inputs].[mgra]
-        INNER JOIN [demographic_warehouse].[dim].[mgra] AS [dw_mgra]
-            ON [mgra].[mgra] = [dw_mgra].[mgra]
-            AND [dw_mgra].[series] = @series
+        FROM [demographic_warehouse].[dim].[mgra]
         INNER JOIN [demographic_warehouse].[dim].[mgra_xref]
-            ON [dw_mgra].[mgra_id] = [mgra_xref].[mgra_id]
+            ON [mgra].[mgra_id] = [mgra_xref].[mgra_id]
             AND [mgra_xref].[xref_year] = @year
-        WHERE [run_id] = @run_id
+        WHERE [mgra].[series] = @series
     )
     -- Return cross reference with flag field indicating which to use
     SELECT

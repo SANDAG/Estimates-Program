@@ -23,12 +23,9 @@ SELECT
     [jurisdiction],
     [gq_type]
 INTO [#tt_shell]
-FROM [inputs].[mgra]
-INNER JOIN [demographic_warehouse].[dim].[mgra] AS [dw_mgra]
-    ON [mgra].[mgra] = [dw_mgra].[mgra]
-    AND [dw_mgra].[series] = @series
+FROM [demographic_warehouse].[dim].[mgra]
 INNER JOIN [demographic_warehouse].[dim].[mgra_xref]
-    ON [dw_mgra].[mgra_id] = [mgra_xref].[mgra_id]
+    ON [mgra].[mgra_id] = [mgra_xref].[mgra_id]
     AND [mgra_xref].[xref_year] = @year
 CROSS JOIN (
     SELECT [gq_type] FROM (
@@ -39,7 +36,7 @@ CROSS JOIN (
             ('Group Quarters - Other')
     ) AS [tt] ([gq_type])
 ) AS [gq_type]
-WHERE [run_id] = @run_id
+WHERE [mgra].[series] = @series
 
 
 -- Get SANDAG GIS team GQ dataset --------------------------------------------
@@ -115,6 +112,10 @@ UNPIVOT (
 ) AS [unpivot]
     ON [#tt_shell].[mgra] = [unpivot].[mgra]
     AND [#tt_shell].[gq_type] = [unpivot].[gq_type]
+ORDER BY
+    [#tt_shell].[mgra],
+    [#tt_shell].[jurisdiction],
+    [#tt_shell].[gq_type]
 
 
 -- Clean up ------------------------------------------------------------------

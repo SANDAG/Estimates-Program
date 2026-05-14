@@ -27,14 +27,11 @@ LEFT OUTER JOIN (
         [mgra].[mgra],
         [tract],
         [jurisdiction]
-    FROM [inputs].[mgra]
-    INNER JOIN [demographic_warehouse].[dim].[mgra] AS [dw_mgra]
-        ON [mgra].[mgra] = [dw_mgra].[mgra]
-        AND [dw_mgra].[series] = @series
+    FROM [demographic_warehouse].[dim].[mgra]
     INNER JOIN [demographic_warehouse].[dim].[mgra_xref]
-        ON [dw_mgra].[mgra_id] = [mgra_xref].[mgra_id]
+        ON [mgra].[mgra_id] = [mgra_xref].[mgra_id]
         AND [mgra_xref].[xref_year] = @year
-    WHERE [run_id] = @run_id
+    WHERE [mgra].[series] = @series
 ) AS [tracts]
     ON [hh].[mgra] = [tracts].[mgra]
 WHERE [run_id] = @run_id
@@ -45,3 +42,5 @@ GROUP BY
     [hh].[mgra],
     [tract],
     [jurisdiction]
+ORDER BY
+    [hh].[mgra]

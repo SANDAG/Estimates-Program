@@ -39,17 +39,13 @@ ELSE IF @rows != 2
 ELSE
 BEGIN
     -- Build the expected return table of Tracts -----------------------------
-    SELECT
-        DISTINCT [tract]
+    SELECT DISTINCT [tract]
     INTO [#tt_shell]
-    FROM [inputs].[mgra]
-    INNER JOIN [demographic_warehouse].[dim].[mgra] AS [dw_mgra]
-        ON [mgra].[mgra] = [dw_mgra].[mgra]
-        AND [dw_mgra].[series] = @series
+    FROM [demographic_warehouse].[dim].[mgra]
     INNER JOIN [demographic_warehouse].[dim].[mgra_xref]
-        ON [dw_mgra].[mgra_id] = [mgra_xref].[mgra_id]
+        ON [mgra].[mgra_id] = [mgra_xref].[mgra_id]
         AND [mgra_xref].[xref_year] = @year
-    WHERE [run_id] = @run_id;
+    WHERE [mgra].[series] = @series;
 
     -- Prepare intermediary results from ACS datasets ------------------------
     -- 5-year ACS Detailed Table B25032 - Tenure by Units in Structure
@@ -126,7 +122,8 @@ BEGIN
         LEFT OUTER JOIN [#household_population]
             ON [#occupied].[tract] = [#household_population].[tract]
     ) AS [rate_tract]
-        ON [#tt_shell].[tract] = [rate_tract].[tract];
+        ON [#tt_shell].[tract] = [rate_tract].[tract]
+    ORDER BY [#tt_shell].[tract];
 
 
     -- Clean up --------------------------------------------------------------

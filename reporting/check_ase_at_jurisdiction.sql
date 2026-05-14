@@ -15,14 +15,11 @@ BEGIN
             'Age Group - ' + [age_group] AS [metric],
             SUM([value]) AS [value]
         FROM [outputs].[ase]
-        LEFT JOIN [inputs].[mgra]
+        LEFT JOIN [demographic_warehouse].[dim].[mgra]
             ON [ase].[mgra] = [mgra].[mgra]
-            AND [ase].[run_id] = [mgra].[run_id]
-        LEFT JOIN [demographic_warehouse].[dim].[mgra] AS [dw_mgra]
-            ON [mgra].[mgra] = [dw_mgra].[mgra]
-            AND [dw_mgra].[series] = @series
+            AND [mgra].[series] = @series
         LEFT JOIN [demographic_warehouse].[dim].[mgra_xref]
-            ON [dw_mgra].[mgra_id] = [mgra_xref].[mgra_id]
+            ON [mgra].[mgra_id] = [mgra_xref].[mgra_id]
             AND [mgra_xref].[xref_year] = [ase].[year]
         WHERE [ase].[run_id] = @run_id
         GROUP BY [year], [jurisdiction], [age_group]
@@ -35,14 +32,11 @@ BEGIN
             'Sex - ' + [sex] AS [metric],
             SUM([value]) AS [value]
         FROM [outputs].[ase]
-        LEFT JOIN [inputs].[mgra]
+        LEFT JOIN [demographic_warehouse].[dim].[mgra]
             ON [ase].[mgra] = [mgra].[mgra]
-            AND [ase].[run_id] = [mgra].[run_id]
-        LEFT JOIN [demographic_warehouse].[dim].[mgra] AS [dw_mgra]
-            ON [mgra].[mgra] = [dw_mgra].[mgra]
-            AND [dw_mgra].[series] = @series
+            AND [mgra].[series] = @series
         LEFT JOIN [demographic_warehouse].[dim].[mgra_xref]
-            ON [dw_mgra].[mgra_id] = [mgra_xref].[mgra_id]
+            ON [mgra].[mgra_id] = [mgra_xref].[mgra_id]
             AND [mgra_xref].[xref_year] = [ase].[year]
         WHERE [ase].[run_id] = @run_id
         GROUP BY [year], [jurisdiction], [sex]
@@ -55,14 +49,11 @@ BEGIN
             'Ethnicity - ' + [ethnicity] AS [metric],
             SUM([value]) AS [value]
         FROM [outputs].[ase]
-        LEFT JOIN [inputs].[mgra]
+        LEFT JOIN [demographic_warehouse].[dim].[mgra]
             ON [ase].[mgra] = [mgra].[mgra]
-            AND [ase].[run_id] = [mgra].[run_id]
-        LEFT JOIN [demographic_warehouse].[dim].[mgra] AS [dw_mgra]
-            ON [mgra].[mgra] = [dw_mgra].[mgra]
-            AND [dw_mgra].[series] = @series
+            AND [mgra].[series] = @series
         LEFT JOIN [demographic_warehouse].[dim].[mgra_xref]
-            ON [dw_mgra].[mgra_id] = [mgra_xref].[mgra_id]
+            ON [mgra].[mgra_id] = [mgra_xref].[mgra_id]
             AND [mgra_xref].[xref_year] = [ase].[year]
         WHERE [ase].[run_id] = @run_id
         GROUP BY [year], [jurisdiction], [ethnicity]
@@ -81,14 +72,11 @@ BEGIN
             'Age Group - ' + [age_group] AS [metric],
             SUM([value]) AS [value]
         FROM [outputs].[ase]
-        LEFT JOIN [inputs].[mgra]
+        LEFT JOIN [demographic_warehouse].[dim].[mgra]
             ON [ase].[mgra] = [mgra].[mgra]
-            AND [ase].[run_id] = [mgra].[run_id]
-        LEFT JOIN [demographic_warehouse].[dim].[mgra] AS [dw_mgra]
-            ON [mgra].[mgra] = [dw_mgra].[mgra]
-            AND [dw_mgra].[series] = @series
+            AND [mgra].[series] = @series
         LEFT JOIN [demographic_warehouse].[dim].[mgra_xref]
-            ON [dw_mgra].[mgra_id] = [mgra_xref].[mgra_id]
+            ON [mgra].[mgra_id] = [mgra_xref].[mgra_id]
             AND [mgra_xref].[xref_year] = [ase].[year]
         WHERE
             [ase].[run_id] = @run_id
@@ -103,14 +91,11 @@ BEGIN
             'Sex - ' + [sex] AS [metric],
             SUM([value]) AS [value]
         FROM [outputs].[ase]
-        LEFT JOIN [inputs].[mgra]
+        LEFT JOIN [demographic_warehouse].[dim].[mgra]
             ON [ase].[mgra] = [mgra].[mgra]
-            AND [ase].[run_id] = [mgra].[run_id]
-        LEFT JOIN [demographic_warehouse].[dim].[mgra] AS [dw_mgra]
-            ON [mgra].[mgra] = [dw_mgra].[mgra]
-            AND [dw_mgra].[series] = @series
+            AND [mgra].[series] = @series
         LEFT JOIN [demographic_warehouse].[dim].[mgra_xref]
-            ON [dw_mgra].[mgra_id] = [mgra_xref].[mgra_id]
+            ON [mgra].[mgra_id] = [mgra_xref].[mgra_id]
             AND [mgra_xref].[xref_year] = [ase].[year]
         WHERE
             [ase].[run_id] = @run_id
@@ -125,14 +110,11 @@ BEGIN
             'Ethnicity - ' + [ethnicity] AS [metric],
             SUM([value]) AS [value]
         FROM [outputs].[ase]
-        LEFT JOIN [inputs].[mgra]
+        LEFT JOIN [demographic_warehouse].[dim].[mgra]
             ON [ase].[mgra] = [mgra].[mgra]
-            AND [ase].[run_id] = [mgra].[run_id]
-        LEFT JOIN [demographic_warehouse].[dim].[mgra] AS [dw_mgra]
-            ON [mgra].[mgra] = [dw_mgra].[mgra]
-            AND [dw_mgra].[series] = @series
+            AND [mgra].[series] = @series
         LEFT JOIN [demographic_warehouse].[dim].[mgra_xref]
-            ON [dw_mgra].[mgra_id] = [mgra_xref].[mgra_id]
+            ON [mgra].[mgra_id] = [mgra_xref].[mgra_id]
             AND [mgra_xref].[xref_year] = [ase].[year]
         WHERE
             [ase].[run_id] = @run_id

@@ -42,14 +42,11 @@ BEGIN
     INTO [#tt_shell]
     FROM (
         SELECT DISTINCT [tract]
-        FROM [inputs].[mgra]
-        INNER JOIN [demographic_warehouse].[dim].[mgra] AS [dw_mgra]
-            ON [mgra].[mgra] = [dw_mgra].[mgra]
-            AND [dw_mgra].[series] = @series
+        FROM [demographic_warehouse].[dim].[mgra]
         INNER JOIN [demographic_warehouse].[dim].[mgra_xref]
-            ON [dw_mgra].[mgra_id] = [mgra_xref].[mgra_id]
+            ON [mgra].[mgra_id] = [mgra_xref].[mgra_id]
             AND [mgra_xref].[xref_year] = @year
-        WHERE [run_id] = @run_id
+        WHERE [mgra].[series] = @series
     ) AS [tracts]
     CROSS JOIN (
         SELECT [household_size] FROM (
@@ -146,5 +143,8 @@ BEGIN
     LEFT JOIN [tract_distribution]
         ON [#tt_shell].[tract] = [tract_distribution].[tract]
         AND [#tt_shell].[household_size] = [tract_distribution].[household_size]
+    ORDER BY 
+        [#tt_shell].[tract],
+        [#tt_shell].[household_size];
 
 END

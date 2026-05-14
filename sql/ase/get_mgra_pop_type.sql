@@ -32,12 +32,12 @@ SELECT
     [pop_type],
     [value]
 FROM [population]
-INNER JOIN [inputs].[mgra]
-    ON [mgra].[run_id] = @run_id
-    AND [population].[mgra] = [mgra].[mgra]
-INNER JOIN [demographic_warehouse].[dim].[mgra] AS [dw_mgra]
-    ON [mgra].[mgra] = [dw_mgra].[mgra]
-    AND [dw_mgra].[series] = @series
+INNER JOIN [demographic_warehouse].[dim].[mgra]
+    ON [population].[mgra] = [mgra].[mgra]
+    AND [mgra].[series] = @series
 INNER JOIN [demographic_warehouse].[dim].[mgra_xref]
-    ON [dw_mgra].[mgra_id] = [mgra_xref].[mgra_id]
+    ON [mgra].[mgra_id] = [mgra_xref].[mgra_id]
     AND [mgra_xref].[xref_year] = @year
+ORDER BY
+    [population].[mgra],
+    [pop_type];

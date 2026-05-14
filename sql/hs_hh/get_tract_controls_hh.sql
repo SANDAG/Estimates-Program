@@ -49,14 +49,11 @@ BEGIN
     INTO [#tt_shell]
     FROM (
         SELECT DISTINCT [tract]
-        FROM [inputs].[mgra]
-        INNER JOIN [demographic_warehouse].[dim].[mgra] AS [dw_mgra]
-            ON [mgra].[mgra] = [dw_mgra].[mgra]
-            AND [dw_mgra].[series] = @series
+        FROM [demographic_warehouse].[dim].[mgra]
         INNER JOIN [demographic_warehouse].[dim].[mgra_xref]
-            ON [dw_mgra].[mgra_id] = [mgra_xref].[mgra_id]
+            ON [mgra].[mgra_id] = [mgra_xref].[mgra_id]
             AND [mgra_xref].[xref_year] = @year
-        WHERE [run_id] = @run_id
+        WHERE [mgra].[series] = @series
     ) AS [tracts]
     CROSS JOIN (
         SELECT [structure_type] FROM (
@@ -237,8 +234,8 @@ BEGIN
         @year AS [year],
         [#tt_shell].[tract],
         [#tt_shell].[structure_type],
-        CASE WHEN [rate_tract].[occupancy_rate] IS NULL
-                THEN [rate_region].[occupancy_rate]
+        CASE
+            WHEN [rate_tract].[occupancy_rate] IS NULL THEN [rate_region].[occupancy_rate]
             ELSE [rate_tract].[occupancy_rate]
         END AS [value]
     FROM [#tt_shell]
@@ -247,6 +244,9 @@ BEGIN
     LEFT OUTER JOIN [rate_tract]
         ON [#tt_shell].[tract] = [rate_tract].[tract]
         AND [#tt_shell].[structure_type] = [rate_tract].[structure_type]
+    ORDER BY
+        [#tt_shell].[tract],
+        [#tt_shell].[structure_type];
 
 
     -- Clean up --------------------------------------------------------------

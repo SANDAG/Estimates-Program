@@ -102,14 +102,11 @@ WITH [dof_controls] AS (
         LEFT JOIN [mgra_hh]
             ON [mgra_hhp].[year] = [mgra_hh].[year]
             AND [mgra_hhp].[mgra] = [mgra_hh].[mgra]
-        LEFT JOIN [inputs].[mgra]
+        LEFT JOIN [demographic_warehouse].[dim].[mgra]
             ON [mgra_hhp].[mgra] = [mgra].[mgra]
-            AND [mgra].[run_id] = @run_id
-        LEFT JOIN [demographic_warehouse].[dim].[mgra] AS [dw_mgra]
-            ON [mgra_hhp].[mgra] = [dw_mgra].[mgra]
-            AND [dw_mgra].[series] = @series
+            AND [mgra].[series] = @series
         LEFT JOIN [demographic_warehouse].[dim].[mgra_xref]
-            ON [dw_mgra].[mgra_id] = [mgra_xref].[mgra_id]
+            ON [mgra].[mgra_id] = [mgra_xref].[mgra_id]
             AND [mgra_xref].[xref_year] = [mgra_hhp].[year]
         GROUP BY [mgra_hhp].[year], [jurisdiction]
     )
