@@ -87,14 +87,13 @@ def _get_hs_hh_inputs(year: int) -> dict[str, pd.DataFrame]:
                 params={
                     "run_id": utils.RUN_ID,
                     "year": year,
-                    "mgra_version": utils.MGRA_VERSION,
                     "gis_server": utils.GIS_SERVER,
                 },
             )
 
-        # Get city occupancy controls
-        with open(utils.SQL_FOLDER / "hs_hh/get_city_controls_hh.sql") as file:
-            hs_hh_inputs["city_controls"] = pd.read_sql_query(
+        # Get jurisdiction occupancy controls
+        with open(utils.SQL_FOLDER / "hs_hh/get_jurisdiction_controls_hh.sql") as file:
+            hs_hh_inputs["jurisdiction_controls"] = pd.read_sql_query(
                 sql=sql.text(file.read()),
                 con=con,
                 params={
@@ -127,9 +126,9 @@ def _validate_hs_hh_inputs(year: int, hs_hh_inputs: dict[str, pd.DataFrame]) -> 
         null={},
     )
     tests.validate_data(
-        "City Controls Households",
-        hs_hh_inputs["city_controls"],
-        row_count={"key_columns": {"city"}},
+        "Jurisdiction Controls Households",
+        hs_hh_inputs["jurisdiction_controls"],
+        row_count={"key_columns": {"jurisdiction"}},
         negative={},
         null={},
     )
@@ -144,16 +143,16 @@ def _validate_hs_hh_inputs(year: int, hs_hh_inputs: dict[str, pd.DataFrame]) -> 
 
 def _create_hs_hh(hs_hh_inputs: dict[str, pd.DataFrame]) -> dict[str, pd.DataFrame]:
     """Calculate households by MGRA."""
-    city_controls = hs_hh_inputs["city_controls"]
+    jurisdiction_controls = hs_hh_inputs["jurisdiction_controls"]
     tract_controls = hs_hh_inputs["tract_controls"]
     hs = hs_hh_inputs["hs"]
 
-    # Create, control, and integerize total households by MGRA for each city
+    # Create, control, and integerize total households by MGRA for each jurisdiction
     result = []
-    for city in np.sort(hs["city"].unique()):
+    for jurisdiction in np.sort(hs["jurisdiction"].unique()):
         # Apply tract-level occupancy controls by structure type
         hh = (
-            hs[hs["city"] == city]
+            hs[hs["jurisdiction"] == jurisdiction]
             .merge(
                 right=tract_controls,
                 on=["run_id", "year", "tract", "structure_type"],
@@ -165,10 +164,10 @@ def _create_hs_hh(hs_hh_inputs: dict[str, pd.DataFrame]) -> dict[str, pd.DataFra
             .reset_index(drop=True)
         )
 
-        # Compute overall occupancy rate and apply city occupancy control
+        # Compute overall occupancy rate and apply jurisdiction occupancy control
         obs_rate = hh["value_hh"].sum() / hh["value_hs"].sum()
-        city_rate = city_controls[city_controls["city"] == city]["value"].values[0]
-        hh["value_hh"] *= city_rate / obs_rate
+        jurisdiction_rate = jurisdiction_controls[jurisdiction_controls["jurisdiction"] == jurisdiction]["value"].values[0]
+        hh["value_hh"] *= jurisdiction_rate / obs_rate
 
         # Integerize households preserving total
         hh["value_hh"] *= round(hh["value_hh"].sum()) / hh["value_hh"].sum()
@@ -219,9 +218,9 @@ def _create_hs_hh(hs_hh_inputs: dict[str, pd.DataFrame]) -> dict[str, pd.DataFra
             else:
                 raise ValueError("Cannot balance households.")
 
-        # Append city result to list
+        # Append jurisdiction result to list
         result.append(
-            hh.drop(columns=["city", "value_hs"]).rename(columns={"value_hh": "value"})
+            hh.drop(columns=["jurisdiction", "value_hs"]).rename(columns={"value_hh": "value"})
         )
 
     return {"hh": pd.concat(result, ignore_index=True)}
@@ -247,11 +246,11 @@ def _insert_hs_hh(
 
     # Save locally if in debug mode
     if debug:
-        hs_hh_inputs["hs"].drop(columns=["tract", "city"]).to_csv(
+        hs_hh_inputs["hs"].drop(columns=["tract", "jurisdiction"]).to_csv(
             utils.DEBUG_OUTPUT_FOLDER / "outputs_hs.csv", index=False
         )
-        hs_hh_inputs["city_controls"].to_csv(
-            utils.DEBUG_OUTPUT_FOLDER / "inputs_controls_city.csv", index=False
+        hs_hh_inputs["jurisdiction_controls"].to_csv(
+            utils.DEBUG_OUTPUT_FOLDER / "inputs_controls_jurisdiction.csv", index=False
         )
         hs_hh_inputs["tract_controls"].assign(
             metric=lambda x: "Occupancy Rate - " + x["structure_type"]
@@ -265,15 +264,15 @@ def _insert_hs_hh(
     # Otherwise, load to database
     else:
         with utils.ESTIMATES_ENGINE.connect() as con:
-            hs_hh_inputs["hs"].drop(columns=["tract", "city"]).to_sql(
+            hs_hh_inputs["hs"].drop(columns=["tract", "jurisdiction"]).to_sql(
                 name="hs",
                 con=con,
                 schema="outputs",
                 if_exists="append",
                 index=False,
             )
-            hs_hh_inputs["city_controls"].to_sql(
-                name="controls_city",
+            hs_hh_inputs["jurisdiction_controls"].to_sql(
+                name="controls_jurisdiction",
                 con=con,
                 schema="inputs",
                 if_exists="append",

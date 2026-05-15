@@ -23,6 +23,7 @@ SET NOCOUNT ON;
 -- Initialize parameters -----------------------------------------------------
 DECLARE @run_id integer = :run_id;
 DECLARE @year integer = :year;
+DECLARE @series INTEGER = (SELECT [series] FROM [metadata].[run] WHERE [run_id] = @run_id);
 
 
 -- Send message if not all tables exist --------------------------------------
@@ -47,12 +48,12 @@ BEGIN
         [structure_type]
     INTO [#tt_shell]
     FROM (
-        SELECT DISTINCT
-            CASE WHEN @year BETWEEN 2010 AND 2019 THEN [2010_census_tract]
-                WHEN @year BETWEEN 2020 AND 2029 THEN [2020_census_tract]
-                ELSE NULL END AS [tract]
-        FROM [inputs].[mgra]
-        WHERE [run_id] = @run_id
+        SELECT DISTINCT [tract]
+        FROM [demographic_warehouse].[dim].[mgra]
+        INNER JOIN [demographic_warehouse].[dim].[mgra_xref]
+            ON [mgra].[mgra_id] = [mgra_xref].[mgra_id]
+            AND [mgra_xref].[xref_year] = @year
+        WHERE [mgra].[series] = @series
     ) AS [tracts]
     CROSS JOIN (
         SELECT [structure_type] FROM (
@@ -233,8 +234,8 @@ BEGIN
         @year AS [year],
         [#tt_shell].[tract],
         [#tt_shell].[structure_type],
-        CASE WHEN [rate_tract].[occupancy_rate] IS NULL
-                THEN [rate_region].[occupancy_rate]
+        CASE
+            WHEN [rate_tract].[occupancy_rate] IS NULL THEN [rate_region].[occupancy_rate]
             ELSE [rate_tract].[occupancy_rate]
         END AS [value]
     FROM [#tt_shell]
@@ -243,6 +244,9 @@ BEGIN
     LEFT OUTER JOIN [rate_tract]
         ON [#tt_shell].[tract] = [rate_tract].[tract]
         AND [#tt_shell].[structure_type] = [rate_tract].[structure_type]
+    ORDER BY
+        [#tt_shell].[tract],
+        [#tt_shell].[structure_type];
 
 
     -- Clean up --------------------------------------------------------------

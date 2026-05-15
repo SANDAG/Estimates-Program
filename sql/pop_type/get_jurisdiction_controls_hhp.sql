@@ -3,7 +3,7 @@ DECLARE @run_id integer = :run_id;
 DECLARE @year integer = :year;
 
 
--- Get occupancy rate controls from California DOF Estimates -----------------
+-- Get household population controls from California DOF Estimates -----------------
 with [dof] AS (
     -- E-8 Estimates - 2010-2019
     SELECT
@@ -11,8 +11,8 @@ with [dof] AS (
         CASE
             WHEN [area_name] = 'Balance of County' THEN 'Unincorporated San Diego County'
             ELSE CONCAT('City of ', [area_name])
-        END AS [city],
-        [vacancy_rate]
+        END AS [jurisdiction],
+        [household_population]
     FROM [socioec_data].[ca_dof].[estimates_e8]
     WHERE
         [estimates_id] = 24  -- E-8: January 2025
@@ -29,8 +29,8 @@ with [dof] AS (
             WHEN [area_name] = 'Balance of County' THEN 'Unincorporated San Diego County'
             WHEN [area_name] = 'National City' THEN 'City of National City'
             ELSE CONCAT('City of ', REPLACE([area_name], ' City', ''))
-        END AS [city],
-        [vacancy_rate]
+        END AS [jurisdiction],
+        [household_population]
     FROM [socioec_data].[ca_dof].[estimates_e5]
     WHERE
         [estimates_id] = 25  -- E-5: Vintage 2025 (2025.5.1)
@@ -40,8 +40,8 @@ with [dof] AS (
 SELECT
     @run_id AS [run_id],
     @year AS [year],
-    [city],
-    'Occupancy Rate' AS [metric],
-    1 - [vacancy_rate] AS [value]
+    [jurisdiction],
+    'Household Population' AS [metric],
+    [household_population] AS [value]
 FROM [dof]
 WHERE [year] = @year

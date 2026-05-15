@@ -17,6 +17,7 @@ SET NOCOUNT ON;
 -- Initialize parameters ---------------------------------------------------------------
 DECLARE @run_id integer = :run_id;
 DECLARE @year integer = :year;
+DECLARE @series INTEGER = (SELECT [series] FROM [metadata].[run] WHERE [run_id] = @run_id);
 DECLARE @msg nvarchar(45) = 'ACS 5-Year Table does not exist';
 
 -- Send error message if no data exists ------------------------------------------------
@@ -39,12 +40,12 @@ BEGIN
         [income_category]
     INTO [#tt_shell]
     FROM (
-        SELECT DISTINCT
-            CASE WHEN @year BETWEEN 2010 AND 2019 THEN [2010_census_tract]
-                WHEN @year BETWEEN 2020 AND 2029 THEN [2020_census_tract]
-                ELSE NULL END AS [tract]
-        FROM [inputs].[mgra]
-        WHERE [run_id] = @run_id
+        SELECT DISTINCT [tract]
+        FROM [demographic_warehouse].[dim].[mgra]
+        INNER JOIN [demographic_warehouse].[dim].[mgra_xref]
+            ON [mgra].[mgra_id] = [mgra_xref].[mgra_id]
+            AND [mgra_xref].[xref_year] = @year
+        WHERE [mgra].[series] = @series
     ) AS [tracts]
     CROSS JOIN (
         SELECT [income_category] FROM (
@@ -171,5 +172,8 @@ BEGIN
     LEFT JOIN [income_distribution]
         ON [#tt_shell].[tract] = [income_distribution].[tract]
         AND [#tt_shell].[income_category] = [income_distribution].[income_category]
+    ORDER BY
+        [#tt_shell].[tract],
+        [#tt_shell].[income_category];
 
 END

@@ -8,8 +8,8 @@ SET NOCOUNT ON;
 -- Initialize parameters and return table ------------------------------------
 DECLARE @run_id INTEGER = :run_id;
 DECLARE @year INTEGER = :year;
-DECLARE @mgra_version NVARCHAR(10) = :mgra_version;
 DECLARE @gis_server NVARCHAR(20) = :gis_server;
+DECLARE @series INTEGER = (SELECT [series] FROM [metadata].[run] WHERE [run_id] = @run_id);
 DECLARE @override_date DATE = (SELECT CONVERT(DATE, [start_date]) FROM [metadata].[run] WHERE [run_id] = @run_id);
 
 -- Build the expected return table MGRA x Structure Type
@@ -130,7 +130,7 @@ SELECT
     @year AS [year],
     [#tt_shell].[mgra],
     [tract],
-    [city],
+    [jurisdiction],
     [#tt_shell].[structure_type],
     ISNULL(SUM([du]), 0) AS [value]
 FROM [#tt_shell]
@@ -139,22 +139,21 @@ LEFT OUTER JOIN [hs]
     AND [#tt_shell].[structure_type] = [hs].[structure_type]
 LEFT OUTER JOIN (
     SELECT
-        [mgra],
-        CASE
-            WHEN @year BETWEEN 2010 AND 2019 THEN [2010_census_tract]
-            WHEN @year BETWEEN 2020 AND 2029 THEN [2020_census_tract]
-            ELSE NULL
-        END AS [tract],
-        CASE 
-            WHEN @mgra_version = 'mgra15' THEN [cities_2020] 
-            ELSE NULL 
-        END AS [city]
-    FROM [inputs].[mgra]
-    WHERE [run_id] = @run_id
+        [mgra].[mgra],
+        [tract],
+        [jurisdiction]
+    FROM [demographic_warehouse].[dim].[mgra]
+    INNER JOIN [demographic_warehouse].[dim].[mgra_xref]
+        ON [mgra].[mgra_id] = [mgra_xref].[mgra_id]
+        AND [mgra_xref].[xref_year] = @year
+    WHERE [mgra].[series] = @series
 ) AS [mgra_xref]
     ON [#tt_shell].[mgra] = [mgra_xref].[mgra]
 GROUP BY
     [#tt_shell].[mgra],
     [tract],
-    [city],
+    [jurisdiction],
     [#tt_shell].[structure_type]
+ORDER BY
+    [#tt_shell].[mgra],
+    [#tt_shell].[structure_type];

@@ -6,7 +6,7 @@
 # Program for a specified set of years
 [run]
 enabled = true
-mgra = "mgra15"
+series = 15
 start_year = 2020
 end_year = 2020
 version = "1.1.1-dev"

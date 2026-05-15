@@ -37,7 +37,7 @@ ESTIMATES_ENGINE = sql.create_engine(
 # a parameter for [run_id]. It is also assumed that rows of data will only be returned
 # if there is an error, in which case it will be printed out
 qa_qc_scripts = {
-    "Check city control totals": "check_controls_city.sql",
+    "Check jurisdiction control totals": "check_controls_jurisdiction.sql",
     "Check region ASE controls": "check_controls_region_ase.sql",
     "Check cross-table pop by type": "check_cross_table_pop_by_type.sql",
     "Check cross-table total hh": "check_cross_table_total_hh.sql",

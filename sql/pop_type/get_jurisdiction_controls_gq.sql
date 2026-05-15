@@ -11,7 +11,7 @@ with [dof] AS (
         CASE
             WHEN [area_name] = 'Balance of County' THEN 'Unincorporated San Diego County'
             ELSE CONCAT('City of ', [area_name])
-        END AS [city],
+        END AS [jurisdiction],
         [group_quarters]
     FROM [socioec_data].[ca_dof].[estimates_e8]
     WHERE
@@ -29,7 +29,7 @@ with [dof] AS (
             WHEN [area_name] = 'Balance of County' THEN 'Unincorporated San Diego County'
             WHEN [area_name] = 'National City' THEN 'City of National City'
             ELSE CONCAT('City of ', REPLACE([area_name], ' City', ''))
-        END AS [city],
+        END AS [jurisdiction],
         [group_quarters]
     FROM [socioec_data].[ca_dof].[estimates_e5]
     WHERE
@@ -40,7 +40,7 @@ with [dof] AS (
 SELECT
     @run_id AS [run_id],
     @year AS [year],
-    [city],
+    [jurisdiction],
     'Group Quarters' AS [metric],
     [group_quarters] AS [value]
 FROM [dof]

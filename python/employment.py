@@ -221,7 +221,7 @@ def _get_jobs_inputs(year: int) -> dict[str, pd.DataFrame]:
                 sql=sql.text(file.read()),
                 con=con,
                 params={
-                    "mgra_version": utils.MGRA_VERSION,
+                    "series": utils.SERIES,
                     "year": year,
                 },
             )

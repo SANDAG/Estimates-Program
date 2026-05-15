@@ -9,9 +9,9 @@ module.
 
 SET NOCOUNT ON;
 -- Initialize parameters and return table ------------------------------------
-DECLARE @run_id integer = :run_id;
-DECLARE @year integer = :year;
-DECLARE @mgra_version nvarchar(10) = :mgra_version;
+DECLARE @run_id INTEGER = :run_id;
+DECLARE @year INTEGER = :year;
+DECLARE @series INTEGER = (SELECT [series] FROM [metadata].[run] WHERE [run_id] = @run_id);
 
 -- Pull the data from the relevant table
 SELECT
@@ -19,23 +19,19 @@ SELECT
     [year],
     [hh].[mgra],
     [tract],
-    [city],
+    [jurisdiction],
     SUM([value]) AS [hh]
 FROM [outputs].[hh]
 LEFT OUTER JOIN (
     SELECT
-        [mgra],
-        CASE
-            WHEN @year BETWEEN 2010 AND 2019 THEN [2010_census_tract]
-            WHEN @year BETWEEN 2020 AND 2029 THEN [2020_census_tract]
-            ELSE NULL
-        END AS [tract],
-        CASE
-            WHEN @mgra_version = 'mgra15' THEN [cities_2020]
-            ELSE NULL
-        END AS [city]
-    FROM [inputs].[mgra]
-    WHERE [run_id] = @run_id
+        [mgra].[mgra],
+        [tract],
+        [jurisdiction]
+    FROM [demographic_warehouse].[dim].[mgra]
+    INNER JOIN [demographic_warehouse].[dim].[mgra_xref]
+        ON [mgra].[mgra_id] = [mgra_xref].[mgra_id]
+        AND [mgra_xref].[xref_year] = @year
+    WHERE [mgra].[series] = @series
 ) AS [tracts]
     ON [hh].[mgra] = [tracts].[mgra]
 WHERE [run_id] = @run_id
@@ -45,4 +41,6 @@ GROUP BY
     [year],
     [hh].[mgra],
     [tract],
-    [city]
+    [jurisdiction]
+ORDER BY
+    [hh].[mgra]

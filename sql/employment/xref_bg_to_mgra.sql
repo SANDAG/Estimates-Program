@@ -12,6 +12,7 @@ following methodology.
 -- Initialize parameters -----------------------------------------------------
 DECLARE @run_id INTEGER = :run_id;
 DECLARE @year INTEGER = :year;
+DECLARE @series INTEGER = (SELECT [series] FROM [metadata].[run] WHERE [run_id] = @run_id);
 
 -- Send error message if no data exists --------------------------------------
 IF NOT EXISTS (
@@ -73,12 +74,12 @@ BEGIN
     [mgras] AS (
         SELECT
             [mgra],
-            CASE
-                WHEN @year BETWEEN 2010 AND 2019 THEN [2010_census_blockgroup]
-                WHEN @year BETWEEN 2020 AND 2029 THEN [2020_census_blockgroup]
-            END AS [blockgroup]
-        FROM [inputs].[mgra]
-        WHERE [run_id] = @run_id
+            [blockgroup]
+        FROM [demographic_warehouse].[dim].[mgra]
+        INNER JOIN [demographic_warehouse].[dim].[mgra_xref]
+            ON [mgra].[mgra_id] = [mgra_xref].[mgra_id]
+            AND [mgra_xref].[xref_year] = @year
+        WHERE [mgra].[series] = @series
     )
     -- Return cross reference with flag field indicating which to use
     SELECT

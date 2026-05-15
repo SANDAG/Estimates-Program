@@ -1,7 +1,7 @@
--- SQL scrip to get ASE population aggregated at the city level, based on the input
--- population type
+-- SQL script to get ASE population aggregated at the jurisdiction level
 DECLARE @run_id INTEGER = :run_id;
 DECLARE @pop_type NVARCHAR(32) = :pop_type;
+DECLARE @series INTEGER = (SELECT [series] FROM [metadata].[run] WHERE [run_id] = @run_id);
 
 -- Since 'Total' is not technically a [pop_type] in [outputs].[ase], we need to do it 
 -- separately
@@ -11,43 +11,52 @@ BEGIN
     FROM (
         SELECT 
             [year],
-            [cities_2020] AS [jurisdiction],
+            [jurisdiction],
             'Age Group - ' + [age_group] AS [metric],
             SUM([value]) AS [value]
         FROM [outputs].[ase]
-        LEFT JOIN [inputs].[mgra]
+        LEFT JOIN [demographic_warehouse].[dim].[mgra]
             ON [ase].[mgra] = [mgra].[mgra]
-            AND [ase].[run_id] = [mgra].[run_id]
+            AND [mgra].[series] = @series
+        LEFT JOIN [demographic_warehouse].[dim].[mgra_xref]
+            ON [mgra].[mgra_id] = [mgra_xref].[mgra_id]
+            AND [mgra_xref].[xref_year] = [ase].[year]
         WHERE [ase].[run_id] = @run_id
-        GROUP BY [year], [cities_2020], [age_group]
+        GROUP BY [year], [jurisdiction], [age_group]
         
         UNION ALL
         
         SELECT 
             [year],
-            [cities_2020] AS [jurisdiction],
+            [jurisdiction],
             'Sex - ' + [sex] AS [metric],
             SUM([value]) AS [value]
         FROM [outputs].[ase]
-        LEFT JOIN [inputs].[mgra]
+        LEFT JOIN [demographic_warehouse].[dim].[mgra]
             ON [ase].[mgra] = [mgra].[mgra]
-            AND [ase].[run_id] = [mgra].[run_id]
+            AND [mgra].[series] = @series
+        LEFT JOIN [demographic_warehouse].[dim].[mgra_xref]
+            ON [mgra].[mgra_id] = [mgra_xref].[mgra_id]
+            AND [mgra_xref].[xref_year] = [ase].[year]
         WHERE [ase].[run_id] = @run_id
-        GROUP BY [year], [cities_2020], [sex]
+        GROUP BY [year], [jurisdiction], [sex]
 
         UNION ALL
         
         SELECT 
             [year],
-            [cities_2020] AS [jurisdiction],
+            [jurisdiction],
             'Ethnicity - ' + [ethnicity] AS [metric],
             SUM([value]) AS [value]
         FROM [outputs].[ase]
-        LEFT JOIN [inputs].[mgra]
+        LEFT JOIN [demographic_warehouse].[dim].[mgra]
             ON [ase].[mgra] = [mgra].[mgra]
-            AND [ase].[run_id] = [mgra].[run_id]
+            AND [mgra].[series] = @series
+        LEFT JOIN [demographic_warehouse].[dim].[mgra_xref]
+            ON [mgra].[mgra_id] = [mgra_xref].[mgra_id]
+            AND [mgra_xref].[xref_year] = [ase].[year]
         WHERE [ase].[run_id] = @run_id
-        GROUP BY [year], [cities_2020], [ethnicity]
+        GROUP BY [year], [jurisdiction], [ethnicity]
     ) AS [table]
     ORDER BY [jurisdiction], [metric]
 END
@@ -59,46 +68,58 @@ BEGIN
     FROM (
         SELECT 
             [year],
-            [cities_2020] AS [jurisdiction],
+            [jurisdiction],
             'Age Group - ' + [age_group] AS [metric],
             SUM([value]) AS [value]
         FROM [outputs].[ase]
-        LEFT JOIN [inputs].[mgra]
+        LEFT JOIN [demographic_warehouse].[dim].[mgra]
             ON [ase].[mgra] = [mgra].[mgra]
-            AND [ase].[run_id] = [mgra].[run_id]
-        WHERE [ase].[run_id] = @run_id
+            AND [mgra].[series] = @series
+        LEFT JOIN [demographic_warehouse].[dim].[mgra_xref]
+            ON [mgra].[mgra_id] = [mgra_xref].[mgra_id]
+            AND [mgra_xref].[xref_year] = [ase].[year]
+        WHERE
+            [ase].[run_id] = @run_id
             AND [pop_type] = @pop_type
-        GROUP BY [year], [cities_2020], [age_group]
+        GROUP BY [year], [jurisdiction], [age_group]
         
         UNION ALL
         
         SELECT 
             [year],
-            [cities_2020] AS [jurisdiction],
+            [jurisdiction],
             'Sex - ' + [sex] AS [metric],
             SUM([value]) AS [value]
         FROM [outputs].[ase]
-        LEFT JOIN [inputs].[mgra]
+        LEFT JOIN [demographic_warehouse].[dim].[mgra]
             ON [ase].[mgra] = [mgra].[mgra]
-            AND [ase].[run_id] = [mgra].[run_id]
-        WHERE [ase].[run_id] = @run_id
+            AND [mgra].[series] = @series
+        LEFT JOIN [demographic_warehouse].[dim].[mgra_xref]
+            ON [mgra].[mgra_id] = [mgra_xref].[mgra_id]
+            AND [mgra_xref].[xref_year] = [ase].[year]
+        WHERE
+            [ase].[run_id] = @run_id
             AND [pop_type] = @pop_type
-        GROUP BY [year], [cities_2020], [sex]
+        GROUP BY [year], [jurisdiction], [sex]
 
         UNION ALL
         
         SELECT 
             [year],
-            [cities_2020] AS [jurisdiction],
+            [jurisdiction],
             'Ethnicity - ' + [ethnicity] AS [metric],
             SUM([value]) AS [value]
         FROM [outputs].[ase]
-        LEFT JOIN [inputs].[mgra]
+        LEFT JOIN [demographic_warehouse].[dim].[mgra]
             ON [ase].[mgra] = [mgra].[mgra]
-            AND [ase].[run_id] = [mgra].[run_id]
-        WHERE [ase].[run_id] = @run_id
+            AND [mgra].[series] = @series
+        LEFT JOIN [demographic_warehouse].[dim].[mgra_xref]
+            ON [mgra].[mgra_id] = [mgra_xref].[mgra_id]
+            AND [mgra_xref].[xref_year] = [ase].[year]
+        WHERE
+            [ase].[run_id] = @run_id
             AND [pop_type] = @pop_type
-        GROUP BY [year], [cities_2020], [ethnicity]
+        GROUP BY [year], [jurisdiction], [ethnicity]
     ) AS [table]
     ORDER BY [jurisdiction], [metric]
 END

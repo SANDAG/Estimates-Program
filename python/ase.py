@@ -416,7 +416,7 @@ def _get_ase_inputs(year: int) -> dict[str, pd.DataFrame]:
                 con=con,
                 params={
                     "year": year,
-                    "mgra_version": utils.MGRA_VERSION,
+                    "series": utils.SERIES,
                 },
             )
 

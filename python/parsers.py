@@ -20,7 +20,7 @@ class InputParser:
     * (Class variable 'run_instructions') Explicit instructions on which modules to run
         on which years
     * (Class variable 'run_id') The value of 'run_id' to use
-    * (Class variable 'mgra_version') The MGRA version to run on
+    * (Class variable 'series') The MGRA series to run on
 
     Attributes:
         _config (dict): The configuration dictionary to be parsed.
@@ -33,7 +33,7 @@ class InputParser:
             The toml config file is parsed and this dictionary is filled no matter if
             run or debug mode is enabled
         run_id (int): The run identifier parsed from the configuration.
-        mgra_version (int): The MGRA version we are running on. Depending on run mode,
+        series (int): The MGRA series we are running on. Depending on run mode,
             either pulled from the config file or pulled from the run metadata table
 
     Methods:
@@ -41,7 +41,7 @@ class InputParser:
         _check_run_id(): Checks if a run id exists in the database.
         _validate_config(): Validate the configuration file
         _parse_run_id(): Parses the run identifier from the configuration.
-        _parse_mgra_version(): Parses the MGRA version from the run identifier.
+        _parse_series(): Parses the MGRA series from the run identifier.
     """
 
     def __init__(self, config: dict, engine: sql.Engine) -> None:
@@ -52,7 +52,7 @@ class InputParser:
         self._end_year = None
         self.run_instructions = {}
         self.run_id = None
-        self.mgra_version = None
+        self.series = None
         self.debug = False
 
     def parse_config(self) -> None:
@@ -60,7 +60,7 @@ class InputParser:
 
         First, the contents of the config file are validated. Then the run_id
         is validated, with the end result of either creating a new run_id or
-        re-using a run_id for debugging purposes. Finally, the MGRA version is
+        re-using a run_id for debugging purposes. Finally, the MGRA series is
         either pulled from the config file or from database
 
         Each of these tasks is contained in their own sub-function, see them
@@ -71,7 +71,7 @@ class InputParser:
         """
         self._validate_config()
         self.run_id = self._parse_run_id()
-        self.mgra_version = self._parse_mgra_version()
+        self.series = self._parse_mgra_series()
 
         # Depending on what run mode we are using, our run instructions are slightly
         # different
@@ -133,7 +133,7 @@ class InputParser:
                 "type": "dict",
                 "schema": {
                     "enabled": {"type": "boolean"},
-                    "mgra": {"type": "string", "allowed": ["mgra15"]},
+                    "series": {"type": "integer", "allowed": [15]},
                     "start_year": {"type": "integer", "min": min_max_years[0]},
                     "end_year": {"type": "integer", "max": min_max_years[1]},
                     "version": {"type": "string", "allowed": versions},
@@ -243,7 +243,7 @@ class InputParser:
                         """
                             INSERT INTO [metadata].[run] (
                                 [run_id], 
-                                [mgra], 
+                                [series], 
                                 [start_year], 
                                 [end_year],
                                 [user], 
@@ -254,7 +254,7 @@ class InputParser:
                                 [complete]
                             ) VALUES (
                                 :run_id, 
-                                :mgra, 
+                                :series, 
                                 :start_year, 
                                 :end_year, 
                                 USER_NAME(),
@@ -268,7 +268,7 @@ class InputParser:
                     ),
                     {
                         "run_id": run_id,
-                        "mgra": self._config["run"]["mgra"],
+                        "series": self._config["run"]["series"],
                         "start_year": self._start_year,
                         "end_year": self._end_year,
                         "version": self._config["run"]["version"],
@@ -286,19 +286,22 @@ class InputParser:
         # Return the [run_id] this Estimates Program run is using
         return run_id
 
-    def _parse_mgra_version(self) -> str:
-        """Parse the MGRA version from the configuration file."""
-        # Use the supplied mgra version if standard run mode is enabled
+    def _parse_mgra_series(self) -> int:
+        """Parse the MGRA series from the configuration file."""
+        # Use the supplied mgra series if standard run mode is enabled
         if self._config["run"]["enabled"]:
-            return self._config["run"]["mgra"]
+            return self._config["run"]["series"]
 
-        # Get mgra version from database if debug mode is enabled
+        # Get mgra series from database if debug mode is enabled
         elif self._config["debug"]["enabled"]:
             # Ensure run id exists in the database
-            self._check_run_id(run_id=self.run_id)
+            self._check_run_id(run_id=self.run_id)  # type: ignore
 
             with self._engine.connect() as con:
                 query = sql.text(
-                    "SELECT [mgra] FROM [metadata].[run] WHERE run_id = :run_id"
+                    "SELECT [series] FROM [metadata].[run] WHERE run_id = :run_id"
                 )
-                return con.execute(query, {"run_id": self.run_id}).scalar()
+                return con.execute(query, {"run_id": self.run_id}).scalar()  # type: ignore
+            
+        else:
+            raise ValueError("MGRA series could not be parsed from the configuration")

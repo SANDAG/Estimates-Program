@@ -1,12 +1,12 @@
--- SQL script to check that all data in a given [run_id] matches city level control
--- totals
+-- SQL script to check that all data matches jurisdiction level control totals
 DECLARE @run_id INTEGER = :run_id;
+DECLARE @series INTEGER = (SELECT [series] FROM [metadata].[run] WHERE [run_id] = @run_id);
 
 -- The threshold variable determines how far away the aggregated occupancy rate must be
 -- from the control occupancy rate to raise an error
 DECLARE @threshold FLOAT = .01;
 
--- Get non-ASE city level controls from the DOF ---------------------------------------
+-- Get non-ASE jurisdiction level controls from the DOF -------------------------------
 WITH [dof_controls] AS (
         SELECT *
         FROM (
@@ -16,7 +16,7 @@ WITH [dof_controls] AS (
                 CASE
                     WHEN [area_name] = 'Balance of County' THEN 'Unincorporated'
                     ELSE [area_name]
-                END AS [city],
+                END AS [jurisdiction],
                 [household_population],
                 [group_quarters],
                 1 - [vacancy_rate] AS [occupancy_rate]
@@ -36,7 +36,7 @@ WITH [dof_controls] AS (
                     WHEN [area_name] = 'Balance of County' THEN 'Unincorporated'
                     WHEN [area_name] = 'National City' THEN 'National City'
                     ELSE REPLACE([area_name], ' City', '')
-                END AS [city],
+                END AS [jurisdiction],
                 [household_population],
                 [group_quarters],
                 1 - [vacancy_rate] AS [occupancy_rate]
@@ -48,7 +48,7 @@ WITH [dof_controls] AS (
         ) AS [dof]
     ), 
 
-    -- Aggregate MGRA level data to the city level
+    -- Aggregate MGRA level data to the jurisdiction level
     [mgra_hhp] AS (
         SELECT 
             [year],
@@ -88,7 +88,7 @@ WITH [dof_controls] AS (
     [aggregated_data] AS (
         SELECT 
             [mgra_hhp].[year],
-            [cities_2020] AS [city],
+            [jurisdiction],
             SUM([household_population]) AS [household_population],
             SUM([group_quarters]) AS [group_quarters],
             1.0 * SUM([households]) / SUM([housing_stock]) AS [occupancy_rate]
@@ -102,16 +102,19 @@ WITH [dof_controls] AS (
         LEFT JOIN [mgra_hh]
             ON [mgra_hhp].[year] = [mgra_hh].[year]
             AND [mgra_hhp].[mgra] = [mgra_hh].[mgra]
-        LEFT JOIN [inputs].[mgra]
+        LEFT JOIN [demographic_warehouse].[dim].[mgra]
             ON [mgra_hhp].[mgra] = [mgra].[mgra]
-            AND [mgra].[run_id] = @run_id
-        GROUP BY [mgra_hhp].[year], [cities_2020]
+            AND [mgra].[series] = @series
+        LEFT JOIN [demographic_warehouse].[dim].[mgra_xref]
+            ON [mgra].[mgra_id] = [mgra_xref].[mgra_id]
+            AND [mgra_xref].[xref_year] = [mgra_hhp].[year]
+        GROUP BY [mgra_hhp].[year], [jurisdiction]
     )
 
 -- Compare controls and aggregated data -----------------------------------------------
 SELECT 
     [aggregated_data].[year],
-    [aggregated_data].[city],
+    [aggregated_data].[jurisdiction],
     [aggregated_data].[household_population] AS [aggregated_hhp],
     [dof_controls].[household_population] AS [control_hhp],
     [dof_controls].[group_quarters] AS [control_gq],
@@ -121,8 +124,8 @@ SELECT
 FROM [aggregated_data]
 LEFT JOIN [dof_controls]
     ON [aggregated_data].[year] = [dof_controls].[year]
-    AND [aggregated_data].[city] = [dof_controls].[city]
+    AND [aggregated_data].[jurisdiction] = [dof_controls].[jurisdiction]
 WHERE [aggregated_data].[household_population] != [dof_controls].[household_population]
     OR [aggregated_data].[group_quarters] != [dof_controls].[group_quarters]
     OR ABS([aggregated_data].[occupancy_rate] - [dof_controls].[occupancy_rate]) > @threshold
-ORDER BY [aggregated_data].[city], [aggregated_data].[year]
+ORDER BY [aggregated_data].[jurisdiction], [aggregated_data].[year]

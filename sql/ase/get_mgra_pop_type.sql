@@ -1,6 +1,7 @@
 -- Initialize parameters -----------------------------------------------------
 DECLARE @run_id integer = :run_id;
 DECLARE @year integer = :year;
+DECLARE @series INTEGER = (SELECT [series] FROM [metadata].[run] WHERE [run_id] = @run_id);
 
 
 -- Get population by type ----------------------------------------------------
@@ -27,14 +28,16 @@ WITH [population] AS (
 )
 SELECT
     [population].[mgra],
-    CASE
-        WHEN @year BETWEEN 2010 AND 2019 THEN [2010_census_tract]
-        WHEN @year BETWEEN 2020 AND 2029 THEN [2020_census_tract]
-        ELSE NULL
-    END AS [tract],
+    [tract],
     [pop_type],
     [value]
 FROM [population]
-INNER JOIN [inputs].[mgra]
-    ON [mgra].[run_id] = @run_id
-    AND [population].[mgra] = [mgra].[mgra]
+INNER JOIN [demographic_warehouse].[dim].[mgra]
+    ON [population].[mgra] = [mgra].[mgra]
+    AND [mgra].[series] = @series
+INNER JOIN [demographic_warehouse].[dim].[mgra_xref]
+    ON [mgra].[mgra_id] = [mgra_xref].[mgra_id]
+    AND [mgra_xref].[xref_year] = @year
+ORDER BY
+    [population].[mgra],
+    [pop_type];

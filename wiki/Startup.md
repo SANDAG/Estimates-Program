@@ -4,9 +4,9 @@ The Startup module has no inputs.
 
 # Outputs
 
-## MGRA Geography and Cross-Reference (`[inputs].[mgra]`)
+## MGRA Geography (`[inputs].[mgra]`)
 
-Create the Master Geographic Reference Area (MGRA) geography and cross-reference, used for every year of an Estimates run. The MGRA is the base unit of geography and nests within the larger geographies used by the Estimates Program. As of now, these geographies are the census blockgroups, census tracts, and jurisdictions within San Diego County. Cross-references are pulled from SANDAG's internal `[GeoAnalyst]` database, which contains the documentation and methodology used to generate the cross-references. The `[GeoAnalyst]` repository is private, for SANDAG internal use only, and is located [here](https://github.com/SANDAG/GeoAnalyst).
+Create the Master Geographic Reference Area (MGRA) geography, used for every year of an Estimates run. The MGRA is the base unit of geography and nests within larger geographies used by the Estimates Program. Cross-references are pulled from SANDAG's internal `[demographic_warehouse]` database, which contains the documentation and methodology used to generate the cross-references. The `Demographic Warehouse` repository is private, for SANDAG internal use only, and is located [here](https://github.com/SANDAG/demographic-warehouse).
 
 ## Special MGRAs (`[inputs].[special_mgras]`)
 
@@ -17,7 +17,8 @@ Each row of this table contains the following information:
 
 | Column         | Description                                                      |
 |----------------|------------------------------------------------------------------|
-| `[mgra15]`     | The Series 15 MGRA the age/sex restrictions are applied to       |
+| `[series]`     | The MGRA series                                                  |
+| `[mgra]`       | The MGRA zone the age/sex restrictions are applied to            |
 | `[start_year]` | The year inclusive that restrictions start being applied to      |
 | `[end_year]`   | The year inclusive that restrictions stop being applied to       |
 | `[pop_type]`   | The housing type restrictions are applied to                     |

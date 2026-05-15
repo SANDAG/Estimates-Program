@@ -19,6 +19,7 @@ SET NOCOUNT ON;
 -- Initialize parameters -----------------------------------------------------
 DECLARE @run_id integer = :run_id;
 DECLARE @year integer = :year;
+DECLARE @series INTEGER = (SELECT [series] FROM [metadata].[run] WHERE [run_id] = @run_id);
 
 
 -- Send message if not all tables exist --------------------------------------
@@ -38,15 +39,13 @@ ELSE IF @rows != 2
 ELSE
 BEGIN
     -- Build the expected return table of Tracts -----------------------------
-    SELECT
-        DISTINCT CASE
-            WHEN @year BETWEEN 2010 AND 2019 THEN [2010_census_tract]
-            WHEN @year BETWEEN 2020 AND 2029 THEN [2020_census_tract]
-            ELSE NULL
-        END AS [tract]
+    SELECT DISTINCT [tract]
     INTO [#tt_shell]
-    FROM [inputs].[mgra]
-    WHERE [run_id] = @run_id;
+    FROM [demographic_warehouse].[dim].[mgra]
+    INNER JOIN [demographic_warehouse].[dim].[mgra_xref]
+        ON [mgra].[mgra_id] = [mgra_xref].[mgra_id]
+        AND [mgra_xref].[xref_year] = @year
+    WHERE [mgra].[series] = @series;
 
     -- Prepare intermediary results from ACS datasets ------------------------
     -- 5-year ACS Detailed Table B25032 - Tenure by Units in Structure
@@ -123,7 +122,8 @@ BEGIN
         LEFT OUTER JOIN [#household_population]
             ON [#occupied].[tract] = [#household_population].[tract]
     ) AS [rate_tract]
-        ON [#tt_shell].[tract] = [rate_tract].[tract];
+        ON [#tt_shell].[tract] = [rate_tract].[tract]
+    ORDER BY [#tt_shell].[tract];
 
 
     -- Clean up --------------------------------------------------------------
