@@ -77,31 +77,31 @@ BEGIN
         SELECT
             [tract],
             CASE
-                WHEN [label] IN (
-                    'Estimate!!Total:!!Boat, RV, van, etc.',
-                    'Estimate!!Total:!!1, detached')
+                WHEN REPLACE([label], ':', '') IN (
+                    'Estimate!!Total!!Boat, RV, van, etc.',
+                    'Estimate!!Total!!1, detached')
                     THEN [value]
                 ELSE 0
             END AS [Single Family - Detached],
             CASE
-                WHEN [label] = 'Estimate!!Total:!!1, attached' THEN [value]
+                WHEN REPLACE([label], ':', '') = 'Estimate!!Total!!1, attached' THEN [value]
                 ELSE 0
             END AS [Single Family - Multiple Unit],
             CASE
-                WHEN [label] IN (
-                    'Estimate!!Total:!!2',
-                    'Estimate!!Total:!!3 or 4',
-                    'Estimate!!Total:!!5 to 9',
-                    'Estimate!!Total:!!10 to 19',
-                    'Estimate!!Total:!!20 to 49',
-                    'Estimate!!Total:!!50 or more')
+                WHEN REPLACE([label], ':', '') IN (
+                    'Estimate!!Total!!2',
+                    'Estimate!!Total!!3 or 4',
+                    'Estimate!!Total!!5 to 9',
+                    'Estimate!!Total!!10 to 19',
+                    'Estimate!!Total!!20 to 49',
+                    'Estimate!!Total!!50 or more')
                     THEN [value]
                 ELSE 0
             END AS [Multifamily],
             CASE
-                WHEN [label] IN (
-                    'Estimate!!Total:!!Boat, RV, van, etc.',
-                    'Estimate!!Total:!!Mobile home')
+                WHEN REPLACE([label], ':', '') IN (
+                    'Estimate!!Total!!Boat, RV, van, etc.',
+                    'Estimate!!Total!!Mobile home')
                     THEN [value]
                 ELSE 0
             END AS [Mobile Home]
@@ -138,44 +138,44 @@ BEGIN
         SELECT
             [tract],
             CASE
-                WHEN [label] IN (
-                    'Estimate!!Total:!!Owner-occupied housing units:!!Boat, RV, van, etc.',
-                    'Estimate!!Total:!!Owner-occupied housing units:!!1, detached',
-                    'Estimate!!Total:!!Renter-occupied housing units:!!Boat, RV, van, etc.',
-                    'Estimate!!Total:!!Renter-occupied housing units:!!1, detached')
+                WHEN REPLACE([label], ':', '') IN (
+                    'Estimate!!Total!!Owner-occupied housing units!!Boat, RV, van, etc.',
+                    'Estimate!!Total!!Owner-occupied housing units!!1, detached',
+                    'Estimate!!Total!!Renter-occupied housing units!!Boat, RV, van, etc.',
+                    'Estimate!!Total!!Renter-occupied housing units!!1, detached')
                     THEN [value]
                 ELSE 0
             END AS [Single Family - Detached],
             CASE
-                WHEN [label] IN (
-                    'Estimate!!Total:!!Owner-occupied housing units:!!1, attached',
-                    'Estimate!!Total:!!Renter-occupied housing units:!!1, attached')
+                WHEN REPLACE([label], ':', '') IN (
+                    'Estimate!!Total!!Owner-occupied housing units!!1, attached',
+                    'Estimate!!Total!!Renter-occupied housing units!!1, attached')
                     THEN [value]
                 ELSE 0
             END AS [Single Family - Multiple Unit],
             CASE
-                WHEN [label] IN (
-                    'Estimate!!Total:!!Owner-occupied housing units:!!2',
-                    'Estimate!!Total:!!Renter-occupied housing units:!!2',
-                    'Estimate!!Total:!!Owner-occupied housing units:!!3 or 4',
-                    'Estimate!!Total:!!Renter-occupied housing units:!!3 or 4',
-                    'Estimate!!Total:!!Owner-occupied housing units:!!5 to 9',
-                    'Estimate!!Total:!!Renter-occupied housing units:!!5 to 9',
-                    'Estimate!!Total:!!Owner-occupied housing units:!!10 to 19',
-                    'Estimate!!Total:!!Renter-occupied housing units:!!10 to 19',
-                    'Estimate!!Total:!!Owner-occupied housing units:!!20 to 49',
-                    'Estimate!!Total:!!Renter-occupied housing units:!!20 to 49',
-                    'Estimate!!Total:!!Owner-occupied housing units:!!50 or more',
-                    'Estimate!!Total:!!Renter-occupied housing units:!!50 or more')
+                WHEN REPLACE([label], ':', '') IN (
+                    'Estimate!!Total!!Owner-occupied housing units!!2',
+                    'Estimate!!Total!!Renter-occupied housing units!!2',
+                    'Estimate!!Total!!Owner-occupied housing units!!3 or 4',
+                    'Estimate!!Total!!Renter-occupied housing units!!3 or 4',
+                    'Estimate!!Total!!Owner-occupied housing units!!5 to 9',
+                    'Estimate!!Total!!Renter-occupied housing units!!5 to 9',
+                    'Estimate!!Total!!Owner-occupied housing units!!10 to 19',
+                    'Estimate!!Total!!Renter-occupied housing units!!10 to 19',
+                    'Estimate!!Total!!Owner-occupied housing units!!20 to 49',
+                    'Estimate!!Total!!Renter-occupied housing units!!20 to 49',
+                    'Estimate!!Total!!Owner-occupied housing units!!50 or more',
+                    'Estimate!!Total!!Renter-occupied housing units!!50 or more')
                     THEN [value]
                 ELSE 0
             END AS [Multifamily],
             CASE
-                WHEN [label] IN (
-                    'Estimate!!Total:!!Owner-occupied housing units:!!Boat, RV, van, etc.',
-                    'Estimate!!Total:!!Owner-occupied housing units:!!Mobile home',
-                    'Estimate!!Total:!!Renter-occupied housing units:!!Boat, RV, van, etc.',
-                    'Estimate!!Total:!!Renter-occupied housing units:!!Mobile home')
+                WHEN REPLACE([label], ':', '') IN (
+                    'Estimate!!Total!!Owner-occupied housing units!!Boat, RV, van, etc.',
+                    'Estimate!!Total!!Owner-occupied housing units!!Mobile home',
+                    'Estimate!!Total!!Renter-occupied housing units!!Boat, RV, van, etc.',
+                    'Estimate!!Total!!Renter-occupied housing units!!Mobile home')
                     THEN [value]
                 ELSE 0
             END AS [Mobile Home]
