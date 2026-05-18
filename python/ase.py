@@ -558,19 +558,19 @@ def _create_ase(
             if pop_type_seed.iloc[:, col_idx].sum() == 0:
                 # Get the corresponding value in col_controls by index
                 if col_controls.iloc[col_idx]["value"] != 0:
-                        logger.warning(f"Zero seed column with non-zero control: {pop_type_seed.columns[col_idx]}")
-                        # Adjust seed data as described
-                        window = 1
-                        eligible_rows = pd.Series(False, index=pop_type_seed.index)
-                        while eligible_rows.sum() == 0:
-                            if col_idx - window >= 0:
-                                eligible_rows = eligible_rows | pop_type_seed.iloc[:, col_idx-1] != 0
-                            if col_idx + window < pop_type_seed.shape[1]:
-                                eligible_rows = eligible_rows | (pop_type_seed.iloc[:, col_idx+window] != 0)
-                            if eligible_rows.sum() > 0:
-                                pop_type_seed.iloc[eligible_rows, col_idx] = 1 / eligible_rows.sum()
-                            else:
-                                window +=1
+                    logger.warning(f"Zero seed column with non-zero control: {pop_type_seed.columns[col_idx]}")
+                    # Adjust seed data as described
+                    window = 1
+                    eligible_rows = pd.Series(False, index=pop_type_seed.index)
+                    while eligible_rows.sum() == 0:
+                        if col_idx - window >= 0:
+                            eligible_rows = eligible_rows | (pop_type_seed.iloc[:, col_idx-window] != 0)
+                        if col_idx + window < pop_type_seed.shape[1]:
+                            eligible_rows = eligible_rows | (pop_type_seed.iloc[:, col_idx+window] != 0)
+                        if eligible_rows.sum() > 0:
+                            pop_type_seed.iloc[eligible_rows, col_idx] = 1 / eligible_rows.sum()
+                        else:
+                            window +=1
 
         # Run IPF
         pop_type_post_ipf_data = utils.ipf(
