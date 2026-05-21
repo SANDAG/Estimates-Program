@@ -523,22 +523,11 @@ def _create_ase(
     post_ipf_data = []
     for pop_type in seed_mgras["pop_type"].unique():
 
-        # Filter the data to this population type and transform into a 2D array
+        # Filter the data to this population type
         pop_type_seed = (
             seed_mgras[seed_mgras["pop_type"] == pop_type]
             # Take only a subset of the original data for speed
             [["mgra", "age_group", "sex", "ethnicity", "value"]]
-            # Sort values to ensure a consistent ordering
-            .sort_values(by=["mgra", "age_group", "sex", "ethnicity"])
-            # Re-shape to 2D
-            .pivot(index="mgra", columns=["age_group", "sex", "ethnicity"])
-        )
-
-        # Get the row controls (aka MGRA population by type)
-        row_controls = (
-            ase_inputs["mgra_pop_type"]
-            .loc[lambda df: df["pop_type"] == pop_type][["mgra", "value"]]
-            .sort_values(by="mgra")
         )
 
         # Get the column controls (aka regional population by type and by ASE)
@@ -550,27 +539,58 @@ def _create_ase(
             .sort_values(by=["age_group", "sex", "ethnicity"])
         )
 
-        # Check seed data columns and column controls are aligned
-        # If there exists a column in the seed data with no non-zero values and a non-zero control
-        # Identify eligible rows in the seed data as those with non-zero values in adjacent columns
-        # Set the values in these rows to 1/number of eligible rows
-        for col_idx in range(pop_type_seed.shape[1]):
-            if pop_type_seed.iloc[:, col_idx].sum() == 0:
-                # Get the corresponding value in col_controls by index
-                if col_controls.iloc[col_idx]["value"] != 0:
-                    logger.warning(f"Zero seed column with non-zero control: {pop_type_seed.columns[col_idx]}")
-                    # Adjust seed data as described
-                    window = 1
-                    eligible_rows = pd.Series(False, index=pop_type_seed.index)
-                    while eligible_rows.sum() == 0:
-                        if col_idx - window >= 0:
-                            eligible_rows = eligible_rows | (pop_type_seed.iloc[:, col_idx-window] != 0)
-                        if col_idx + window < pop_type_seed.shape[1]:
-                            eligible_rows = eligible_rows | (pop_type_seed.iloc[:, col_idx+window] != 0)
-                        if eligible_rows.sum() > 0:
-                            pop_type_seed.iloc[eligible_rows, col_idx] = 1 / eligible_rows.sum()
-                        else:
-                            window +=1
+        # Double check that every non-zero control has at some non-zero data associated
+        # with it
+        check_df = (
+            pop_type_seed.groupby(utils.ASE)[["value"]]
+            .sum()
+            .join(
+                col_controls.set_index(utils.ASE),
+                how="inner",
+                lsuffix="_seed",
+                rsuffix="_ctrl",
+                validate="one_to_one",
+            )
+            .loc[lambda df: (df["value_ctrl"] > 0) & (df["value_seed"] == 0)]
+        )
+        if check_df.shape[0] > 0:
+            # In the case we run into this error, we make the assumption that the column
+            # controls are correct, so seed data needs to be adjusted. Furthermore, it
+            # is assumed that population tends to group primarily by ethnicity, rather
+            # than age or sex. Therefore, we find MGRAs that match pop type and
+            # ethnictiy, and seed with a tiny amount of the ASE category
+            check_df = check_df.reset_index(drop=False)
+            for row_number in range(0, check_df.shape[0]):
+                ASE_to_fix = check_df.iloc[row_number]
+
+                # Find which MGRAs match pop_type and ethnicity
+                valid_mgras = pop_type_seed.loc[
+                    lambda df: (df["ethnicity"] == ASE_to_fix["ethnicity"])
+                    & (df["value"] > 0)
+                ]["mgra"].unique()
+
+                # Give those MGRAs a small seed value for the ASE category
+                pop_type_seed.loc[
+                    (pop_type_seed["mgra"].isin(valid_mgras))
+                    & (pop_type_seed["age_group"] == ASE_to_fix["age_group"])
+                    & (pop_type_seed["sex"] == ASE_to_fix["sex"])
+                    & (pop_type_seed["ethnicity"] == ASE_to_fix["ethnicity"]),
+                    "value",
+                ] = (
+                    1 / ASE_to_fix["value_ctrl"]
+                )
+
+        # Re-shape to 2D for IPF
+        pop_type_seed = pop_type_seed.sort_values(
+            by=["mgra", "age_group", "sex", "ethnicity"]
+        ).pivot(index="mgra", columns=["age_group", "sex", "ethnicity"])
+
+        # Get the row controls (aka MGRA population by type)
+        row_controls = (
+            ase_inputs["mgra_pop_type"]
+            .loc[lambda df: df["pop_type"] == pop_type][["mgra", "value"]]
+            .sort_values(by="mgra")
+        )
 
         # Run IPF
         pop_type_post_ipf_data = utils.ipf(
@@ -989,8 +1009,7 @@ def _insert_ase(ase_outputs: dict[str, pd.DataFrame], debug: bool) -> None:
 
             # Then, bulk insert the CSV file into the production database
             with utils.ESTIMATES_ENGINE.connect() as con:
-                query = sql.text(
-                    f"""
+                query = sql.text(f"""
                         BULK INSERT [outputs].[ase]
                         FROM '{csv_temp_location.as_posix()}'
                         WITH (
@@ -1000,8 +1019,7 @@ def _insert_ase(ase_outputs: dict[str, pd.DataFrame], debug: bool) -> None:
                             ROWTERMINATOR = '0x0A',
                             CHECK_CONSTRAINTS
                         )
-                    """
-                )
+                    """)
                 con.execute(query)
                 con.commit()
 
