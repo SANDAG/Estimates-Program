@@ -41,7 +41,7 @@ _DISTINCT_COUNTS = {
         # and 722 3-digit naics code. Self employment data does not natively have a
         # naics code so it is therefore assigned to 'SE' as the naics codes are being
         # treated as strings.
-        "industry_code": 22,
+        "industry_code": 23,
     },
     "series": {
         15: {
