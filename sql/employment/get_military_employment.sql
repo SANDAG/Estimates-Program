@@ -11,7 +11,7 @@ DECLARE @year INTEGER = :year;
 -- Send error message if no data exists --------------------------------------
 IF NOT EXISTS (
     SELECT TOP (1) *
-    FROM [ws].[fact].[MILILTARY_EMPLOYMENT]
+    FROM [ws].[fact].[MILITARY_EMPLOYMENT]
     WHERE [year] = @year
 )
 BEGIN
@@ -29,10 +29,10 @@ BEGIN
         'jobs' AS [metric],
         COALESCE(SUM([site_active_duty]), 0) AS [value]
     FROM [inputs].[mgra]
-    LEFT OUTER JOIN [ws].[fact].[MILILTARY_EMPLOYMENT]
-        ON [MILILTARY_EMPLOYMENT].[shape].STWithin([mgra].[shape]) = 1
+    LEFT OUTER JOIN [ws].[fact].[MILITARY_EMPLOYMENT]
+        ON [MILITARY_EMPLOYMENT].[shape].STWithin([mgra].[shape]) = 1
         AND [run_id] = @run_id AND [year] = @year
     WHERE [run_id] = @run_id 
-    GROUP BY [run_id], [year], [mgra]
-    ORDER BY [year], [mgra]
+    GROUP BY [mgra]
+    ORDER BY [mgra]
 END
