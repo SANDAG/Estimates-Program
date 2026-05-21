@@ -553,31 +553,40 @@ def _create_ase(
             )
             .loc[lambda df: (df["value_ctrl"] > 0) & (df["value_seed"] == 0)]
         )
+        # TODO: How we resolve the error
         if check_df.shape[0] > 0:
-            # In the case we run into this error, we make the assumption that the column
-            # controls are correct, so seed data needs to be adjusted. Furthermore, it
-            # is assumed that population tends to group primarily by ethnicity, rather
-            # than age or sex. Therefore, we find MGRAs that match pop type and
-            # ethnictiy, and seed with a tiny amount of the ASE category
             check_df = check_df.reset_index(drop=False)
             for row_number in range(0, check_df.shape[0]):
-                ASE_to_fix = check_df.iloc[row_number]
+                ase_to_fix = check_df.iloc[row_number]
 
-                # Find which MGRAs match pop_type and ethnicity
-                valid_mgras = pop_type_seed.loc[
-                    lambda df: (df["ethnicity"] == ASE_to_fix["ethnicity"])
-                    & (df["value"] > 0)
-                ]["mgra"].unique()
+                # Find historic tracts which have this ASE category
+                with utils.ESTIMATES_ENGINE.connect() as con:
+                    with open(
+                        utils.SQL_FOLDER / "ase/get_mgras_with_ase_pop.sql"
+                    ) as file:
+                        mgras_with_ase = utils.read_sql_query_fallback(
+                            # Lookback to the most recent decennial
+                            max_lookback=year - (year // 10 * 10),
+                            sql=sql.text(file.read()),
+                            con=con,
+                            params={
+                                "age_group": ase_to_fix["age_group"],
+                                "sex": ase_to_fix["sex"],
+                                "ethnicity": ase_to_fix["ethnicity"],
+                                "year": year,
+                                "series": utils.SERIES,
+                            },
+                        )
 
                 # Give those MGRAs a small seed value for the ASE category
                 pop_type_seed.loc[
-                    (pop_type_seed["mgra"].isin(valid_mgras))
-                    & (pop_type_seed["age_group"] == ASE_to_fix["age_group"])
-                    & (pop_type_seed["sex"] == ASE_to_fix["sex"])
-                    & (pop_type_seed["ethnicity"] == ASE_to_fix["ethnicity"]),
+                    (pop_type_seed["mgra"].isin(mgras_with_ase["mgra"]))
+                    & (pop_type_seed["age_group"] == ase_to_fix["age_group"])
+                    & (pop_type_seed["sex"] == ase_to_fix["sex"])
+                    & (pop_type_seed["ethnicity"] == ase_to_fix["ethnicity"]),
                     "value",
                 ] = (
-                    1 / ASE_to_fix["value_ctrl"]
+                    1 / ase_to_fix["value_ctrl"]
                 )
 
         # Re-shape to 2D for IPF
