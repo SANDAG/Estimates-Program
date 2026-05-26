@@ -69,7 +69,7 @@ BEGIN
             [tbls].[name] = 'B25032'
             AND [tbls].[year] = @year
             AND [tbls].[product] = '5Y'
-            AND [label] = 'Estimate!!Total:'
+            AND REPLACE([label], ':', '') = 'Estimate!!Total'
     ) AS [b25032]
     GROUP BY [tract];
 
@@ -94,7 +94,7 @@ BEGIN
             [tbls].[name] = 'B09019'
             AND [tbls].[year] = @year
             AND [tbls].[product] = '5Y'
-            AND [label] = 'Estimate!!Total:!!In households:'
+            AND REPLACE([label], ':', '') = 'Estimate!!Total!!In households'
     ) AS [b09019]
     GROUP BY [tract];
 
