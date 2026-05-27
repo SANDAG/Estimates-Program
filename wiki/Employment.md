@@ -38,7 +38,7 @@ The [Bureau of Labor Statistics (BLS) Quarter Census of Employment and Wages (QC
 # Outputs
 
 ## Employment/Jobs by Ownership and Industry in each MGRA ([outputs].[jobs])
-MGRA employment/jobs by ownership and industry sector. Calculated using the Census LEHD LODES dataset and regional BLS QCEW controls supplemented with active duty military and self employment counts.
+MGRA employment/jobs by ownership and industry sector. Calculated using the Census LEHD LODES dataset and regional BLS QCEW controls supplemented with active duty military and self employment counts. Note that as of this time ownership is assumed to be "Total Covered", not applicable to active duty military and self-employment counts, and is not explicitly written to the output table.
 
 Each row of this table contains the following information:
 
