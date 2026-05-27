@@ -33,7 +33,7 @@ Confidential point geometry employment by ownership and industry is provided to 
 The [United States Census Bureau Longitudinal Employer-Household Dynamics (LEHD) Origin-Destination Employment Statistics (LODES)](https://lehd.ces.census.gov/data/) dataset provides census block employment by ownership and industry. This dataset requires a split of its block level two-digit NAICS 72 sector, Accommodation and Food Services, into sectors 721 (Accommodation) and 722 (Food Services) using the point geometry employment dataset and is allocated to MGRAs using a combination of the point geometry employment dataset and a simple land area intersection. This dataset is then scaled to match the regional employment controls by ownership and industry creating employment/jobs by MGRA. See private SANDAG repository [Census-LEHD](https://github.com/SANDAG/Census-LEHD).
 
 ## Regional employment controls by ownership and industry (`[inputs].[controls_jobs]`)
-The [Bureau of Labor Statistics (BLS) Quarter Census of Employment and Wages (QCEW)](https://www.bls.gov/cew/additional-resources/open-data/) annual dataset provides regional employment controls by ownership and industry. See private SANDAG repository [BLS](https://github.com/SANDAG/BLS).
+The [Bureau of Labor Statistics (BLS) Quarterly Census of Employment and Wages (QCEW)](https://www.bls.gov/cew/additional-resources/open-data/) annual dataset provides regional employment controls by ownership and industry. See private SANDAG repository [BLS](https://github.com/SANDAG/BLS).
 
 # Outputs
 
