@@ -32,20 +32,30 @@ Confidential point geometry employment by ownership and industry is provided to 
 ## Census block employment by ownership and industry
 The [United States Census Bureau Longitudinal Employer-Household Dynamics (LEHD) Origin-Destination Employment Statistics (LODES)](https://lehd.ces.census.gov/data/) dataset provides census block employment by ownership and industry. This dataset requires a split of its block level two-digit NAICS 72 sector, Accommodation and Food Services, into sectors 721 (Accommodation) and 722 (Food Services) using the point geometry employment dataset and is allocated to MGRAs using a combination of the point geometry employment dataset and a simple land area intersection. This dataset is then scaled to match the regional employment controls by ownership and industry creating employment/jobs by MGRA. See private SANDAG repository [Census-LEHD](https://github.com/SANDAG/Census-LEHD).
 
+## Census block group self employment counts
+Census block group counts of self employed individuals are gotten from the American Community Survey (ACS) table [B24080 | SEX BY CLASS OF WORKER FOR THE CIVILIAN EMPLOYED POPULATION 16 YEARS AND OVER](https://data.census.gov/table/ACSDT5Y2020.B24080?q=B24080) using the total count of *Self-employed in own not incorporated business workers*. The block group counts are allocated to MGRAs using a hierarchy of cross references.
+
+1. The percentage of 18-64 year olds across MGRAs within each blockgroup after removing 'Group Quarters - Institutional Correctional Facilities' and 'Group Quarters - Military' persons from the [Population by Age/Sex/Ethnicity](https://github.com/SANDAG/Estimates-Program/wiki/Population-by-Age-Sex-Ethnicity) module. If no such population exists in the blockgroup the next cross reference in the hierarchy is used.
+2. The percentage of all persons across MGRAs within each blockgroup from the [Population by Age/Sex/Ethnicity](https://github.com/SANDAG/Estimates-Program/wiki/Population-by-Age-Sex-Ethnicity) module. If no such population exists in the blockgroup the next cross reference in the hierarchy is used.
+3. An equal split across MGRAs within each blockgroup
+
+## Population by age/sex/ethnicity in each MGRA (`[outputs].[ase]`)
+See [Population by Age/Sex/Ethnicity](https://github.com/SANDAG/Estimates-Program/wiki/Population-by-Age-Sex-Ethnicity).
+
 ## Regional employment controls by ownership and industry (`[inputs].[controls_jobs]`)
 The [Bureau of Labor Statistics (BLS) Quarterly Census of Employment and Wages (QCEW)](https://www.bls.gov/cew/additional-resources/open-data/) annual dataset provides regional employment controls by ownership and industry. See private SANDAG repository [BLS](https://github.com/SANDAG/BLS).
 
 # Outputs
 
-## Employment/Jobs by Ownership and Industry in each MGRA ([outputs].[jobs])
+## Employment/Jobs by Ownership and Industry in each MGRA (`[outputs].[jobs]`)
 MGRA employment/jobs by ownership and industry sector. Calculated using the Census LEHD LODES dataset and regional BLS QCEW controls supplemented with active duty military and self employment counts. Note that as of this time ownership is assumed to be "Total Covered", not applicable to active duty military and self-employment counts, and is not explicitly written to the output table.
 
 Each row of this table contains the following information:
 
-| Column             | Description                                 |
-|--------------------|---------------------------------------------|
-| `[run_id]`         | Estimates run identifier                    |
-| `[year]`           | Year within estimates run                   |
-| `[mgra]`           | The Master Geographic Reference Area (MGRA) |
-| `[industry_code]`  | NAICS industry sector                       |
-| `[value]`          | Number of jobs                              |
+| Column             | Description                                                                                |
+|--------------------|--------------------------------------------------------------------------------------------|
+| `[run_id]`         | Estimates run identifier                                                                   |
+| `[year]`           | Year within estimates run                                                                  |
+| `[mgra]`           | The Master Geographic Reference Area (MGRA)                                                |
+| `[industry_code]`  | Two-digit NAICS industry sector with "MIL" and "SE" added for military and self-employment |
+| `[value]`          | Number of jobs                                                                             |
