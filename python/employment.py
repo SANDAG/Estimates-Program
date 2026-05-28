@@ -214,18 +214,6 @@ def _get_jobs_inputs(year: int) -> dict[str, pd.DataFrame]:
 
     jobs_inputs["lodes_data"] = _get_lodes_data(year)
 
-    with utils.GIS_ENGINE.connect() as con:
-        # Get crosswalk from Census blocks to MGRAs
-        with open(utils.SQL_FOLDER / "employment/xref_block_to_mgra.sql") as file:
-            jobs_inputs["xref_block_to_mgra"] = utils.read_sql_query_fallback(
-                sql=sql.text(file.read()),
-                con=con,
-                params={
-                    "series": utils.SERIES,
-                    "year": year,
-                },
-            )
-
     with utils.ESTIMATES_ENGINE.connect() as con:
         # Get regional employment control totals from QCEW
         with open(utils.SQL_FOLDER / "employment/get_region_qcew.sql") as file:
@@ -274,6 +262,19 @@ def _get_jobs_inputs(year: int) -> dict[str, pd.DataFrame]:
                     "year": year,
                 },
             )
+
+    with utils.GIS_ENGINE.connect() as con:
+        # Get crosswalk from Census blocks to MGRAs
+        with open(utils.SQL_FOLDER / "employment/xref_block_to_mgra.sql") as file:
+            jobs_inputs["xref_block_to_mgra"] = utils.read_sql_query_fallback(
+                sql=sql.text(file.read()),
+                con=con,
+                params={
+                    "series": utils.SERIES,
+                    "year": year,
+                },
+            )
+
         # Get military employment data and append to control_totals
         with open(utils.SQL_FOLDER / "employment/get_military_employment.sql") as file:
             jobs_inputs["military_emp"] = pd.read_sql_query(
@@ -282,6 +283,7 @@ def _get_jobs_inputs(year: int) -> dict[str, pd.DataFrame]:
                 params={
                     "run_id": utils.RUN_ID,
                     "year": year,
+                    "series": utils.SERIES,
                 },
             )
 
