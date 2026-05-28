@@ -52,10 +52,10 @@ MGRA employment/jobs by ownership and industry sector. Calculated using the Cens
 
 Each row of this table contains the following information:
 
-| Column             | Description                                                                                |
-|--------------------|--------------------------------------------------------------------------------------------|
-| `[run_id]`         | Estimates run identifier                                                                   |
-| `[year]`           | Year within estimates run                                                                  |
-| `[mgra]`           | The Master Geographic Reference Area (MGRA)                                                |
-| `[industry_code]`  | Two-digit NAICS industry sector with "MIL" and "SE" added for military and self-employment |
-| `[value]`          | Number of jobs                                                                             |
+| Column             | Description                                                                                                                         |
+|--------------------|-------------------------------------------------------------------------------------------------------------------------------------|
+| `[run_id]`         | Estimates run identifier                                                                                                            |
+| `[year]`           | Year within estimates run                                                                                                           |
+| `[mgra]`           | The Master Geographic Reference Area (MGRA)                                                                                         |
+| `[industry_code]`  | Two-digit NAICS industry sector (excepting split of 72 into 721 and 722) with "MIL" and "SE" added for military and self-employment |
+| `[value]`          | Number of jobs                                                                                                                      |
