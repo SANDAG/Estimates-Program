@@ -24,8 +24,7 @@ DECLARE @msg nvarchar(45) = 'EDD point-level data does not exist';
 -- Check for MGRA series and stop execution if not Series 15
 IF @series != 15
 BEGIN
-    RAISERROR('EDD xref only valid for Series 15 MGRAs',16,1)
-    RETURN
+    THROW 50000, 'EDD xref only valid for Series 15 MGRAs',1;
 END
 
 -- Create temporary table for EDD data to support spatial index

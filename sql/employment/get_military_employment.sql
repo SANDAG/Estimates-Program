@@ -15,9 +15,9 @@ DECLARE @series INTEGER = :series;
 -- Check for MGRA series and stop execution if not Series 15
 IF @series != 15
 BEGIN
-    RAISERROR('EDD xref only valid for Series 15 MGRAs',16,1)
-    RETURN
+    THROW 50000, 'Spatial join with military locations only valid for Series 15 MGRAs',1
 END
+
 
 -- Send error message if no data exists --------------------------------------
 IF NOT EXISTS (
@@ -26,7 +26,7 @@ IF NOT EXISTS (
     WHERE [yr] = @year
 )
 BEGIN
-    THROW 50000, 'Military Active duty data does not exist.', 1;
+    THROW 50000, 'Military active duty data does not exist.', 1;
 END
 ELSE
 BEGIN
