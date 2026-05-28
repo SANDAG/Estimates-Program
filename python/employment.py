@@ -214,18 +214,6 @@ def _get_jobs_inputs(year: int) -> dict[str, pd.DataFrame]:
 
     jobs_inputs["lodes_data"] = _get_lodes_data(year)
 
-    with utils.GIS_ENGINE.connect() as con:
-        # Get crosswalk from Census blocks to MGRAs
-        with open(utils.SQL_FOLDER / "employment/xref_block_to_mgra.sql") as file:
-            jobs_inputs["xref_block_to_mgra"] = utils.read_sql_query_fallback(
-                sql=sql.text(file.read()),
-                con=con,
-                params={
-                    "series": utils.SERIES,
-                    "year": year,
-                },
-            )
-
     with utils.ESTIMATES_ENGINE.connect() as con:
         # Get regional employment control totals from QCEW
         with open(utils.SQL_FOLDER / "employment/get_region_qcew.sql") as file:
@@ -275,6 +263,43 @@ def _get_jobs_inputs(year: int) -> dict[str, pd.DataFrame]:
                 },
             )
 
+    with utils.GIS_ENGINE.connect() as con:
+        # Get crosswalk from Census blocks to MGRAs
+        with open(utils.SQL_FOLDER / "employment/xref_block_to_mgra.sql") as file:
+            jobs_inputs["xref_block_to_mgra"] = utils.read_sql_query_fallback(
+                sql=sql.text(file.read()),
+                con=con,
+                params={
+                    "series": utils.SERIES,
+                    "year": year,
+                },
+            )
+
+        # Get military employment data and append to control_totals
+        with open(utils.SQL_FOLDER / "employment/get_military_employment.sql") as file:
+            jobs_inputs["military_emp"] = pd.read_sql_query(
+                sql=sql.text(file.read()),
+                con=con,
+                params={
+                    "run_id": utils.RUN_ID,
+                    "year": year,
+                    "series": utils.SERIES,
+                },
+            )
+
+        military_control_totals = (
+            jobs_inputs["military_emp"]
+            .groupby(["run_id", "year", "industry_code", "metric"], as_index=False)[
+                "value"
+            ]
+            .sum()
+        )[["run_id", "year", "industry_code", "metric", "value"]]
+
+        jobs_inputs["control_totals"] = pd.concat(
+            [jobs_inputs["control_totals"], military_control_totals],
+            ignore_index=True,
+        )
+
     return jobs_inputs
 
 
@@ -311,12 +336,20 @@ def _validate_jobs_inputs(jobs_inputs: dict[str, pd.DataFrame]) -> None:
         null={},
     )
     tests.validate_data(
-        "QCEW control totals",
+        "Military employment data",
+        jobs_inputs["military_emp"],
+        row_count={"key_columns": {"mgra"}},
+        negative={},
+        null={},
+    )
+    tests.validate_data(
+        "Jobs control totals",
         jobs_inputs["control_totals"],
         row_count={"key_columns": {"industry_code"}},
         negative={},
         null={},
     )
+    
 
 
 def _create_jobs_output(
@@ -341,6 +374,10 @@ def _create_jobs_output(
             _distribute_self_emp_to_mgra(
                 jobs_inputs["B24080"], jobs_inputs["xref_bg_to_mgra"]
             ),
+            # Include military employment at MGRA level
+            jobs_inputs["military_emp"][
+                ["run_id", "year", "mgra", "industry_code", "value"]
+            ],
         ],
         ignore_index=True,
     ).sort_values(by=["mgra", "industry_code"])

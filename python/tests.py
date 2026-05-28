@@ -38,10 +38,10 @@ _DISTINCT_COUNTS = {
         "jurisdiction": 19,
         # The industry_code is a variable to group employment data into. Almost all
         # codes are 2-digit naics codes. The 2-digit naics code 72 was split into 721
-        # and 722 3-digit naics code. Self employment data does not natively have a
-        # naics code so it is therefore assigned to 'SE' as the naics codes are being
-        # treated as strings.
-        "industry_code": 22,
+        # and 722 3-digit naics code. Self employment and military active duty data do
+        # not natively have a naics code so it is therefore assigned to 'SE' and 'MIL' 
+        # respectively, as the naics codes are being treated as strings.
+        "industry_code": 23,
     },
     "series": {
         15: {
