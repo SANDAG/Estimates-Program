@@ -62,7 +62,7 @@ def _get_lodes_data(year: int) -> pd.DataFrame:
     with utils.GIS_ENGINE.connect() as con:
         with open(utils.SQL_FOLDER / "employment/get_naics72_split.sql") as file:
             split_naics_72 = utils.read_sql_query_fallback(
-                max_lookback=3,
+                max_lookback=2,
                 sql=sql.text(file.read()),
                 con=con,
                 params={"year": year},
@@ -267,6 +267,7 @@ def _get_jobs_inputs(year: int) -> dict[str, pd.DataFrame]:
         # Get crosswalk from Census blocks to MGRAs
         with open(utils.SQL_FOLDER / "employment/xref_block_to_mgra.sql") as file:
             jobs_inputs["xref_block_to_mgra"] = utils.read_sql_query_fallback(
+                max_lookback=2,
                 sql=sql.text(file.read()),
                 con=con,
                 params={

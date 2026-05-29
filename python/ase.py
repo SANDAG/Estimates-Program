@@ -513,8 +513,14 @@ def _create_ase(
         "value",
     ] = 0
     seed_mgras.loc[
-        (seed_mgras["max"] < seed_mgras["min_age"])
-        | (seed_mgras["min"] > seed_mgras["max_age"]),
+        (
+            seed_mgras["min_age"].notna()
+            & seed_mgras["max"].lt(seed_mgras["min_age"])
+        )
+        | (
+            seed_mgras["max_age"].notna()
+            & seed_mgras["min"].gt(seed_mgras["max_age"])
+        ),
         "value",
     ] = 0
 
