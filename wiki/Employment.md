@@ -6,11 +6,11 @@
 |------------------------------------------------------------------|----------------------------------------------|------------------------------------------------------------------------------| 
 | MGRA Geography (`[inputs].[mgra]`)                               | Startup                                      | Used to aggregate points to MGRAs                                            |
 | MGRA Cross References                                            | Demographic Warehouse                        | Assists cross reference from census blockgroups to MGRAs                     |
-| Point geometry active duty military counts                       | SANDAG GIS EMPCORE                           | Aggregated to MGRAs to create active-duty military counts                    |
+| Point geometry active-duty military counts                       | SANDAG GIS EMPCORE                           | Aggregated to MGRAs to create active-duty military counts                    |
 | Point geometry employment by ownership and industry              | External (CA EDD)                            | Used to allocate census block employment to MGRAs                            |
 | Census block employment by ownership and industry                | External (Census LEHD LODES)                 | Allocated to MGRAs and scaled by regional controls to create employment/jobs |
-| Census block group self employment counts                        | External (ACS)                               | Allocated to MGRAs to create self employment counts                          |
-| Population by age/sex/ethnicity in each MGRA (`[outputs].[ase]`) | Population by Age Sex Ethnicity              | Used to allocate census block group self employment counts to MGRAs          |
+| Census block group self-employment counts                        | External (ACS)                               | Allocated to MGRAs to create self-employment counts                          |
+| Population by age/sex/ethnicity in each MGRA (`[outputs].[ase]`) | Population by Age Sex Ethnicity              | Used to allocate census block group self-employment counts to MGRAs          |
 | Regional employment controls by ownership and industry           | External (ACS, BLS QCEW, SANDAG GIS EMPCORE) | Regional controls applied to employment by ownership and industry            |
 
 ## MGRA Geography (`[inputs].[mgra]`)
@@ -32,8 +32,8 @@ Confidential point geometry employment by ownership and industry is provided to 
 ## Census block employment by ownership and industry
 The [United States Census Bureau Longitudinal Employer-Household Dynamics (LEHD) Origin-Destination Employment Statistics (LODES)](https://lehd.ces.census.gov/data/) dataset provides census block employment by ownership and industry. This dataset requires a split of its block level two-digit NAICS 72 sector, Accommodation and Food Services, into sectors 721 (Accommodation) and 722 (Food Services) using the point geometry employment dataset and is allocated to MGRAs using a combination of the point geometry employment dataset and a simple land area intersection. This dataset is then scaled to match the regional employment controls by ownership and industry creating employment/jobs by MGRA. See private SANDAG repository [Census-LEHD](https://github.com/SANDAG/Census-LEHD).
 
-## Census block group self employment counts
-Census block group counts of self employed individuals are gotten from the American Community Survey (ACS) table [B24080 | SEX BY CLASS OF WORKER FOR THE CIVILIAN EMPLOYED POPULATION 16 YEARS AND OVER](https://data.census.gov/table/ACSDT5Y2020.B24080?q=B24080) using the total count of *Self-employed in own not incorporated business workers*. The block group counts are allocated to MGRAs using a hierarchy of cross references.
+## Census block group self-employment counts
+Census block group counts of self-employed individuals are gotten from the American Community Survey (ACS) table [B24080 | SEX BY CLASS OF WORKER FOR THE CIVILIAN EMPLOYED POPULATION 16 YEARS AND OVER](https://data.census.gov/table/ACSDT5Y2020.B24080?q=B24080) using the total count of *Self-employed in own not incorporated business workers*. The block group counts are allocated to MGRAs using a hierarchy of cross references.
 
 1. The percentage of 18-64 year olds across MGRAs within each blockgroup after removing 'Group Quarters - Institutional Correctional Facilities' and 'Group Quarters - Military' persons from the [Population by Age/Sex/Ethnicity](https://github.com/SANDAG/Estimates-Program/wiki/Population-by-Age-Sex-Ethnicity) module. If no such population exists in the blockgroup the next cross reference in the hierarchy is used.
 2. The percentage of all persons across MGRAs within each blockgroup from the [Population by Age/Sex/Ethnicity](https://github.com/SANDAG/Estimates-Program/wiki/Population-by-Age-Sex-Ethnicity) module. If no such population exists in the blockgroup the next cross reference in the hierarchy is used.
@@ -47,12 +47,12 @@ For active-duty military counts, the counts are taken as-is at the MGRA level an
 
 The [Bureau of Labor Statistics (BLS) Quarterly Census of Employment and Wages (QCEW)](https://www.bls.gov/cew/additional-resources/open-data/) annual dataset provides regional employment controls by ownership and industry. See private SANDAG repository [BLS](https://github.com/SANDAG/BLS).
 
-For self employment counts, the 1-year ACS table [B24080](https://data.census.gov/table/ACSDT1Y2024.B24080?q=B24080) is used to provide the regional control total.
+For self-employment counts, the 1-year ACS table [B24080](https://data.census.gov/table/ACSDT1Y2024.B24080?q=B24080) is used to provide the regional control total.
 
 # Outputs
 
 ## Employment/Jobs by Ownership and Industry in each MGRA (`[outputs].[jobs]`)
-MGRA employment/jobs by ownership and industry sector. Calculated using the Census LEHD LODES dataset and regional BLS QCEW controls supplemented with active-duty military and self employment counts. Note that as of this time ownership is assumed to be "Total Covered", not applicable to active-duty military and self-employment counts, and is not explicitly written to the output table.
+MGRA employment/jobs by ownership and industry sector. Calculated using the Census LEHD LODES dataset and regional BLS QCEW controls supplemented with active-duty military and self-employment counts. Note that as of this time ownership is assumed to be "Total Covered", not applicable to active-duty military and self-employment counts, and is not explicitly written to the output table.
 
 Each row of this table contains the following information:
 
