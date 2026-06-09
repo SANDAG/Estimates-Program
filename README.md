@@ -20,6 +20,10 @@ database = "<SqlDatabaseName>"  # database within instance containing GIS datase
 staging = '<FolderPath>'  # unconditional network folder path visible to SQL instance for BULK INSERT
 ```
 
+### Installation of ODBC Driver 18
+
+You will need ODBC Driver 18 installed on your device to execute the python scripts. To check if ODBC Driver 18 is installed, run the program `odbcad32.exe` locally using the windows search bar and navigate to the `Drivers` search bar. If you already have the correct driver installed, there is nothing else you need to do. If you are missing the driver or do not have the most up to date driver, follow the [instructions](https://github.com/mkleehammer/pyodbc/wiki/Connecting-to-SQL-Server-from-Windows/4412dca5de834ac30054326c796aee613fb7f5c6) from pyodbc to install the proper driver (Note, link is a permalink and may not be the most recent wiki revision). Afterwards, you will see ODBC Driver 18 for SQL Server in the list of installed drivers (you may have to close and re-open the `odbcad32.exe` screen).
+
 ## Running
 
 Set the configuration file `config.toml` parameters specific to the run in the project root directory. Finally, simply execute `uv run main.py` in the main project directory
