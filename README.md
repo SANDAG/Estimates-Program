@@ -42,7 +42,7 @@ The default version of the runtime configuration file is copied here, with comme
 [run]
 
 # Whether to use the 'run' section. Mutually exclusive with 'debug' mode
-enabled = false
+enabled = true
 
 # The MGRA series to use for this run. Currently only '15' is valid
 series = 15
@@ -51,10 +51,10 @@ series = 15
 start_year = 2020
 
 # The last year inclusive to end running with
-end_year = 2024
+end_year = 2025
 
 # The code version
-version = "1.1.1-dev"
+version = "1.2.0-dev"
 
 # Additional notes on this run
 comments = "Example comment"
@@ -109,6 +109,14 @@ direction TB
         age_group NVARCHAR(15) UK
         sex NVARCHAR(6) UK
         ethnicity NVARCHAR(50) UK
+        value INT
+    }
+
+    inputs_controls_jobs {
+        run_id INT UK, FK
+        year INT UK
+        industry_code NVARCHAR(5) UK
+        metric NVARCHAR(4) UK
         value INT
     }
 
@@ -197,8 +205,17 @@ direction TB
         value INT
     }
 
+    outputs_jobs {
+        run_id INT UK, FK
+        year INT UK
+        mgra INT UK, FK
+        industry_code NVARCHAR(5) UK
+        value INT
+    }
+
     %% Relationships
     metadata_run ||--o{ inputs_controls_ase : "run_id"
+    metadata_run ||--o{ inputs_controls_jobs : "run_id"
     metadata_run ||--o{ inputs_controls_tract : "run_id"
     metadata_run ||--o{ inputs_controls_jurisdiction : "run_id"
     metadata_run ||--o{ inputs_mgra : "run_id"
@@ -208,6 +225,7 @@ direction TB
     metadata_run ||--o{ outputs_hh_characteristics : "run_id"
     metadata_run ||--o{ outputs_hs : "run_id"
     metadata_run ||--o{ outputs_hhp : "run_id"
+    metadata_run ||--o{ outputs_jobs : "run_id"
 
     inputs_mgra ||--o{ outputs_ase : "run_id, mgra"
     inputs_mgra ||--o{ outputs_gq : "run_id, mgra"
@@ -215,4 +233,5 @@ direction TB
     inputs_mgra ||--o{ outputs_hh_characteristics : "run_id, mgra"
     inputs_mgra ||--o{ outputs_hs : "run_id, mgra"
     inputs_mgra ||--o{ outputs_hhp : "run_id, mgra"
+    inputs_mgra ||--o{ outputs_jobs : "run_id, mgra"
 ```
