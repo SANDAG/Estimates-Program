@@ -62,8 +62,8 @@ ESTIMATES_ENGINE = sql.create_engine(
     + _secrets["sql"]["estimates"]["server"]
     + "/"
     + _secrets["sql"]["estimates"]["database"]
-    + "?driver=ODBC Driver 18 for SQL Server" + 
-    "&TrustServerCertificate=yes",
+    + "?trusted_connection=yes&driver=ODBC Driver 18 for SQL Server"
+    + "&TrustServerCertificate=yes",
     fast_executemany=True,
 )
 
