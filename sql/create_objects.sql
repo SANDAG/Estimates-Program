@@ -48,19 +48,6 @@ CREATE TABLE [inputs].[controls_jobs] (
 )
 GO
 
-CREATE TABLE [inputs].[controls_tract] (
-    [run_id] INT NOT NULL,
-    [year] INT NOT NULL,
-    [tract]  NVARCHAR(11) NOT NULL,
-    [metric] NVARCHAR(100) NOT NULL,
-    [value] FLOAT NOT NULL, 
-    INDEX [ccsi_inputs_controls_tract] CLUSTERED COLUMNSTORE,
-    CONSTRAINT [ixuq_inputs_controls_tract] UNIQUE ([run_id], [year], [tract], [metric]) WITH (DATA_COMPRESSION = PAGE),
-    CONSTRAINT [fk_inputs_controls_tract_run_id] FOREIGN KEY ([run_id]) REFERENCES [metadata].[run] ([run_id]),
-    CONSTRAINT [chk_non_negative_inputs_controls_tract] CHECK ([value] >= 0)
-)
-GO
-
 CREATE TABLE [inputs].[controls_jurisdiction] (
     [run_id] INT NOT NULL,
     [year] INT NOT NULL,
@@ -71,6 +58,19 @@ CREATE TABLE [inputs].[controls_jurisdiction] (
     CONSTRAINT [ixuq_inputs_controls_jurisdiction] UNIQUE ([run_id], [year], [jurisdiction], [metric]) WITH (DATA_COMPRESSION = PAGE),
     CONSTRAINT [fk_inputs_controls_jurisdiction_run_id] FOREIGN KEY ([run_id]) REFERENCES [metadata].[run] ([run_id]),
     CONSTRAINT [chk_non_negative_inputs_controls_jurisdiction] CHECK ([value] >= 0)
+)
+GO
+
+CREATE TABLE [inputs].[controls_tract] (
+    [run_id] INT NOT NULL,
+    [year] INT NOT NULL,
+    [tract]  NVARCHAR(11) NOT NULL,
+    [metric] NVARCHAR(100) NOT NULL,
+    [value] FLOAT NOT NULL, 
+    INDEX [ccsi_inputs_controls_tract] CLUSTERED COLUMNSTORE,
+    CONSTRAINT [ixuq_inputs_controls_tract] UNIQUE ([run_id], [year], [tract], [metric]) WITH (DATA_COMPRESSION = PAGE),
+    CONSTRAINT [fk_inputs_controls_tract_run_id] FOREIGN KEY ([run_id]) REFERENCES [metadata].[run] ([run_id]),
+    CONSTRAINT [chk_non_negative_inputs_controls_tract] CHECK ([value] >= 0)
 )
 GO
 

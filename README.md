@@ -225,6 +225,7 @@ direction TB
     metadata_run ||--o{ outputs_hh_characteristics : "run_id"
     metadata_run ||--o{ outputs_hs : "run_id"
     metadata_run ||--o{ outputs_hhp : "run_id"
+    metadata_run ||--o{ outputs_jobs : "run_id"
 
     inputs_mgra ||--o{ outputs_ase : "run_id, mgra"
     inputs_mgra ||--o{ outputs_gq : "run_id, mgra"
