@@ -9,7 +9,7 @@ enabled = true
 series = 15
 start_year = 2020
 end_year = 2020
-version = "1.2.0"
+version = "1.2.0-dev"
 comments = "Example comment"
 
 # The `debug` section contains configuration for running a single module for a single
