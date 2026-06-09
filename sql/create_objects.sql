@@ -35,6 +35,19 @@ CREATE TABLE [inputs].[controls_ase] (
 )
 GO
 
+CREATE TABLE [inputs].[controls_jobs] (
+    [run_id] INT NOT NULL,
+    [year] INT NOT NULL,
+    [industry_code] NVARCHAR(5) NOT NULL,
+    [metric] NVARCHAR(4) NOT NULL,
+    [value] INT NOT NULL,
+    INDEX [ccsi_inputs_controls_jobs] CLUSTERED COLUMNSTORE,
+    CONSTRAINT [ixuq_inputs_controls_jobs] UNIQUE ([run_id], [year], [industry_code], [metric]) WITH (DATA_COMPRESSION = PAGE),
+    CONSTRAINT [fk_inputs_controls_jobs_run_id] FOREIGN KEY ([run_id]) REFERENCES [metadata].[run] ([run_id]),
+    CONSTRAINT [chk_non_negative_inputs_controls_jobs] CHECK ([value] >= 0)
+)
+GO
+
 CREATE TABLE [inputs].[controls_tract] (
     [run_id] INT NOT NULL,
     [year] INT NOT NULL,
@@ -117,19 +130,6 @@ INSERT INTO [inputs].[special_mgras] (
     (15, 18741, 2010, 2024, 'Group Quarters - Institutional Correctional Facilities', 'Male', 18, NULL, 'Vista Detention Facility (VDF) operates as both a male and
         female facility intake facility but the majority of housed inmates are male as women are
         transferred to the Las Colinas Detention Facility.')
-GO
-
-CREATE TABLE [inputs].[controls_jobs] (
-    [run_id] INT NOT NULL,
-    [year] INT NOT NULL,
-    [industry_code] NVARCHAR(5) NOT NULL,
-    [metric] NVARCHAR(4) NOT NULL,
-    [value] INT NOT NULL,
-    INDEX [ccsi_inputs_controls_jobs] CLUSTERED COLUMNSTORE,
-    CONSTRAINT [ixuq_inputs_controls_jobs] UNIQUE ([run_id], [year], [industry_code], [metric]) WITH (DATA_COMPRESSION = PAGE),
-    CONSTRAINT [fk_inputs_controls_jobs_run_id] FOREIGN KEY ([run_id]) REFERENCES [metadata].[run] ([run_id]),
-    CONSTRAINT [chk_non_negative_inputs_controls_jobs] CHECK ([value] >= 0)
-)
 GO
 
 
