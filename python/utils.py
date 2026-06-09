@@ -62,8 +62,8 @@ ESTIMATES_ENGINE = sql.create_engine(
     + _secrets["sql"]["estimates"]["server"]
     + "/"
     + _secrets["sql"]["estimates"]["database"]
-    + "?trusted_connection=yes&driver="
-    + "ODBC Driver 17 for SQL Server",
+    + "?driver=ODBC Driver 18 for SQL Server" + 
+    "&TrustServerCertificate=yes",
     fast_executemany=True,
 )
 
@@ -72,8 +72,8 @@ GIS_ENGINE = sql.create_engine(
     + _secrets["sql"]["gis"]["server"]
     + "/"
     + _secrets["sql"]["gis"]["database"]
-    + "?trusted_connection=yes&driver="
-    + "ODBC Driver 17 for SQL Server",
+    + "?driver=ODBC Driver 18 for SQL Server" + 
+    "&TrustServerCertificate=yes",
     fast_executemany=True,
 )
 
