@@ -556,6 +556,28 @@ def _create_ase(
             .sort_values(by=["age_group", "sex", "ethnicity"])
         )
 
+        # Check seed data rows and row controls are aligned
+        # If there exists a row in the seed data with no non-zero values and a non-zero control
+        # Identify eligible columns in the seed data as those with non-zero values in adjacent rows
+        # Set the values in these columns to 1/number of eligible columns
+        for row_idx in range(pop_type_seed.shape[0]):
+            if pop_type_seed.iloc[row_idx, :].sum() == 0:
+                # Get the corresponding value in row_controls by index
+                if row_controls.iloc[row_idx]["value"] != 0:
+                    logger.warning(f"Zero seed row with non-zero control: {pop_type_seed.index[row_idx]}")
+                    # Adjust seed data as described
+                    window = 1
+                    eligible_cols = pd.Series(False, index=pop_type_seed.columns)
+                    while eligible_cols.sum() == 0:
+                        if row_idx - window >= 0:
+                            eligible_cols = eligible_cols | (pop_type_seed.iloc[row_idx-window, :] != 0)
+                        if row_idx + window < pop_type_seed.shape[0]:
+                            eligible_cols = eligible_cols | (pop_type_seed.iloc[row_idx+window, :] != 0)
+                        if eligible_cols.sum() > 0:
+                            pop_type_seed.iloc[row_idx, eligible_cols.values] = 1 / eligible_cols.sum()
+                        else:
+                            window +=1
+
         # Check seed data columns and column controls are aligned
         # If there exists a column in the seed data with no non-zero values and a non-zero control
         # Identify eligible rows in the seed data as those with non-zero values in adjacent columns
@@ -574,7 +596,7 @@ def _create_ase(
                         if col_idx + window < pop_type_seed.shape[1]:
                             eligible_rows = eligible_rows | (pop_type_seed.iloc[:, col_idx+window] != 0)
                         if eligible_rows.sum() > 0:
-                            pop_type_seed.iloc[eligible_rows, col_idx] = 1 / eligible_rows.sum()
+                            pop_type_seed.iloc[eligible_rows.values, col_idx] = 1 / eligible_rows.sum()
                         else:
                             window +=1
 
