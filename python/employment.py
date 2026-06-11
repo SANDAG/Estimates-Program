@@ -149,22 +149,46 @@ def _aggregate_lodes_to_mgra(
 
 
 def _distribute_self_emp_to_mgra(
-    bg_data: pd.DataFrame, xref: pd.DataFrame
+    b24080: pd.DataFrame, xref: pd.DataFrame
 ) -> pd.DataFrame:
-    """Distribute self-employed block group data to MGRA level using allocation
-        percentages.
+    """Distribute subregional self-employment counts to MGRA level.
+
+    This function allocates self-employment counts from block groups (for years
+    post 2012) or tracts (for 2010-2012) to MGRAs using allocation percentages.
+    The allocation percentages are based on the distribution of persons aged
+    18-64, total population, or an equal split across intersection MGRAs
+    depending on data availability within the block group or tract.
 
     Args:
-        bg_data: DataFrame with block group self-employed data. Must include columns:
-            year, blockgroup, industry_code, value
-        xref: Crosswalk DataFrame with columns: blockgroup, mgra, flag, pct_18_64,
-            pct_pop, pct_split
+        b24080: DataFrame containing subregional self-employment counts.
+            Must include columns (year, geography, industry_code, value).
+        xref: Geography crosswalk DataFrame with columns
+            (geography, mgra, flag, pct_18_64, pct_pop, pct_split)
 
     Returns:
-        Self-Emp Data at MGRA level with columns: run_id, year, mgra, industry_code, value
+        Self employment counts at the MGRA level
     """
-    # Merge block group data to MGRA crosswalk
-    merged = bg_data.merge(xref, on="blockgroup", how="inner")
+    # Check that required columns are present
+    required_b24080_cols = {"year", "geography", "industry_code", "value"}
+    required_xref_cols = {"geography", "mgra", "flag", "pct_18_64", "pct_pop", "pct_split"}
+    if not required_b24080_cols.issubset(b24080.columns):
+        raise ValueError(
+            f"B24080 DataFrame is missing required columns: {required_b24080_cols - set(b24080.columns)}"
+        )
+    if not required_xref_cols.issubset(xref.columns):
+        raise ValueError(
+            f"xref DataFrame is missing required columns: {required_xref_cols - set(xref.columns)}"
+        )
+    
+    # Check that flag column only contains expected values
+    expected_flags = {"pct_18_64", "pct_pop", "pct_split"}
+    if not set(xref["flag"].unique()).issubset(expected_flags):
+        raise ValueError(
+            f"xref 'flag' column contains unexpected values: {set(xref['flag'].unique()) - expected_flags}"
+        )
+
+    # Merge subregional self employment counts with MGRA crosswalk
+    merged = b24080.merge(xref, on="geography", how="inner")
 
     # Calculate weighted value based on flag
     merged = merged.assign(
@@ -188,17 +212,17 @@ def _distribute_self_emp_to_mgra(
             "Unexpected allocation flag found; expected one of {'pct_18_64', 'pct_pop', 'pct_split'}"
         )
 
-    # Group by year, mgra, industry_code and sum, then assign run_id and reorder columns
-    self_emp = (
-        merged.groupby(["year", "mgra", "industry_code"], as_index=False)[
-            "weighted_value"
-        ]
+    # Sum weighted values to the MGRA level
+    merged = (
+        merged
+        .groupby(["year", "mgra", "industry_code"])["weighted_value"]
         .sum()
-        .rename(columns={"weighted_value": "value"})
+        .reset_index()
         .assign(run_id=utils.RUN_ID)
+        .rename(columns={"weighted_value": "value"})
     )[["run_id", "year", "mgra", "industry_code", "value"]]
 
-    return self_emp
+    return merged
 
 
 def _get_jobs_inputs(year: int) -> dict[str, pd.DataFrame]:
@@ -252,9 +276,9 @@ def _get_jobs_inputs(year: int) -> dict[str, pd.DataFrame]:
                 },
             )
 
-        # Get block group to MGRA crosswalk
-        with open(utils.SQL_FOLDER / "employment/xref_bg_to_mgra.sql") as file:
-            jobs_inputs["xref_bg_to_mgra"] = pd.read_sql_query(
+        # Get census block group or tract to MGRA crosswalk
+        with open(utils.SQL_FOLDER / "employment/xref_se_to_mgra.sql") as file:
+            jobs_inputs["xref_se_to_mgra"] = pd.read_sql_query(
                 sql=sql.text(file.read()),
                 con=con,
                 params={
@@ -331,8 +355,8 @@ def _validate_jobs_inputs(jobs_inputs: dict[str, pd.DataFrame]) -> None:
     )
     # No row count validation performed as xref is many-to-many
     tests.validate_data(
-        "xref_bg_to_mgra",
-        jobs_inputs["xref_bg_to_mgra"],
+        "xref_se_to_mgra",
+        jobs_inputs["xref_se_to_mgra"],
         negative={},
         null={},
     )
@@ -373,7 +397,7 @@ def _create_jobs_output(
             ),
             # Distribute self-employment data to MGRA level
             _distribute_self_emp_to_mgra(
-                jobs_inputs["B24080"], jobs_inputs["xref_bg_to_mgra"]
+                jobs_inputs["B24080"], jobs_inputs["xref_se_to_mgra"]
             ),
             # Include military employment at MGRA level
             jobs_inputs["military_emp"][
