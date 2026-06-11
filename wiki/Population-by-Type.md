@@ -32,7 +32,7 @@ See [Housing and Households](https://github.com/SANDAG/Estimates-Program/wiki/Ho
 
 ## Census tract average household size
 
-Average household size is derived from two American Community Survey (ACS) tables, [B25032 | TENURE BY UNITS IN STRUCTURE](https://data.census.gov/table/ACSDT5Y2020.B25032?q=B25032), and [B09019 | HOUSEHOLD TYPE (INCLUDING LIVING ALONE) BY RELATIONSHIP](https://data.census.gov/table/ACSDT5Y2020.B09019?q=B09019). The first table provides households. The seconds table provides household population. Dividing the two provides census tract average household size.
+Average household size is derived from two American Community Survey (ACS) tables, [B25032 | TENURE BY UNITS IN STRUCTURE](https://data.census.gov/table/ACSDT5Y2020.B25032?q=B25032), and [B11002 | HOUSEHOLD TYPE BY RELATIVES AND NONRELATIVES FOR POPULATION IN HOUSEHOLDS](https://data.census.gov/table/ACSDT5Y2020.B11002?q=B11002). The first table provides households. The second table provides household population. Dividing the two provides census tract average household size.
 
 ```math
 \forall t \in \text{San Diego Tracts}; \text{Household Size}_t = \frac{\text{Household Population}_t}{\text{Households}_t}

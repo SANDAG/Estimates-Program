@@ -1,12 +1,13 @@
 /* 
-This query creates a cross reference from blockgroup to SANDAG MGRA using the
+This query creates a cross reference from census blockgroup (2013+) or tract
+(2010-2012) to SANDAG MGRA to allocate self employment counts using the
 following methodology.
 
-    1). The percentage of 18-64 year olds across MGRAs within each blockgroup
+    1). The percentage of 18-64 year olds across MGRAs within each geography
         after removing 'Group Quarters - Institutional Correctional Facilities'
         and 'Group Quarters - Military' persons.
-    2). The percentage of all persons across MGRAs within each blockgroup
-    3). An equal split across MGRAs within each blockgroup
+    2). The percentage of all persons across MGRAs within each geography
+    3). An equal split across MGRAs within each geography
 */
 
 -- Initialize parameters -----------------------------------------------------
@@ -28,7 +29,7 @@ END
 ELSE
 BEGIN
 
-    -- Get blockgroup to MGRA cross reference ------------------------------------
+    -- Get MGRA cross reference ----------------------------------------------
     -- Population aged 18-64 excluding Military and Prisons
     WITH [18_64] AS (
         SELECT
@@ -70,11 +71,14 @@ BEGIN
             AND [value] > 0
         GROUP BY [mgra]
     ),
-    -- Exhaustive list of MGRAs and Blockgroups
+    -- Exhaustive list of MGRAs and census blockgroups or tracts
     [mgras] AS (
         SELECT
             [mgra],
-            [blockgroup]
+            CASE
+                WHEN @year BETWEEN 2010 AND 2012 THEN [tract]
+                ELSE [blockgroup]
+            END AS [geography]
         FROM [demographic_warehouse].[dim].[mgra]
         INNER JOIN [demographic_warehouse].[dim].[mgra_xref]
             ON [mgra].[mgra_id] = [mgra_xref].[mgra_id]
@@ -83,23 +87,23 @@ BEGIN
     )
     -- Return cross reference with flag field indicating which to use
     SELECT
-        [blockgroup],
+        [geography],
         [mgras].[mgra],
         COALESCE(
             1.0 * [18_64].[value] 
-            / SUM([18_64].[value]) OVER (PARTITION BY [blockgroup])
+            / SUM([18_64].[value]) OVER (PARTITION BY [geography])
             , 0) 
         AS [pct_18_64],
         COALESCE(
             1.0 * [pop].[value] 
-            / SUM([pop].[value]) OVER (PARTITION BY [blockgroup])
+            / SUM([pop].[value]) OVER (PARTITION BY [geography])
             , 0) 
         AS [pct_pop],
-        1.0 / COUNT([blockgroup]) OVER (PARTITION BY [blockgroup]) AS [pct_split],
+        1.0 / COUNT([geography]) OVER (PARTITION BY [geography]) AS [pct_split],
         CASE
-            WHEN SUM([18_64].[value]) OVER (PARTITION BY [blockgroup]) > 0 
+            WHEN SUM([18_64].[value]) OVER (PARTITION BY [geography]) > 0 
                 THEN 'pct_18_64'
-            WHEN SUM([pop].[value]) OVER (PARTITION BY [blockgroup]) > 0 
+            WHEN SUM([pop].[value]) OVER (PARTITION BY [geography]) > 0 
                 THEN 'pct_pop'
             ELSE 'pct_split'
         END AS [flag]
@@ -109,6 +113,6 @@ BEGIN
     LEFT OUTER JOIN [pop]
         ON [mgras].[mgra] = [pop].[mgra]
     ORDER BY
-        [blockgroup],
+        [geography],
         [mgras].[mgra]
 END
