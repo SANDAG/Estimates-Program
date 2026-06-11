@@ -10,7 +10,7 @@
 | Point geometry employment by ownership and industry              | External (CA EDD)                            | Used to allocate census block employment to MGRAs                            |
 | Census block employment by ownership and industry                | External (Census LEHD LODES)                 | Allocated to MGRAs and scaled by regional controls to create employment/jobs |
 | Subregional self-employment counts                        | External (ACS)                               | Allocated to MGRAs to create self-employment counts                          |
-| Population by age/sex/ethnicity in each MGRA (`[outputs].[ase]`) | Population by Age Sex Ethnicity              | Used to allocate census block group self-employment counts to MGRAs          |
+| Population by age/sex/ethnicity in each MGRA (`[outputs].[ase]`) | Population by Age Sex Ethnicity              | Used to allocate census block group (2013+) or tract (2010-2012) self-employment counts to MGRAs          |
 | Regional employment controls by ownership and industry           | External (ACS, BLS QCEW, SANDAG GIS EMPCORE) | Regional controls applied to employment by ownership and industry            |
 
 ## MGRA Geography (`[inputs].[mgra]`)
