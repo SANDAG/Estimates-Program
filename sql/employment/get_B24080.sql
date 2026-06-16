@@ -1,4 +1,4 @@
--- Get the ACS 5-year self-employed data by blockgroup
+-- Get ACS 5-year self-employment counts by census blockgroup (2013+) or tract (2010-2012)
 
 -- Initialize parameters -----------------------------------------------------
 DECLARE @year INTEGER = :year;
@@ -20,7 +20,10 @@ BEGIN
     -- Get the ACS data ----------------------------------------------------------
     SELECT
         @year AS [year],
-        [blockgroup],
+        CASE
+            WHEN @year BETWEEN 2010 AND 2012 THEN [tract]
+            ELSE [blockgroup]
+        END AS [geography],
         'SE' AS [industry_code],
         SUM([value]) AS [value]
     FROM [acs].[detailed].[values]
@@ -39,6 +42,10 @@ BEGIN
             'Estimate!!Total!!Female!!Self-employed in own not incorporated business workers'
         )
         AND [tables].[year] = @year
-    GROUP BY [blockgroup]
-    ORDER BY [blockgroup]
+    GROUP BY
+        CASE
+            WHEN @year BETWEEN 2010 AND 2012 THEN [tract]
+            ELSE [blockgroup]
+        END
+    ORDER BY [geography]
 END
