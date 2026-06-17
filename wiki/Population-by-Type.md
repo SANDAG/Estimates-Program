@@ -50,7 +50,7 @@ Jurisdiction-level household population controls are directly pulled from the [C
 
 # Outputs
 ## Population by housing type in each MGRA
-MGRA population by housing type. Group quarters housing types calculated by aggregating group quarters points to MGRAs and controlling overall group quarters at the jurisdiction-level to controls from the DOF. Household population calculated by taking MGRA households, applying census tract average household sizes, and controlling household population at the jurisdiction-level to controls from the DOF.
+MGRA population by housing type. Group quarters housing types are calculated by aggregating group quarters points to MGRAs, then controlling overall group quarters at the jurisdiction-level to DOF controls. Household population is calculated by taking MGRA households, applying census tract average household sizes, then controlling household population at the jurisdiction-level to DOF controls.
 
 ### Group Quarters population by housing type in each MGRA (`[outputs].[gq]`)
 Each row of this table contains the following information:
