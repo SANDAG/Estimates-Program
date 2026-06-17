@@ -94,16 +94,14 @@ class InputParser:
         """Check if supplied run id exists in the database and is complete"""
         with self._engine.connect() as con:
             # Ensure supplied run id exists in the database
-            query = sql.text(
-                """
+            query = sql.text("""
                     SELECT CASE WHEN EXISTS (
                         SELECT [run_id] 
                         FROM [metadata].[run] 
                         WHERE [run_id] = :run_id
                             AND [complete] = 1
                     ) THEN 1 ELSE 0 END
-                """
-            )
+                """)
 
             exists = con.execute(query, {"run_id": run_id}).scalar()
             if exists == 0:
@@ -166,7 +164,7 @@ class InputParser:
             self._config["run"]["start_year"] > self._config["run"]["end_year"]
         ):
             raise ValueError(
-                f"Key 'start year' cannot be greater than key 'end year' in 'run' settings"
+                "Key 'start_year' cannot be greater than key 'end_year' in 'run' settings"
             )
 
         # Check that if we are in debug mode...
@@ -185,8 +183,7 @@ class InputParser:
             # already in [metadata].[run]
             with self._engine.connect() as con:
                 check_year = con.execute(
-                    sql.text(
-                        """
+                    sql.text("""
                         SELECT
                             CASE
                                 WHEN :year BETWEEN [start_year] AND [end_year] THEN 1
@@ -194,8 +191,7 @@ class InputParser:
                             END
                         FROM [metadata].[run]
                             WHERE [run_id] = :run_id
-                        """
-                    ),
+                        """),
                     {
                         "run_id": self._config["debug"]["run_id"],
                         "year": self._config["debug"]["year"],
@@ -239,8 +235,7 @@ class InputParser:
 
                 # Insert new run id into the database
                 con.execute(
-                    sql.text(
-                        """
+                    sql.text("""
                             INSERT INTO [metadata].[run] (
                                 [run_id], 
                                 [series], 
@@ -264,8 +259,7 @@ class InputParser:
                                 :comments, 
                                 0
                             )
-                        """
-                    ),
+                        """),
                     {
                         "run_id": run_id,
                         "series": self._config["run"]["series"],
@@ -302,6 +296,6 @@ class InputParser:
                     "SELECT [series] FROM [metadata].[run] WHERE run_id = :run_id"
                 )
                 return con.execute(query, {"run_id": self.run_id}).scalar()  # type: ignore
-            
+
         else:
             raise ValueError("MGRA series could not be parsed from the configuration")

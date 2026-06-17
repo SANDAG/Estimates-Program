@@ -28,8 +28,8 @@ ESTIMATES_ENGINE = sql.create_engine(
     + _secrets["sql"]["estimates"]["server"]
     + "/"
     + _secrets["sql"]["estimates"]["database"]
-    + "?driver=ODBC Driver 18 for SQL Server" +  
-    "&TrustServerCertificate=yes",
+    + "?driver=ODBC Driver 18 for SQL Server"
+    + "&TrustServerCertificate=yes",
     fast_executemany=True,
 )
 
@@ -71,12 +71,14 @@ with ESTIMATES_ENGINE.connect() as con:
 
     # First, get the start/end year for this run_id
     start_year = con.execute(
-        sql.text(f"SELECT [start_year] FROM [metadata].[run] WHERE [run_id] = {RUN_ID}")
+        sql.text("SELECT [start_year] FROM [metadata].[run] WHERE [run_id] = :run_id"),
+        {"run_id": RUN_ID},
     ).scalar()
+
     end_year = con.execute(
-        sql.text(f"SELECT [end_year] FROM [metadata].[run] WHERE [run_id] = {RUN_ID}")
+        sql.text("SELECT [end_year] FROM [metadata].[run] WHERE [run_id] = :run_id"),
+        {"run_id": RUN_ID},
     ).scalar()
-    years = ", ".join([f"[{year}]" for year in range(start_year, end_year + 1)])
 
     # Stop this check if there is only on year of data available
     if start_year == end_year:
