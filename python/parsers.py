@@ -164,7 +164,7 @@ class InputParser:
             self._config["run"]["start_year"] > self._config["run"]["end_year"]
         ):
             raise ValueError(
-                f"Key 'start_year' cannot be greater than key 'end_year' in 'run' settings"
+                "Key 'start_year' cannot be greater than key 'end_year' in 'run' settings"
             )
 
         # Check that if we are in debug mode...
