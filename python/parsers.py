@@ -125,7 +125,15 @@ class InputParser:
         # Check all keys are present and key types using Cerberus. For help, see their
         # website here: https://docs.python-cerberus.org/usage.html
         min_max_years = [2010, 2025]
-        versions = ["0.0.0-dev", "1.0.0", "1.1.0", "1.1.1-dev", "1.2.0", "1.2.0-dev"]
+        versions = [
+            "0.0.0-dev",
+            "1.0.0",
+            "1.1.0",
+            "1.1.1-dev",
+            "1.2.0",
+            "1.2.0-dev",
+            "1.2.1",
+        ]
         schema = {
             "run": {
                 "type": "dict",
