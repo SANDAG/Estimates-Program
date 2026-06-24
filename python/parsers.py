@@ -133,6 +133,7 @@ class InputParser:
             "1.2.0",
             "1.2.0-dev",
             "1.2.1",
+            "1.2.1-dev",
         ]
         schema = {
             "run": {
