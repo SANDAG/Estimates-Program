@@ -1,8 +1,8 @@
-## Setup
+# Setup
 
 Clone the repository and ensure an installation of [uv](https://docs.astral.sh/uv/getting-started/installation/) exists. Create a local virtual environment by running `uv venv` then `uv sync` in the command line. Ensure that a `secrets.toml` file exists
 
-### Configuration of Private Data in secrets.toml
+## Configuration of Private Data in secrets.toml
 In order to avoid exposing certain data to the public this repository uses a secrets file to store sensitive configurations in addition to a standard configuration file. This file is stored in the root directory of the repository as `secrets.toml` and is included in the `.gitignore` intentionally to avoid it ever being committed to the repository.
 
 The `secrets.toml` should mirror the following structure.
@@ -20,15 +20,15 @@ database = "<SqlDatabaseName>"  # database within instance containing GIS datase
 staging = '<FolderPath>'  # unconditional network folder path visible to SQL instance for BULK INSERT
 ```
 
-### Installation of ODBC Driver 18
+## Installation of ODBC Driver 18
 
 You will need ODBC Driver 18 installed on your device to execute the python scripts. To check if ODBC Driver 18 is installed, run the program `odbcad32.exe` locally using the windows search bar and navigate to the `Drivers` search bar. If you already have the correct driver installed, there is nothing else you need to do. If you are missing the driver or do not have the most up to date driver, follow the [instructions](https://github.com/mkleehammer/pyodbc/wiki/Connecting-to-SQL-Server-from-Windows/4412dca5de834ac30054326c796aee613fb7f5c6) from pyodbc to install the proper driver (Note, link is a permalink and may not be the most recent wiki revision). Afterwards, you will see ODBC Driver 18 for SQL Server in the list of installed drivers (you may have to close and re-open the `odbcad32.exe` screen).
 
-## Running
+# Running
 
 Set the configuration file `config.toml` parameters specific to the run in the project root directory. Finally, simply execute `uv run main.py` in the main project directory
 
-### Configuration File Settings     
+## Configuration File Settings     
 
 The default version of the runtime configuration file is copied here, with comments explaining each and every key/value pair
 
@@ -84,7 +84,7 @@ year = 2020
 module = ""
 ```
 
-### Production Database Schema
+# Production Database Schema
 ```mermaid
 erDiagram
 direction TB
@@ -235,3 +235,13 @@ direction TB
     inputs_mgra ||--o{ outputs_hhp : "run_id, mgra"
     inputs_mgra ||--o{ outputs_jobs : "run_id, mgra"
 ```
+
+# How to Release
+
+All Estimates Program releases have used the same format which can be found on any release on the [corresponding page](https://github.com/SANDAG/Estimates-Program/releases). To summarize the format, at the very top is metadata related to which Estimates vintage this release is associated with. Underneath that is a "Major Updates" section, where major changes between this and the previous release are human summarized. At the bottom, is the auto-generated "What's Changed" section, created by hitting the button "Generate release notes"
+
+As for necessary manual changes, we need to update the most recent `[run_id]` version to remove the `-dev`, as obviously, since the data is released to the public, it's the code is no longer a development version. This requires the update of two files and one table. Let's assume for illustration purposes the previous release had version `1.5.7` and the new release has version `2.0.0`. Then, in `config.toml`, the default version should be changed from `1.5.7-dev` to `2.0.0-dev`, aka the development version based on `2.0.0`. The other file to be updated is `parsers.py`, where the list variable `versions` needs `2.0.0` and `2.0.0-dev` added at the end.
+
+The table to be manually updated is `[metadata].[run]`, where `[version]` needs to be updated from `1.5.7-dev` to `2.0.0`. This should be accomplished via a simple `UPDATE` script
+
+All these manual changes should be made before the release is created, ensuring that the correct version is set in the public code release
