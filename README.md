@@ -54,7 +54,7 @@ start_year = 2020
 end_year = 2025
 
 # The code version
-version = "1.2.0-dev"
+version = "1.2.1-dev"
 
 # Additional notes on this run
 comments = "Example comment"
@@ -236,12 +236,20 @@ direction TB
     inputs_mgra ||--o{ outputs_jobs : "run_id, mgra"
 ```
 
-# How to Release
+# Versioning and Releases
 
-All Estimates Program releases have used the same format which can be found on any release on the [corresponding page](https://github.com/SANDAG/Estimates-Program/releases). To summarize the format, at the very top is metadata related to which Estimates vintage this release is associated with. Underneath that is a "Major Updates" section, where major changes between this and the previous release are human summarized. At the bottom, is the auto-generated "What's Changed" section, created by hitting the button "Generate release notes"
+Estimates Program follows a non-standard release schedule. Rather than doing a new release after changes, bug fixes, or new features, Estimates Program only has a new release when there's output data ready to be shared with non Estimates & Forecasts team members. These are nearly always associated with the annual release of Estimates, with the data first shared with SANDAG's QA/QC team and eventually to the public via SANDAG's [Open Data Portal](https://opendata.sandag.org/).
 
-As for necessary manual changes, we basically need to update the version to remove `-dev` as obviously, since the data is released to the public, the code is no longer a development version. This requires the update of two files and one table. Let's assume for illustration purposes the previous release had version `1.5.7` and the new release has version `2.0.0`. Then, in `config.toml`, the default version should be changed from `1.5.7-dev` to `2.0.0`. The other file to be updated is `parsers.py`, where the list variable `versions` needs `2.0.0` and `2.0.0-dev` added at the end.
+## Release Format
 
-The table to be manually updated is `[metadata].[run]`, where `[version]` needs to be updated from `1.5.7-dev` to `2.0.0`. This should be accomplished via a simple `UPDATE` script
+Releases follow a standard format which can be seen on any release on the [Releases page](https://github.com/SANDAG/Estimates-Program/releases). Each release is associated with a newly created Git tag for the released version in the format `vX.X.X` (also see [Semantic Versioning](https://semver.org/)). The release title matches the tagged version in this format: `Estimates Program vX.X.X`. Release notes begin with metadata describing the purpose of the release and the production database `[run_id]`(s) for external consumption associated with that release. An optional `Major Update(s)` section follows, summarizing the automatically generated release notes listed below it. The automatically generated release notes are created by clicking the "Generate release notes" button
 
-All these manual changes should be made before the release is created, ensuring that the correct version is set in the public code release. Given the tiny scope of these changes, this is the only case where it's acceptable to directly commit to the `main` branch. After the release has been created, one more change must be done in `config.toml`, setting the default version from `2.0.0` to `2.0.0-dev`. In other words, since a release has occurred, any further Estimates Program runs are by definition part of the development cycle
+## How to Release
+
+Once a production run is ready for external consumption, the following manual steps are performed. Note, these changes can be made directly to the `main` branch
+1. Set the `config.toml` default version to the new release version `vX.X.X` 
+2. Add the new release version `vX.X.X` to the list of allowable versions in `InputParser:_validate_config()` in the file `python/parsers.py`
+3. Update the default configuration example in `README.md` to show `vX.X.X`
+4. A tag and release is made following the release format described above.
+5. Any associated `[run_id]`(s) in the production database identified in the release notes have the `[version]` field in the `[metadata].[run]` table manually updated to reflect the release version `vX.X.X`.
+6. Repeat steps 1-3 but with version `vX.X.X-dev`
