@@ -1,8 +1,8 @@
-## Setup
+# Setup
 
 Clone the repository and ensure an installation of [uv](https://docs.astral.sh/uv/getting-started/installation/) exists. Create a local virtual environment by running `uv venv` then `uv sync` in the command line. Ensure that a `secrets.toml` file exists
 
-### Configuration of Private Data in secrets.toml
+## Configuration of Private Data in secrets.toml
 In order to avoid exposing certain data to the public this repository uses a secrets file to store sensitive configurations in addition to a standard configuration file. This file is stored in the root directory of the repository as `secrets.toml` and is included in the `.gitignore` intentionally to avoid it ever being committed to the repository.
 
 The `secrets.toml` should mirror the following structure.
@@ -20,15 +20,15 @@ database = "<SqlDatabaseName>"  # database within instance containing GIS datase
 staging = '<FolderPath>'  # unconditional network folder path visible to SQL instance for BULK INSERT
 ```
 
-### Installation of ODBC Driver 18
+## Installation of ODBC Driver 18
 
 You will need ODBC Driver 18 installed on your device to execute the python scripts. To check if ODBC Driver 18 is installed, run the program `odbcad32.exe` locally using the windows search bar and navigate to the `Drivers` search bar. If you already have the correct driver installed, there is nothing else you need to do. If you are missing the driver or do not have the most up to date driver, follow the [instructions](https://github.com/mkleehammer/pyodbc/wiki/Connecting-to-SQL-Server-from-Windows/4412dca5de834ac30054326c796aee613fb7f5c6) from pyodbc to install the proper driver (Note, link is a permalink and may not be the most recent wiki revision). Afterwards, you will see ODBC Driver 18 for SQL Server in the list of installed drivers (you may have to close and re-open the `odbcad32.exe` screen).
 
-## Running
+# Running
 
 Set the configuration file `config.toml` parameters specific to the run in the project root directory. Finally, simply execute `uv run main.py` in the main project directory
 
-### Configuration File Settings     
+## Configuration File Settings     
 
 The default version of the runtime configuration file is copied here, with comments explaining each and every key/value pair
 
@@ -54,7 +54,7 @@ start_year = 2020
 end_year = 2025
 
 # The code version
-version = "1.2.0-dev"
+version = "1.2.1-dev"
 
 # Additional notes on this run
 comments = "Example comment"
@@ -84,7 +84,7 @@ year = 2020
 module = ""
 ```
 
-### Production Database Schema
+# Production Database Schema
 ```mermaid
 erDiagram
 direction TB
@@ -235,3 +235,21 @@ direction TB
     inputs_mgra ||--o{ outputs_hhp : "run_id, mgra"
     inputs_mgra ||--o{ outputs_jobs : "run_id, mgra"
 ```
+
+# Versioning and Releases
+
+Estimates Program follows a non-standard release schedule. Rather than doing a new release after changes, bug fixes, or new features, Estimates Program only has a new release when there's output data ready to be shared with non Estimates & Forecasts team members. These are nearly always associated with the annual release of Estimates, with the data first shared with SANDAG's QA/QC team and eventually to the public via SANDAG's [Open Data Portal](https://opendata.sandag.org/).
+
+## Release Format
+
+Releases follow a standard format which can be seen on any release on the [Releases page](https://github.com/SANDAG/Estimates-Program/releases). Each release is associated with a newly created Git tag for the released version in the format `vX.X.X` (also see [Semantic Versioning](https://semver.org/)). The release title matches the tagged version in this format: `Estimates Program vX.X.X`. Release notes begin with metadata describing the purpose of the release and the production database `[run_id]`(s) for external consumption associated with that release. An optional `Major Update(s)` section follows, summarizing the automatically generated release notes listed below it. The automatically generated release notes are created by clicking the "Generate release notes" button
+
+## How to Release
+
+Once a production run is ready for external consumption, the following manual steps are performed. Note, these changes can be made directly to the `main` branch
+1. Set the `config.toml` default version to the new release version `vX.X.X` 
+2. Add the new release version `vX.X.X` to the list of allowable versions in `InputParser:_validate_config()` in the file `python/parsers.py`
+3. Update the default configuration example in `README.md` to show `vX.X.X`
+4. A tag and release is made following the release format described above.
+5. Any associated `[run_id]`(s) in the production database identified in the release notes have the `[version]` field in the `[metadata].[run]` table manually updated to reflect the release version `vX.X.X`.
+6. Repeat steps 1-3 but with version `vX.X.X-dev`
