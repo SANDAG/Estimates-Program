@@ -38,7 +38,7 @@ BEGIN
     DROP TABLE IF EXISTS [#tt_shell];
     SELECT
         [tract],
-        [workers]
+        [household_workers]
     INTO [#tt_shell]
     FROM (
         SELECT DISTINCT [tract]
@@ -49,14 +49,14 @@ BEGIN
         WHERE [mgra].[series] = @series
     ) AS [tracts]
     CROSS JOIN (
-        SELECT [workers] FROM (
+        SELECT [household_workers] FROM (
             VALUES
                 (0),
                 (1),
                 (2),
                 (3)
-        ) AS [tt] ([workers])
-    ) AS [workers];
+        ) AS [tt] ([household_workers])
+    ) AS [household_workers];
 
 
     -- Prepare intermediary results from ACS datasets ----------------------------------
@@ -64,7 +64,7 @@ BEGIN
     DROP TABLE IF EXISTS [#hh_by_workers];
     SELECT
         [tract],
-        [workers],
+        [household_workers],
         SUM([value]) AS [hh]
     INTO [#hh_by_workers]
     FROM (
@@ -78,7 +78,7 @@ BEGIN
                 WHEN REPLACE([label], ':', '') = 'Estimate!!Total!!2 workers' THEN 2
                 WHEN REPLACE([label], ':', '') = 'Estimate!!Total!!3 or more workers' THEN 3
                 ELSE NULL  -- NULL values for Margin of Error fields removed in subsequent WHERE clause
-            END AS [workers],
+            END AS [household_workers],
             [value]
         FROM [acs].[detailed].[values]
         LEFT JOIN [acs].[detailed].[geography]
@@ -93,24 +93,24 @@ BEGIN
             AND [tables].[year] = @year
             AND [tables].[product] = '5Y'
     ) AS [b08202]
-    WHERE [workers] IS NOT NULL
-    GROUP BY [tract], [workers]
+    WHERE [household_workers] IS NOT NULL
+    GROUP BY [tract], [household_workers]
 
     -- Create hh workers distribution --------------------------------------------------
     -- Calculate regional hh by workers distribution
     DECLARE @total_hh INTEGER = (SELECT SUM([hh]) FROM [#hh_by_workers]);
     WITH [region_workers_distribution] AS (
             SELECT
-                [workers],
+                [household_workers],
                 1.0 * SUM([hh]) / @total_hh AS [hh_dist]
             FROM [#hh_by_workers]
-            GROUP BY [workers]
+            GROUP BY [household_workers]
         ),
         -- Calculate census tract hh by workers distribution
         [tract_distribution] AS (
             SELECT
                 [#hh_by_workers].[tract],
-                [workers],
+                [household_workers],
                 CASE
                     WHEN [tract_total_hh].[hh] = 0 THEN NULL
                     ELSE [#hh_by_workers].[hh] / [tract_total_hh].[hh]
@@ -129,15 +129,15 @@ BEGIN
         @run_id AS [run_id],
         @year AS [year],
         [#tt_shell].[tract],
-        [#tt_shell].[workers],
+        [#tt_shell].[household_workers],
         ISNULL([tract_distribution].[hh_dist], [region_workers_distribution].[hh_dist]) AS [value]
     FROM [#tt_shell]
     LEFT JOIN [region_workers_distribution]
-        ON [#tt_shell].[workers] = [region_workers_distribution].[workers]
+        ON [#tt_shell].[household_workers] = [region_workers_distribution].[household_workers]
     LEFT JOIN [tract_distribution]
         ON [#tt_shell].[tract] = [tract_distribution].[tract]
-        AND [#tt_shell].[workers] = [tract_distribution].[workers]
+        AND [#tt_shell].[household_workers] = [tract_distribution].[household_workers]
     ORDER BY 
         [#tt_shell].[tract],
-        [#tt_shell].[workers];
+        [#tt_shell].[household_workers];
 END

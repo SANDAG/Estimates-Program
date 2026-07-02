@@ -31,6 +31,8 @@ _DISTINCT_COUNTS = {
         "structure_type": 4,
         "income_category": 10,
         "household_size": 7,
+        "household_size_3plus": 3,
+        "household_workers": 4,
         "tract": {
             2010: 627,
             2020: 736,
@@ -39,7 +41,7 @@ _DISTINCT_COUNTS = {
         # The industry_code is a variable to group employment data into. Almost all
         # codes are 2-digit naics codes. The 2-digit naics code 72 was split into 721
         # and 722 3-digit naics code. Self employment and military active duty data do
-        # not natively have a naics code so it is therefore assigned to 'SE' and 'MIL' 
+        # not natively have a naics code so it is therefore assigned to 'SE' and 'MIL'
         # respectively, as the naics codes are being treated as strings.
         "industry_code": 23,
     },
@@ -52,7 +54,9 @@ _DISTINCT_COUNTS = {
 
 # For ease of access, combine the constants part of the dictionary with the current
 # MGRA series
-_DISTINCT_COUNTS = _DISTINCT_COUNTS["constants"] | _DISTINCT_COUNTS["series"][utils.SERIES]
+_DISTINCT_COUNTS = (
+    _DISTINCT_COUNTS["constants"] | _DISTINCT_COUNTS["series"][utils.SERIES]
+)
 
 
 #########

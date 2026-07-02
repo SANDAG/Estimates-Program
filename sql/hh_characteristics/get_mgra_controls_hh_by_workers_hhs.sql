@@ -23,7 +23,7 @@ SELECT
     CASE
         WHEN [metric] IN ('Household Size - 1', 'Household Size - 2') THEN [metric]
         ELSE 'Household Size - 3+'
-    END AS [metric],
+    END AS [household_size_3plus],
     SUM([value]) AS [hh]
 FROM [outputs].[hh_characteristics]
 WHERE
@@ -38,4 +38,4 @@ GROUP BY
     END
 ORDER BY
     [mgra],
-    [metric]
+    [household_size_3plus]
