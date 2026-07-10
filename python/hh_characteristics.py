@@ -581,7 +581,7 @@ def _create_hh_workers(
     workers in the MGRA, which cannot exceed the actual number of workers in the MGRA.
     Because the actual number of workers in the MGRA is not known, we use the
     population aged 18+ as a proxy. Additionally, the distribution of households by
-    household workers implies a minimum number of households by size in the (1,2,3+)
+    household workers implies a minimum number of households by size in the 2+ and 3+
     categories, which cannot exceed the actual number of households by size within each
     category in the MGRA.
     """
@@ -701,67 +701,60 @@ def _create_hh_workers(
 
     # For every MGRA, compute the difference between households by number of workers
     # and the households by size categories to determine necessary adjustments
-    # Note that the household size categories are collapsed to (1, 2, 3+)
+    # Note that the household size categories are collapsed to 2+ and 3+
     hh_workers = hh_workers.merge(
         mgra_hhs, on=["run_id", "year", "mgra"], how="left"
     ).assign(
-        diff1=lambda df: df["1"] - df[1],
         diff2=lambda df: df["2"] - df[2],
         diff3=lambda df: df["3"] - df[3],
     )
 
     # The methodology to adjust each individual MGRA to not violate household size
-    # constraints. Note that the household size categories are collapsed to (1, 2, 3+)
-    # and that the 0 worker category can always be added to
+    # constraints. Note that the household size categories are collapsed to 2+ and 3+
+    # and that the 0 and 1 worker categories can always be added to as they imply
+    # a minimum household size of 1+ which is satisfied by every category
     def adjust_mgra_hhs(mgra_data: pd.Series) -> pd.Series:
-        if (
-            mgra_data["diff1"] >= 0
-            and mgra_data["diff2"] >= 0
-            and mgra_data["diff3"] >= 0
-        ):
+        if mgra_data["diff2"] >= 0 and mgra_data["diff3"] >= 0:
             return mgra_data
         while True:
             # Identify households by worker categories that need adjustment
             # As well as categories that can accommodate additional households
             workers_to_decrease = [
-                category for category in [1, 2, 3] if mgra_data[f"diff{category}"] < 0
+                category for category in [2, 3] if mgra_data[f"diff{category}"] < 0
             ]
 
             workers_to_increase = [
-                category for category in [1, 2, 3] if mgra_data[f"diff{category}"] > 0
+                category for category in [2, 3] if mgra_data[f"diff{category}"] > 0
             ]
 
             # Take the first worker category to decrease and select a worker category to increase
             # Use a weighted random methodology to select the category to increase
-            # Note the 0-worker category is always eligible to increase
+            # Note the 0 and 1 worker categories are always eligible to increase
             workers_to_decrease = workers_to_decrease[0]
 
             # If all categories to increase are 0 just choose one at a random
-            if mgra_data[[0] + workers_to_increase].sum() == 0:
+            if mgra_data[[0, 1] + workers_to_increase].sum() == 0:
                 workers_to_increase = generator.choice([0] + workers_to_increase)
             else:
                 workers_to_increase = generator.choice(
-                    [0] + workers_to_increase,
-                    p=mgra_data[[0] + workers_to_increase]
-                    / mgra_data[[0] + workers_to_increase].sum(),
+                    [0, 1] + workers_to_increase,
+                    p=mgra_data[[0, 1] + workers_to_increase]
+                    / mgra_data[[0, 1] + workers_to_increase].sum(),
                 )
 
             # Execute the change and recompute the remaining change needed
             mgra_data[workers_to_decrease] -= 1
             mgra_data[f"diff{workers_to_decrease}"] += 1
             mgra_data[workers_to_increase] += 1
+            mgra_data[f"diff{workers_to_increase}"] -= 1
 
             # Check if we are done with this MGRA
-            if (
-                mgra_data["diff1"] >= 0
-                and mgra_data["diff2"] >= 0
-                and mgra_data["diff3"] >= 0
-            ):
+            if mgra_data["diff2"] >= 0 and mgra_data["diff3"] >= 0:
                 return mgra_data
 
     # Apply the MGRA adjustments for household size categories
     hh_workers = hh_workers.apply(adjust_mgra_hhs, axis=1).drop(
-        columns=["1", "2", "3", "diff1", "diff2", "diff3"]
+        columns=["2", "3", "diff2", "diff3"]
     )
 
     return {
