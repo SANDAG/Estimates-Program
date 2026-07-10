@@ -31,7 +31,6 @@ _DISTINCT_COUNTS = {
         "structure_type": 4,
         "income_category": 10,
         "household_size": 7,
-        "household_size_3plus": 3,
         "household_workers": 4,
         "tract": {
             2010: 627,

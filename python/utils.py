@@ -126,6 +126,8 @@ RANDOM_SEED = 42
 
 HOUSEHOLD_SIZES = list(range(1, 8))
 
+HOUSEHOLD_WORKERS = list(range(0, 4))
+
 ASE = ["age_group", "sex", "ethnicity"]
 
 INCOME_CATEGORIES = [

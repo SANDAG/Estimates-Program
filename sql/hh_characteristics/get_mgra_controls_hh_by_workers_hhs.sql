@@ -20,22 +20,25 @@ SELECT
     @run_id AS [run_id],
     @year AS [year],
     [mgra],
+    [1],
+    [2],
+    [3]
+FROM (
+SELECT
+    [mgra],
     CASE
-        WHEN [metric] IN ('Household Size - 1', 'Household Size - 2') THEN [metric]
-        ELSE 'Household Size - 3+'
-    END AS [household_size_3plus],
-    SUM([value]) AS [hh]
+        WHEN [metric] = 'Household Size - 1' THEN '1'
+        WHEN [metric] = 'Household Size - 2' THEN '2'
+        ELSE '3'
+    END AS [metric],
+    [value]
 FROM [outputs].[hh_characteristics]
 WHERE
     [run_id] = @run_id
     AND [year] = @year
     AND [metric] LIKE 'Household Size%'
-GROUP BY
-    [mgra],
-    CASE
-        WHEN [metric] IN ('Household Size - 1', 'Household Size - 2') THEN [metric]
-        ELSE 'Household Size - 3+'
-    END
-ORDER BY
-    [mgra],
-    [household_size_3plus]
+) AS [to_pvt]
+PIVOT (
+    SUM([value]) FOR [metric] IN ([1], [2], [3])
+) AS [pvt]
+ORDER BY [mgra]

@@ -78,6 +78,11 @@ def run_hh_characteristics(year: int, debug: bool) -> None:
     hh_workers_inputs = _get_hh_workers_inputs(year)
     _validate_hh_workers_inputs(year, hh_workers_inputs)
 
+    hh_workers_outputs = _create_hh_workers(hh_workers_inputs)
+    _validate_hh_workers_outputs(hh_workers_outputs)
+
+    _insert_hh_workers(hh_workers_inputs, hh_workers_outputs, debug)
+
 
 def _get_hh_income_inputs(year: int) -> dict[str, pd.DataFrame]:
     """Get households and various tract level datas"""
@@ -280,9 +285,7 @@ def _validate_hh_workers_inputs(
     tests.validate_data(
         "MGRA households by household size controls",
         hh_workers_inputs["mgra_hhs"],
-        row_count={
-            "key_columns": {"mgra", "household_size_3plus"}
-        },  # Household size categories collapsed to (1, 2, 3+)
+        row_count={"key_columns": {"mgra"}},
         negative={},
         null={},
     )
@@ -566,6 +569,210 @@ def _create_hh_size(
     }
 
 
+def _create_hh_workers(
+    hh_workers_inputs: dict[str, pd.DataFrame],
+) -> dict[str, pd.DataFrame]:
+    """Code to compute MGRA level households by workers
+
+    Similar to how income and size work, this function takes MGRA households, applies
+    tract level rates, then integerizes the data. But additionally, we control to the
+    MGRA population aged 18+ and MGRA households by size. This is because the
+    distribution of households by household workers implies some minimum number of
+    workers in the MGRA, which cannot exceed the actual number of workers in the MGRA.
+    Because the actual number of workers in the MGRA is not known, we use the
+    population aged 18+ as a proxy. Additionally, the distribution of households by
+    household workers implies a minimum number of households by size in the (1,2,3+)
+    categories, which cannot exceed the actual number of households by size within each
+    category in the MGRA.
+    """
+    hh = hh_workers_inputs["hh"]
+    tract_workers_dist = hh_workers_inputs["tract_workers"]
+    mgra_18plus = hh_workers_inputs["mgra_18plus"]
+    mgra_hhs = hh_workers_inputs["mgra_hhs"]
+
+    # Combine the total households in each MGRA with the distribution of households by
+    # number of workers
+    hh_workers = (
+        hh.merge(tract_workers_dist, on=["run_id", "year", "tract"], how="left")
+        .assign(hh=lambda df: df["hh"] * df["value"])
+        .drop(columns=["value"])
+        .pivot(
+            index=["run_id", "year", "mgra", "tract"],
+            columns="household_workers",
+            values="hh",
+        )
+        .reset_index(drop=False)
+        .sort_values(by="mgra")
+        .reset_index(drop=True)
+    )
+
+    # To ensure that we pretty much exactly match ACS distributions, we will do two-
+    # dimensional controlling on the MGRA level data. After splitting the data into
+    # separate tracts, row controls will be total households in each MGRA and column
+    # controls will be tract level households by size
+    controlled_groups = []
+    for tract, group in hh_workers.groupby("tract"):
+        seed_data = group[utils.HOUSEHOLD_WORKERS].to_numpy()
+
+        row_controls = (
+            group[utils.HOUSEHOLD_WORKERS].sum(axis=1).to_numpy().round(0).astype(int)
+        )
+
+        col_controls = utils.integerize_1d(
+            group[utils.HOUSEHOLD_WORKERS].sum(axis=0), generator=generator
+        )
+
+        controlled_data = utils.integerize_2d(
+            data=seed_data,
+            row_ctrls=row_controls,
+            col_ctrls=col_controls,
+            condition="exact",
+            suppress_warnings=True,
+            generator=generator,
+        )
+
+        # Assign the controlled data back to the tract
+        group[utils.HOUSEHOLD_WORKERS] = controlled_data
+        controlled_groups.append(group)
+
+    # Recombine all the data in preparation for the next controlling step
+    hh_workers = pd.concat(controlled_groups)
+
+    # For every MGRA, compute the minimum implied worker population
+    # And difference between implied worker and 18+ population
+    hh_workers = (
+        hh_workers.merge(mgra_18plus, on=["run_id", "year", "mgra"], how="left")
+        .astype({workers: int for workers in utils.HOUSEHOLD_WORKERS})
+        .assign(
+            min_implied_workers=lambda df: df[1] + (2 * df[2]) + (3 * df[3]),
+            # Compute the difference between the 18+ population and the implied minimum
+            decrease_min=lambda df: np.where(
+                df["min_implied_workers"] > df["persons_18plus"],
+                df["min_implied_workers"] - df["persons_18plus"],
+                0,
+            ),
+        )
+    )
+
+    # The methodology to adjust each individual MGRA for minimum implied workers
+    # TODO: Consider ways to parallelize
+    def adjust_mgra_18plus(mgra_data: pd.Series) -> pd.Series:
+        if mgra_data["decrease_min"] == 0:
+            return mgra_data
+        while True:
+            # Choose a random household workers category to decrease
+            # weighted by the number of households in each category
+            workers_to_decrease = generator.choice(
+                utils.HOUSEHOLD_WORKERS,
+                p=mgra_data[utils.HOUSEHOLD_WORKERS]
+                / mgra_data[utils.HOUSEHOLD_WORKERS].sum(),
+            )
+
+            # Look below the chosen category for a category to increase
+            if mgra_data["decrease_min"] > 0 and workers_to_decrease != 0:
+                # Avoid overshooting the decrease
+                workers_to_increase = generator.choice(
+                    range(
+                        np.max([0, workers_to_decrease - mgra_data["decrease_min"]]),
+                        workers_to_decrease,
+                    )
+                )
+            # Continue if we need to decrease implied workers but the randomly chosen
+            # category was already 0 workers, restart the loop to choose a new category
+            else:
+                continue
+
+            # Execute the change and recompute the remaining change needed
+            mgra_data[workers_to_decrease] -= 1
+            mgra_data[workers_to_increase] += 1
+            mgra_data["decrease_min"] += workers_to_increase - workers_to_decrease
+
+            # Check if we are done with this MGRA
+            if mgra_data["decrease_min"] == 0:
+                return mgra_data
+
+    # Apply the MGRA adjustments for implied workers and 18+ population
+    # Note we apply minimum implied workers first then household size categories
+    # This is because the household size categories are a hard constraint whereas
+    # the minimum implied workers is a soft constraint due to data limitations
+    hh_workers = hh_workers.apply(adjust_mgra_18plus, axis=1).drop(
+        columns=["tract", "persons_18plus", "min_implied_workers", "decrease_min"]
+    )
+
+    # For every MGRA, compute the difference between households by number of workers
+    # and the households by size categories to determine necessary adjustments
+    # Note that the household size categories are collapsed to (1, 2, 3+)
+    hh_workers = hh_workers.merge(
+        mgra_hhs, on=["run_id", "year", "mgra"], how="left"
+    ).assign(
+        diff1=lambda df: df["1"] - df[1],
+        diff2=lambda df: df["2"] - df[2],
+        diff3=lambda df: df["3"] - df[3],
+    )
+
+    # The methodology to adjust each individual MGRA to not violate household size
+    # constraints. Note that the household size categories are collapsed to (1, 2, 3+)
+    # and that the 0 worker category can always be added to
+    def adjust_mgra_hhs(mgra_data: pd.Series) -> pd.Series:
+        if (
+            mgra_data["diff1"] >= 0
+            and mgra_data["diff2"] >= 0
+            and mgra_data["diff3"] >= 0
+        ):
+            return mgra_data
+        while True:
+            # Identify households by worker categories that need adjustment
+            # As well as categories that can accomodate additional households
+            workers_to_decrease = [
+                category for category in [1, 2, 3] if mgra_data[f"diff{category}"] < 0
+            ]
+
+            workers_to_increase = [
+                category for category in [1, 2, 3] if mgra_data[f"diff{category}"] > 0
+            ]
+
+            # Take the first worker category to decrease and select a worker category to increase
+            # Use a weighted random methodology to select the category to increase
+            # Note the 0-worker category is always eligible to increase
+            workers_to_decrease = workers_to_decrease[0]
+
+            # If all categories to increase are 0 just choose one at a random
+            if mgra_data[[0] + workers_to_increase].sum() == 0:
+                workers_to_increase = generator.choice([0] + workers_to_increase)
+            else:
+                workers_to_increase = generator.choice(
+                    [0] + workers_to_increase,
+                    p=mgra_data[[0] + workers_to_increase]
+                    / mgra_data[[0] + workers_to_increase].sum(),
+                )
+
+            # Execute the change and recompute the remaining change needed
+            mgra_data[workers_to_decrease] -= 1
+            mgra_data[f"diff{workers_to_decrease}"] += 1
+            mgra_data[workers_to_increase] += 1
+
+            # Check if we are done with this MGRA
+            if (
+                mgra_data["diff1"] >= 0
+                and mgra_data["diff2"] >= 0
+                and mgra_data["diff3"] >= 0
+            ):
+                return mgra_data
+
+    # Apply the MGRA adjustments for household size categories
+    hh_workers = hh_workers.apply(adjust_mgra_hhs, axis=1).drop(
+        columns=["1", "2", "3", "diff1", "diff2", "diff3"]
+    )
+
+    return {
+        "hh_workers": hh_workers.melt(
+            id_vars=["run_id", "year", "mgra"],
+            var_name="household_workers",
+            value_name="hh",
+        )
+    }
+
+
 def _validate_hh_income_outputs(hh_income_outputs: dict[str, pd.DataFrame]) -> None:
     """Validate the household income output data"""
     tests.validate_data(
@@ -583,6 +790,17 @@ def _validate_hh_size_outputs(hh_size_outputs: dict[str, pd.DataFrame]) -> None:
         "MGRA Households by Size",
         hh_size_outputs["hh_size"],
         row_count={"key_columns": {"mgra", "household_size"}},
+        negative={},
+        null={},
+    )
+
+
+def _validate_hh_workers_outputs(hh_workers_outputs: dict[str, pd.DataFrame]) -> None:
+    """Validate the household workers output data"""
+    tests.validate_data(
+        "MGRA Households by Workers",
+        hh_workers_outputs["hh_workers"],
+        row_count={"key_columns": {"mgra", "household_workers"}},
         negative={},
         null={},
     )
@@ -672,6 +890,63 @@ def _insert_hh_size(
         )
         outputs_hh_characteristics.to_csv(
             utils.DEBUG_OUTPUT_FOLDER / "outputs_hh_characteristics_hh_size.csv",
+            index=False,
+        )
+
+    # Otherwise, load to database
+    else:
+        with utils.ESTIMATES_ENGINE.connect() as con:
+            inputs_controls_tract.to_sql(
+                schema="inputs",
+                name="controls_tract",
+                if_exists="append",
+                con=con,
+                index=False,
+            )
+
+            outputs_hh_characteristics.to_sql(
+                schema="outputs",
+                name="hh_characteristics",
+                if_exists="append",
+                con=con,
+                index=False,
+            )
+
+
+def _insert_hh_workers(
+    hh_workers_inputs: dict[str, pd.DataFrame],
+    hh_workers_outputs: dict[str, pd.DataFrame],
+    debug: bool,
+) -> None:
+    """Insert hh characteristics and tract level controls to database"""
+
+    inputs_controls_tract = (
+        hh_workers_inputs["tract_workers"]
+        .rename(columns={"household_workers": "metric"})
+        .assign(
+            metric=lambda df: "Household Workers - "
+            + df["metric"].astype(str).replace("3", "3+")
+        )
+    )
+    outputs_hh_characteristics = (
+        hh_workers_outputs["hh_workers"][
+            ["run_id", "year", "mgra", "household_workers", "hh"]
+        ]
+        .rename(columns={"household_workers": "metric", "hh": "value"})
+        .assign(
+            metric=lambda df: "Household Workers - "
+            + df["metric"].astype(str).replace("3", "3+")
+        )
+    )
+
+    # Save locally if in debug mode
+    if debug:
+        inputs_controls_tract.to_csv(
+            utils.DEBUG_OUTPUT_FOLDER / "inputs_controls_tract_hh_workers.csv",
+            index=False,
+        )
+        outputs_hh_characteristics.to_csv(
+            utils.DEBUG_OUTPUT_FOLDER / "outputs_hh_characteristics_hh_workers.csv",
             index=False,
         )
 
