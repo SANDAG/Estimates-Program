@@ -70,8 +70,6 @@ BEGIN
     FROM (
         SELECT
             [tract],
-            -- The '%' wildcard matches both 'Family households' and 'Nonfamily
-            -- households'
             CASE
                 WHEN REPLACE([label], ':', '') = 'Estimate!!Total!!No workers' THEN 0
                 WHEN REPLACE([label], ':', '') = 'Estimate!!Total!!1 worker' THEN 1

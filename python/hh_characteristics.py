@@ -208,7 +208,7 @@ def _get_hh_workers_inputs(year: int) -> dict[str, pd.DataFrame]:
             / "hh_characteristics"
             / "get_tract_controls_hh_by_workers.sql"
         ) as file:
-            hh_workers_inputs["tract_workers"] = pd.read_sql_query(
+            hh_workers_inputs["tract_workers"] = utils.read_sql_query_fallback(
                 sql=sql.text(file.read()),
                 con=con,
                 params={"run_id": utils.RUN_ID, "year": year},  # type: ignore
@@ -609,7 +609,7 @@ def _create_hh_workers(
     # To ensure that we pretty much exactly match ACS distributions, we will do two-
     # dimensional controlling on the MGRA level data. After splitting the data into
     # separate tracts, row controls will be total households in each MGRA and column
-    # controls will be tract level households by size
+    # controls will be tract level households by workers
     controlled_groups = []
     for tract, group in hh_workers.groupby("tract"):
         seed_data = group[utils.HOUSEHOLD_WORKERS].to_numpy()
@@ -722,7 +722,7 @@ def _create_hh_workers(
             return mgra_data
         while True:
             # Identify households by worker categories that need adjustment
-            # As well as categories that can accomodate additional households
+            # As well as categories that can accommodate additional households
             workers_to_decrease = [
                 category for category in [1, 2, 3] if mgra_data[f"diff{category}"] < 0
             ]
