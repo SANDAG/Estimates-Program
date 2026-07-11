@@ -705,7 +705,10 @@ def _create_hh_workers(
     hh_workers = hh_workers.merge(
         mgra_hhs, on=["run_id", "year", "mgra"], how="left"
     ).assign(
+        # Expect to see differences >= 0 for Household Sizes - Household Workers
+        # Household Worker category 2 should be <= Household Size 2+
         diff2=lambda df: df["2"] - df[2],
+        # Household Worker category 3+ should be <= Household Size 3+
         diff3=lambda df: df["3"] - df[3],
     )
 
@@ -718,35 +721,54 @@ def _create_hh_workers(
             return mgra_data
         while True:
             # Identify households by worker categories that need adjustment
-            # As well as categories that can accommodate additional households
-            workers_to_decrease = [
-                category for category in [2, 3] if mgra_data[f"diff{category}"] < 0
-            ]
+            # and take the first worker category identified to decrease
+            if mgra_data["diff2"] < 0:
+                workers_to_decrease = 2
+            elif mgra_data["diff3"] < 0:
+                workers_to_decrease = 3
+            else:
+                break
 
-            workers_to_increase = [
-                category for category in [2, 3] if mgra_data[f"diff{category}"] > 0
-            ]
-
-            # Take the first worker category to decrease and select a worker category to increase
-            # Use a weighted random methodology to select the category to increase
+            # Identify categories that can accommodate additional households
+            # that are smaller than the worker category we are decreasing
             # Note the 0 and 1 worker categories are always eligible to increase
-            workers_to_decrease = workers_to_decrease[0]
+            if workers_to_decrease == 3:
+                if mgra_data["diff2"] > 0:
+                    workers_to_increase = [0, 1, 2]
+                else:
+                    workers_to_increase = [0, 1]
+            elif workers_to_decrease == 2:
+                workers_to_increase = [0, 1]
+            else:
+                break
 
+            # Use a weighted random methodology to select the category to increase
             # If all categories to increase are 0 just choose one at a random
-            if mgra_data[[0, 1] + workers_to_increase].sum() == 0:
-                workers_to_increase = generator.choice([0] + workers_to_increase)
+            if mgra_data[workers_to_increase].sum() == 0:
+                workers_to_increase = generator.choice(workers_to_increase)
             else:
                 workers_to_increase = generator.choice(
-                    [0, 1] + workers_to_increase,
-                    p=mgra_data[[0, 1] + workers_to_increase]
-                    / mgra_data[[0, 1] + workers_to_increase].sum(),
+                    workers_to_increase,
+                    p=mgra_data[workers_to_increase]
+                    / mgra_data[workers_to_increase].sum(),
                 )
 
             # Execute the change and recompute the remaining change needed
+
+            # Both 0 and 1 worker categories are not eligible to be decreased
             mgra_data[workers_to_decrease] -= 1
-            mgra_data[f"diff{workers_to_decrease}"] += 1
+            if workers_to_decrease == 2:
+                mgra_data["diff2"] += 1
+            elif workers_to_decrease == 3:
+                mgra_data["diff3"] += 1
+
+            # Note we only track changes for the 2 and 3+ worker categories
+            # Although both 0 and 1 worker categories are elgibile to be increased
             mgra_data[workers_to_increase] += 1
-            mgra_data[f"diff{workers_to_increase}"] -= 1
+            if workers_to_increase == 2:
+                mgra_data["diff2"] -= 1
+            elif workers_to_increase == 3:
+                mgra_data["diff3"] -= 1
 
             # Check if we are done with this MGRA
             if mgra_data["diff2"] >= 0 and mgra_data["diff3"] >= 0:
