@@ -739,8 +739,6 @@ def _create_hh_workers(
                     workers_to_increase = [0, 1]
             elif workers_to_decrease == 2:
                 workers_to_increase = [0, 1]
-            else:
-                break
 
             # Use a weighted random methodology to select the category to increase
             # If all categories to increase are 0 just choose one at a random
