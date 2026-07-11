@@ -726,8 +726,6 @@ def _create_hh_workers(
                 workers_to_decrease = 2
             elif mgra_data["diff3"] < 0:
                 workers_to_decrease = 3
-            else:
-                break
 
             # Identify categories that can accommodate additional households
             # that are smaller than the worker category we are decreasing
