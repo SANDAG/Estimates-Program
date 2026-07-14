@@ -7,7 +7,8 @@ Point-level data is gotten from the confidential EDD dataset, assigned to
 Notes: 
     1) This query assumes the connection is to the GIS server.
     2) Data prior to year 2017 is not present in the EDD view and must be
-    queried directly from the source database table.
+    queried directly from the source database table. Note there is no 2016
+    data available.
     3) If no split is present for a block, the regional percentage split is
     substituted. All 2020 Census blocks are represented, except three 
     water-only slivers see: https://github.com/SANDAG/Estimates-Program/issues/193
@@ -94,7 +95,7 @@ BEGIN
         [emp_valid] > 0
         AND [emp_total] > 0
 END
-ELSE IF @year = 2016 OR @year BETWEEN 2010 AND 2014
+ELSE IF @year BETWEEN 2010 AND 2013
 BEGIN
     INSERT INTO [#edd]
     SELECT
@@ -123,7 +124,7 @@ BEGIN
         AND [businesses].[emp_id] = [employment].[emp_id]
     WHERE LEFT([code], 3) IN ('721','722')
 END
-ELSE IF @year = 2015
+ELSE IF @year BETWEEN 2014 AND 2016
 BEGIN
     INSERT INTO [#edd]
     SELECT
@@ -176,6 +177,8 @@ BEGIN
     -- Calculate % split of NAICS 72 into 721 and 722 for 2020 Census Blocks -
     SELECT
         [GEOID20] AS [block],
+        -- Note these CASE statements default to regional average for the block
+        -- Using the Window functions with OVER() to calculate regional averages
         CASE 
             WHEN [72] = 0 THEN SUM([721]) OVER() / SUM([72]) OVER()
             ELSE [721] / [72] 
