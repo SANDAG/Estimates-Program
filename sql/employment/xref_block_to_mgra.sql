@@ -49,8 +49,7 @@ CROSS JOIN (
         END AS [industry_code]
     FROM [EMPCORE].[ca_edd].[vi_ca_edd_employment]
 ) AS [industry_code]
-WHERE [industry_code] IS NOT NULL
-ORDER BY [GEOID20], [industry_code];
+WHERE [industry_code] IS NOT NULL;
 
 -- Create temporary table for EDD data to support spatial index
 DROP TABLE IF EXISTS [#edd];
