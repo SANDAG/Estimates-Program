@@ -24,6 +24,7 @@ WITH [ase_data] AS (
     WHERE
         [run_id] = @run_id
         AND [year] = @year
+        AND [pop_type] = 'Household Population'
         AND [age_group] NOT IN (
             'Under 5',
             '5 to 9',
