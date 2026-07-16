@@ -97,11 +97,13 @@ def _aggregate_lodes_to_mgra(
     This function allocates jobs from Census blocks to MGRAs using distributions from
     the California Employment Development Department (EDD) point-level dataset. Blocks
     with no EDD data available use a simple land area intersection to allocate jobs to
-    MGRAs.
+    MGRAs. The allocation first attempts to allocate within industry codes using EDD
+    data, then falls back to using EDD data without considering industry codes, and
+    finally falls back to using the land area intersection.
 
     Args:
         combined_data: LODES data with columns: year, block, industry_code, jobs
-        xref: Crosswalk with columns: block, mgra, pct_edd, pct_area, edd_flag
+        xref: Crosswalk with columns: block, mgra, pct_industry, pct_edd, pct_area, flag
         year: The year for which to aggregate data
 
     Returns:
@@ -111,14 +113,12 @@ def _aggregate_lodes_to_mgra(
     # Get MGRA data from SQL
     with utils.ESTIMATES_ENGINE.connect() as con:
         mgra_data = pd.read_sql_query(
-            sql=sql.text(
-                """
+            sql=sql.text("""
                 SELECT DISTINCT [mgra]
                 FROM [inputs].[mgra]
                 WHERE run_id = :run_id
                 ORDER BY [mgra]
-                """
-            ),
+                """),
             con=con,
             params={"run_id": utils.RUN_ID},
         )
@@ -129,10 +129,14 @@ def _aggregate_lodes_to_mgra(
         mgra_data.merge(pd.DataFrame({"industry_code": unique_industries}), how="cross")
         .assign(year=year)
         .merge(
-            combined_data.merge(xref, on="block", how="inner")
+            combined_data.merge(xref, on=["block", "industry_code"], how="inner")
             .assign(
                 value=lambda df: df["jobs"]
-                * np.where(df["edd_flag"] == 1, df["pct_edd"], df["pct_area"])
+                * np.where(
+                    df["flag"] == "pct_industry",
+                    df["pct_industry"],
+                    np.where(df["flag"] == "pct_edd", df["pct_edd"], df["pct_area"]),
+                )
             )
             .groupby(["year", "mgra", "industry_code"], as_index=False)["value"]
             .sum(),
@@ -170,7 +174,14 @@ def _distribute_self_emp_to_mgra(
     """
     # Check that required columns are present
     required_b24080_cols = {"year", "geography", "industry_code", "value"}
-    required_xref_cols = {"geography", "mgra", "flag", "pct_18_64", "pct_pop", "pct_split"}
+    required_xref_cols = {
+        "geography",
+        "mgra",
+        "flag",
+        "pct_18_64",
+        "pct_pop",
+        "pct_split",
+    }
     if not required_b24080_cols.issubset(b24080.columns):
         raise ValueError(
             f"B24080 DataFrame is missing required columns: {required_b24080_cols - set(b24080.columns)}"
@@ -179,7 +190,7 @@ def _distribute_self_emp_to_mgra(
         raise ValueError(
             f"xref DataFrame is missing required columns: {required_xref_cols - set(xref.columns)}"
         )
-    
+
     # Check that flag column only contains expected values
     expected_flags = {"pct_18_64", "pct_pop", "pct_split"}
     if not set(xref["flag"].unique()).issubset(expected_flags):
@@ -214,8 +225,7 @@ def _distribute_self_emp_to_mgra(
 
     # Sum weighted values to the MGRA level
     merged = (
-        merged
-        .groupby(["year", "mgra", "industry_code"])["weighted_value"]
+        merged.groupby(["year", "mgra", "industry_code"])["weighted_value"]
         .sum()
         .reset_index()
         .assign(run_id=utils.RUN_ID)
@@ -347,11 +357,11 @@ def _validate_jobs_inputs(jobs_inputs: dict[str, pd.DataFrame]) -> None:
         null={},
     )
     # No row count validation performed as xref is many-to-many
+    # NULLs are allowed in the result set
     tests.validate_data(
         "xref_block_to_mgra",
         jobs_inputs["xref_block_to_mgra"],
         negative={},
-        null={},
     )
     # No row count validation performed as xref is many-to-many
     tests.validate_data(
@@ -374,7 +384,6 @@ def _validate_jobs_inputs(jobs_inputs: dict[str, pd.DataFrame]) -> None:
         negative={},
         null={},
     )
-    
 
 
 def _create_jobs_output(
