@@ -9,7 +9,6 @@ import sqlalchemy as sql
 
 import python.parsers as parsers
 
-
 #########
 # PATHS #
 #########
@@ -72,8 +71,8 @@ GIS_ENGINE = sql.create_engine(
     + _secrets["sql"]["gis"]["server"]
     + "/"
     + _secrets["sql"]["gis"]["database"]
-    + "?driver=ODBC Driver 18 for SQL Server" + 
-    "&TrustServerCertificate=yes",
+    + "?driver=ODBC Driver 18 for SQL Server"
+    + "&TrustServerCertificate=yes",
     fast_executemany=True,
 )
 
@@ -126,6 +125,8 @@ if DEBUG:
 RANDOM_SEED = 42
 
 HOUSEHOLD_SIZES = list(range(1, 8))
+
+HOUSEHOLD_WORKERS = list(range(0, 4))
 
 ASE = ["age_group", "sex", "ethnicity"]
 

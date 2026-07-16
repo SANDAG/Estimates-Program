@@ -4,7 +4,7 @@
 # https://github.com/SANDAG/Series-15-Urban-Development-Model/blob/main/Other/Significant%20Change.xlsx
 
 # Main configuration, what run_id to operate on
-RUN_ID = 245
+RUN_ID = 229
 
 # We cannot import python.utils, as just importing will cause a new [run_id]` value and
 # new log file to be created. Instead, copy what we need for now :(
@@ -46,6 +46,8 @@ qa_qc_scripts = {
     "Check every HHP has HH": "check_every_hhp_has_hh.sql",
     "Check implied HHP vs actual HHP": "check_implied_hhp_vs_actual_hhp.sql",
     "Check householders vs households": "check_householders_vs_households.sql",
+    "Check implied workers vs persons 18+": "check_implied_workers.sql",
+    "Check households by workers vs households by size": "check_hhworkers_hhsize.sql",
 }
 
 # Run each script, printing out status messages if necessary:
