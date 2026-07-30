@@ -152,89 +152,6 @@ def _aggregate_lodes_to_mgra(
     return jobs
 
 
-def _distribute_self_emp_to_mgra(
-    b24080: pd.DataFrame, xref: pd.DataFrame
-) -> pd.DataFrame:
-    """Distribute subregional self-employment counts to MGRA level.
-
-    This function allocates self-employment counts from block groups (for years
-    post 2012) or tracts (for 2010-2012) to MGRAs using allocation percentages.
-    The allocation percentages are based on the distribution of persons aged
-    18-64, total population, or an equal split across intersection MGRAs
-    depending on data availability within the block group or tract.
-
-    Args:
-        b24080: DataFrame containing subregional self-employment counts.
-            Must include columns (year, geography, industry_code, value).
-        xref: Geography crosswalk DataFrame with columns
-            (geography, mgra, flag, pct_18_64, pct_pop, pct_split)
-
-    Returns:
-        Self employment counts at the MGRA level
-    """
-    # Check that required columns are present
-    required_b24080_cols = {"year", "geography", "industry_code", "value"}
-    required_xref_cols = {
-        "geography",
-        "mgra",
-        "flag",
-        "pct_18_64",
-        "pct_pop",
-        "pct_split",
-    }
-    if not required_b24080_cols.issubset(b24080.columns):
-        raise ValueError(
-            f"B24080 DataFrame is missing required columns: {required_b24080_cols - set(b24080.columns)}"
-        )
-    if not required_xref_cols.issubset(xref.columns):
-        raise ValueError(
-            f"xref DataFrame is missing required columns: {required_xref_cols - set(xref.columns)}"
-        )
-
-    # Check that flag column only contains expected values
-    expected_flags = {"pct_18_64", "pct_pop", "pct_split"}
-    if not set(xref["flag"].unique()).issubset(expected_flags):
-        raise ValueError(
-            f"xref 'flag' column contains unexpected values: {set(xref['flag'].unique()) - expected_flags}"
-        )
-
-    # Merge subregional self employment counts with MGRA crosswalk
-    merged = b24080.merge(xref, on="geography", how="inner")
-
-    # Calculate weighted value based on flag
-    merged = merged.assign(
-        weighted_value=np.select(
-            [
-                merged["flag"] == "pct_18_64",
-                merged["flag"] == "pct_pop",
-                merged["flag"] == "pct_split",
-            ],
-            [
-                merged["value"] * merged["pct_18_64"],
-                merged["value"] * merged["pct_pop"],
-                merged["value"] * merged["pct_split"],
-            ],
-            default=np.nan,
-        )
-    )
-
-    if merged["weighted_value"].isna().any():
-        raise ValueError(
-            "Unexpected allocation flag found; expected one of {'pct_18_64', 'pct_pop', 'pct_split'}"
-        )
-
-    # Sum weighted values to the MGRA level
-    merged = (
-        merged.groupby(["year", "mgra", "industry_code"])["weighted_value"]
-        .sum()
-        .reset_index()
-        .assign(run_id=utils.RUN_ID)
-        .rename(columns={"weighted_value": "value"})
-    )[["run_id", "year", "mgra", "industry_code", "value"]]
-
-    return merged
-
-
 def _get_jobs_inputs(year: int) -> dict[str, pd.DataFrame]:
     """Get input data related to jobs for a specified year.
 
@@ -257,45 +174,7 @@ def _get_jobs_inputs(year: int) -> dict[str, pd.DataFrame]:
                 params={
                     "year": year,
                 },
-            )
-
-        # Get self-employed totals and append to control_totals
-        with open(utils.SQL_FOLDER / "employment/get_region_self_emp.sql") as file:
-            self_emp_control = utils.read_sql_query_fallback(
-                sql=sql.text(file.read()),
-                con=con,
-                params={
-                    "year": year,
-                },
-            )
-
-            jobs_inputs["control_totals"] = pd.concat(
-                [jobs_inputs["control_totals"], self_emp_control],
-                ignore_index=True,
-            )
-
-            jobs_inputs["control_totals"]["run_id"] = utils.RUN_ID
-
-        # Get self-employed block group data
-        with open(utils.SQL_FOLDER / "employment/get_B24080.sql") as file:
-            jobs_inputs["B24080"] = utils.read_sql_query_fallback(
-                sql=sql.text(file.read()),
-                con=con,
-                params={
-                    "year": year,
-                },
-            )
-
-        # Get census block group or tract to MGRA crosswalk
-        with open(utils.SQL_FOLDER / "employment/xref_se_to_mgra.sql") as file:
-            jobs_inputs["xref_se_to_mgra"] = pd.read_sql_query(
-                sql=sql.text(file.read()),
-                con=con,
-                params={
-                    "run_id": utils.RUN_ID,
-                    "year": year,
-                },
-            )
+            ).assign(run_id=utils.RUN_ID)
 
     with utils.GIS_ENGINE.connect() as con:
         # Get crosswalk from Census blocks to MGRAs
@@ -348,27 +227,12 @@ def _validate_jobs_inputs(jobs_inputs: dict[str, pd.DataFrame]) -> None:
         negative={},
         null={},
     )
-    # Self Employed only includes block groups with self-employed individuals therefore
-    # no row count validation performed
-    tests.validate_data(
-        "Self-employed block group data",
-        jobs_inputs["B24080"],
-        negative={},
-        null={},
-    )
     # No row count validation performed as xref is many-to-many
     # NULLs are allowed in the result set
     tests.validate_data(
         "xref_block_to_mgra",
         jobs_inputs["xref_block_to_mgra"],
         negative={},
-    )
-    # No row count validation performed as xref is many-to-many
-    tests.validate_data(
-        "xref_se_to_mgra",
-        jobs_inputs["xref_se_to_mgra"],
-        negative={},
-        null={},
     )
     tests.validate_data(
         "Military employment data",
@@ -397,16 +261,12 @@ def _create_jobs_output(
     Returns:
         Controlled employment data.
     """
-    # Create MGRA level jobs data by combining LODES and self-employment data
+    # Create MGRA level jobs data by combining LODES and military data
     mgra_jobs = pd.concat(
         [
             # Aggregate LODES jobs to MGRA level
             _aggregate_lodes_to_mgra(
                 jobs_inputs["lodes_data"], jobs_inputs["xref_block_to_mgra"], year
-            ),
-            # Distribute self-employment data to MGRA level
-            _distribute_self_emp_to_mgra(
-                jobs_inputs["B24080"], jobs_inputs["xref_se_to_mgra"]
             ),
             # Include military employment at MGRA level
             jobs_inputs["military_emp"][
