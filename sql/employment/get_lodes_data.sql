@@ -15,6 +15,7 @@
     Government categories due to limitations of the LEHD LODES data.
 */
 
+SET NOCOUNT ON;
 -- Initialize parameters -----------------------------------------------------
 DECLARE @year INTEGER = :year;  
 DECLARE @msg NVARCHAR(25) = 'LODES data does not exist';
