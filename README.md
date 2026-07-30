@@ -209,6 +209,7 @@ direction TB
         run_id INT UK, FK
         year INT UK
         mgra INT UK, FK
+        ownership_title NVARCHAR(50) UK
         industry_code NVARCHAR(5) UK
         value INT
     }
