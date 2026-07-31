@@ -168,7 +168,8 @@ BEGIN
     ),
     -- State and Local Government SANDAG employment categories ---------------
     -- LEHD LODES only differentiates between Private and Federal
-    -- So we will use this for both the "State Government" and "Local Government"
+    -- So we will use Total Covered minus Private and Federal
+    -- For both the "State Government" and "Local Government"
     [state_local_government] AS (
         SELECT
             [tt_total].[block],
@@ -194,7 +195,7 @@ BEGIN
                 SUM([jobs]) AS [jobs]
             FROM [lodes_data]
             WHERE
-                [ownership_title] = 'Federal Government'
+                [ownership_title] IN ('Federal Government', 'Private')
                 AND [industry_code] NOT IN (
                     '61',
                     '62',
