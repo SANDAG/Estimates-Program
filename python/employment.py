@@ -84,7 +84,7 @@ def _get_lodes_data(year: int) -> pd.DataFrame:
             ),
         ],
         ignore_index=True,
-    )[["year", "block", "industry_code", "jobs"]]
+    )[["year", "block", "ownership_title", "industry_code", "jobs"]]
 
     return combined_data
 
@@ -97,18 +97,18 @@ def _aggregate_lodes_to_mgra(
     This function allocates jobs from Census blocks to MGRAs using distributions from
     the California Employment Development Department (EDD) point-level dataset. Blocks
     with no EDD data available use a simple land area intersection to allocate jobs to
-    MGRAs. The allocation first attempts to allocate within industry codes using EDD
-    data, then falls back to using EDD data without considering industry codes, and
-    finally falls back to using the land area intersection.
+    MGRAs. The allocation first attempts to allocate within SANDAG employment categories
+    using EDD data, then falls back to using EDD data without considering categories,
+    and finally falls back to using the land area intersection.
 
     Args:
         combined_data: LODES data with columns: year, block, industry_code, jobs
-        xref: Crosswalk with columns: block, mgra, pct_industry, pct_edd, pct_area, flag
+        xref: Crosswalk with columns: block, mgra, pct_edd_category, pct_edd, pct_area, flag
         year: The year for which to aggregate data
 
     Returns:
         Aggregated data at MGRA level with columns: run_id, year, mgra,
-            industry_code, value
+            ownership_title, industry_code, value
     """
     # Get MGRA data from SQL
     with utils.ESTIMATES_ENGINE.connect() as con:
@@ -123,29 +123,38 @@ def _aggregate_lodes_to_mgra(
             params={"run_id": utils.RUN_ID},
         )
 
-    # Get unique industry codes and cross join with MGRA data
-    unique_industries = combined_data["industry_code"].unique()
     jobs = (
-        mgra_data.merge(pd.DataFrame({"industry_code": unique_industries}), how="cross")
+        # Get unique SANDAG employment categories and cross join with MGRA data
+        mgra_data.merge(
+            combined_data[["ownership_title", "industry_code"]]
+            .drop_duplicates()
+            .reset_index(drop=True),
+            how="cross",
+        )
         .assign(year=year)
+        # Get the LODES data and allocated to MGRAs using the crosswalk and allocation percentages
         .merge(
-            combined_data.merge(xref, on=["block", "industry_code"], how="inner")
+            combined_data.merge(
+                xref, on=["block", "ownership_title", "industry_code"], how="inner"
+            )
             .assign(
                 value=lambda df: df["jobs"]
                 * np.where(
-                    df["flag"] == "pct_industry",
-                    df["pct_industry"],
+                    df["flag"] == "pct_edd_category",
+                    df["pct_edd_category"],
                     np.where(df["flag"] == "pct_edd", df["pct_edd"], df["pct_area"]),
                 )
             )
-            .groupby(["year", "mgra", "industry_code"], as_index=False)["value"]
+            .groupby(
+                ["year", "mgra", "ownership_title", "industry_code"], as_index=False
+            )["value"]
             .sum(),
-            on=["year", "mgra", "industry_code"],
+            on=["year", "mgra", "ownership_title", "industry_code"],
             how="left",
         )
         .fillna({"value": 0})
         .assign(run_id=utils.RUN_ID)[
-            ["run_id", "year", "mgra", "industry_code", "value"]
+            ["run_id", "year", "mgra", "ownership_title", "industry_code", "value"]
         ]
     )
 
@@ -180,7 +189,7 @@ def _get_jobs_inputs(year: int) -> dict[str, pd.DataFrame]:
         # Get crosswalk from Census blocks to MGRAs
         with open(utils.SQL_FOLDER / "employment/xref_block_to_mgra.sql") as file:
             jobs_inputs["xref_block_to_mgra"] = utils.read_sql_query_fallback(
-                max_lookback=2,
+                max_lookback=1,
                 sql=sql.text(file.read()),
                 con=con,
                 params={
@@ -203,11 +212,12 @@ def _get_jobs_inputs(year: int) -> dict[str, pd.DataFrame]:
 
         military_control_totals = (
             jobs_inputs["military_emp"]
-            .groupby(["run_id", "year", "industry_code", "metric"], as_index=False)[
-                "value"
-            ]
+            .groupby(
+                ["run_id", "year", "ownership_title", "industry_code", "metric"],
+                as_index=False,
+            )["value"]
             .sum()
-        )[["run_id", "year", "industry_code", "metric", "value"]]
+        )[["run_id", "year", "ownership_title", "industry_code", "metric", "value"]]
 
         jobs_inputs["control_totals"] = pd.concat(
             [jobs_inputs["control_totals"], military_control_totals],
@@ -244,7 +254,7 @@ def _validate_jobs_inputs(jobs_inputs: dict[str, pd.DataFrame]) -> None:
     tests.validate_data(
         "Jobs control totals",
         jobs_inputs["control_totals"],
-        row_count={"key_columns": {"industry_code"}},
+        row_count={"key_columns": {("ownership_title", "industry_code")}},
         negative={},
         null={},
     )
@@ -270,39 +280,55 @@ def _create_jobs_output(
             ),
             # Include military employment at MGRA level
             jobs_inputs["military_emp"][
-                ["run_id", "year", "mgra", "industry_code", "value"]
+                ["run_id", "year", "mgra", "ownership_title", "industry_code", "value"]
             ],
         ],
         ignore_index=True,
-    ).sort_values(by=["mgra", "industry_code"])
+    ).sort_values(by=["mgra", "ownership_title", "industry_code"])
 
     # Create list to store controlled values for each industry
     results = []
 
-    # Apply integerize_1d to each industry_code
-    for industry_code in mgra_jobs["industry_code"].unique():
-        # Filter for this industry_code
-        naics_mask = mgra_jobs.loc[mgra_jobs["industry_code"] == industry_code]
-
-        # Get control value and apply integerize_1d
-        control_value = (
-            jobs_inputs["control_totals"]
-            .loc[
-                jobs_inputs["control_totals"]["industry_code"] == industry_code, "value"
+    # Apply integerize_1d to each SANDAG employment category
+    for ownership_title in mgra_jobs["ownership_title"].unique():
+        for industry_code in mgra_jobs["industry_code"].unique():
+            # Filter for this ownership_title and industry_code
+            mask = mgra_jobs.loc[
+                (mgra_jobs["ownership_title"] == ownership_title)
+                & (mgra_jobs["industry_code"] == industry_code)
             ]
-            .iloc[0]
-        )
 
-        results.append(
-            naics_mask.assign(
-                value=utils.integerize_1d(
-                    data=naics_mask["value"],
-                    control=control_value,
-                    methodology="weighted_random",
-                    generator=generator,
+            # If no records are returned, skip to next iteration
+            if mask.empty:
+                continue
+            else:
+                # Get control value and apply integerize_1d
+                control_value = (
+                    jobs_inputs["control_totals"]
+                    .loc[
+                        (
+                            jobs_inputs["control_totals"]["ownership_title"]
+                            == ownership_title
+                        )
+                        & (
+                            jobs_inputs["control_totals"]["industry_code"]
+                            == industry_code
+                        ),
+                        "value",
+                    ]
+                    .iloc[0]
                 )
-            )
-        )
+
+                results.append(
+                    mask.assign(
+                        value=utils.integerize_1d(
+                            data=mask["value"],
+                            control=control_value,
+                            methodology="weighted_random",
+                            generator=generator,
+                        )
+                    )
+                )
 
     return {"results": pd.concat(results, ignore_index=True)}
 
@@ -312,7 +338,7 @@ def _validate_jobs_outputs(jobs_outputs: dict[str, pd.DataFrame]) -> None:
     tests.validate_data(
         "Controlled jobs data",
         jobs_outputs["results"],
-        row_count={"key_columns": {"mgra", "industry_code"}},
+        row_count={"key_columns": {"mgra", ("ownership_title", "industry_code")}},
         negative={},
         null={},
     )
