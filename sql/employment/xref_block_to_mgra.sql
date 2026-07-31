@@ -13,7 +13,7 @@ Notes:
     2) Data prior to year 2017 is not present in the EDD view and must be
     queried directly from the source database table. Note there is no 2016
     data available nor is there ownership data for 2014. In both instances, 
-    this query return "EDD point-level data does not exist".
+    this query returns "EDD point-level data does not exist".
     3) This must be run on the GIS server.
 */
 
