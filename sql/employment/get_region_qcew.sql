@@ -2,7 +2,7 @@
     This SQL query calculates annual employment averages for SANDAG employment
     categories from the BLS QCEW for a given year. SANDAG employment categories
     are built from a combination of ownership and 2-digit industry codes,
-    excepting for the exclusion of unclassifed NAICS 99 and the split of NAICS 72
+    excepting for the exclusion of unclassified NAICS 99 and the split of NAICS 72
     into 721 and 722. SANDAG employment categories are as follows:
 
         Total Covered - 61,62,71,721,722
