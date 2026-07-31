@@ -2,7 +2,7 @@
     This SQL query calculates annual employment averages for SANDAG employment
     categories from the BLS QCEW for a given year. SANDAG employment categories
     are built from a combination of ownership and 2-digit industry codes,
-    excepting for the exclusion of unclassifed NAICS 99 and the split of NAICS 72
+    excepting for the exclusion of unclassified NAICS 99 and the split of NAICS 72
     into 721 and 722. SANDAG employment categories are as follows:
 
         Total Covered - 61,62,71,721,722
@@ -39,7 +39,8 @@ SET NOCOUNT ON;
 DECLARE @year INTEGER = :year;
 
 -- Data suppression limits this query to 2022-2025 only
-IF @year < 2022 OR @year > 2025 THROW 5000, 'Data suppression prevents calculation prior to 2022', 1;
+IF @year < 2022 OR @year > 2025
+    THROW 50000, 'Data suppression prevents calculation outside 2022-2025', 1;
 
 -- Drop temporary table holding final result set
 DROP TABLE IF EXISTS [#qcew_result_set];
