@@ -47,9 +47,11 @@ DROP TABLE IF EXISTS [#qcew_result_set];
 
 -- Calculate custom SANDAG employment categories using quarterly data --------
 SELECT
+    @year AS [year],
     [fn_get_sandag_employment].[ownership_title],
     [fn_get_sandag_employment].[industry_code],
-	ROUND(SUM([month1_emplvl] + [month2_emplvl] + [month3_emplvl])/12.0, 0) AS [jobs]
+    'jobs' AS [metric],
+	ROUND(SUM([month1_emplvl] + [month2_emplvl] + [month3_emplvl])/12.0, 0) AS [value]
 --INTO [#qcew_result_set]
 FROM [socioec_data].[bls].[qcew_by_area_quarterly]
 INNER JOIN [socioec_data].[bls].[industry_code]
@@ -73,9 +75,11 @@ GROUP BY
 
 -- Calculate directly derived employment categories using annual data --------
 SELECT
+    @year AS [year],
     [fn_get_sandag_employment].[ownership_title],
     [fn_get_sandag_employment].[industry_code],
-	ROUND(SUM([annual_avg_emplvl]), 0) AS [jobs]
+    'jobs' AS [metric],
+	ROUND(SUM([annual_avg_emplvl]), 0) AS [value]
 FROM [socioec_data].[bls].[qcew_by_area_annual]
 INNER JOIN [socioec_data].[bls].[industry_code]
 	ON [qcew_by_area_annual].[naics_id] = [industry_code].[naics_id]
