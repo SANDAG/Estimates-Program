@@ -39,7 +39,8 @@ SET NOCOUNT ON;
 DECLARE @year INTEGER = :year;
 
 -- Data suppression limits this query to 2022-2025 only
-IF @year < 2022 OR @year > 2025 THROW 5000, 'Data suppression prevents calculation prior to 2022', 1;
+IF @year < 2022 OR @year > 2025
+    THROW 50000, 'Data suppression prevents calculation outside 2022-2025', 1;
 
 -- Drop temporary table holding final result set
 DROP TABLE IF EXISTS [#qcew_result_set];
