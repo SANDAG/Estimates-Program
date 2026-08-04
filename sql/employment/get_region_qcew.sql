@@ -39,11 +39,9 @@ SET NOCOUNT ON;
 DECLARE @year INTEGER = :year;
 
 -- Data suppression limits this query to 2022-2025 only
+-- Assumption is this will work for 2026+ but DAO 216-26 requires additional review
 IF @year < 2022 OR @year > 2025
     THROW 50000, 'Data suppression prevents calculation outside 2022-2025', 1;
-
--- Drop temporary table holding final result set
-DROP TABLE IF EXISTS [#qcew_result_set];
 
 
 -- Calculate custom SANDAG employment categories using quarterly data --------
@@ -52,13 +50,12 @@ SELECT
     [fn_get_sandag_employment].[ownership_title],
     [fn_get_sandag_employment].[industry_code],
     'jobs' AS [metric],
-	ROUND(SUM([month1_emplvl] + [month2_emplvl] + [month3_emplvl])/12.0, 0) AS [value]
---INTO [#qcew_result_set]
+    ROUND(SUM([month1_emplvl] + [month2_emplvl] + [month3_emplvl])/12.0, 0) AS [value]
 FROM [socioec_data].[bls].[qcew_by_area_quarterly]
 INNER JOIN [socioec_data].[bls].[industry_code]
-	ON [qcew_by_area_quarterly].[naics_id] = [industry_code].[naics_id]
+    ON [qcew_by_area_quarterly].[naics_id] = [industry_code].[naics_id]
 INNER JOIN [socioec_data].[bls].[ownership_titles]
-	ON [qcew_by_area_quarterly].[own_code] = [ownership_titles].[ownership_code]
+    ON [qcew_by_area_quarterly].[own_code] = [ownership_titles].[ownership_code]
 CROSS APPLY [socioec_data].[bls].[fn_get_sandag_employment]([ownership_title], [industry_code])
 WHERE
     [area_fips] = '06073'
@@ -80,12 +77,12 @@ SELECT
     [fn_get_sandag_employment].[ownership_title],
     [fn_get_sandag_employment].[industry_code],
     'jobs' AS [metric],
-	ROUND(SUM([annual_avg_emplvl]), 0) AS [value]
+    ROUND(SUM([annual_avg_emplvl]), 0) AS [value]
 FROM [socioec_data].[bls].[qcew_by_area_annual]
 INNER JOIN [socioec_data].[bls].[industry_code]
-	ON [qcew_by_area_annual].[naics_id] = [industry_code].[naics_id]
+    ON [qcew_by_area_annual].[naics_id] = [industry_code].[naics_id]
 INNER JOIN [socioec_data].[bls].[ownership_titles]
-	ON [qcew_by_area_annual].[own_code] = [ownership_titles].[ownership_code]
+    ON [qcew_by_area_annual].[own_code] = [ownership_titles].[ownership_code]
 CROSS APPLY [socioec_data].[bls].[fn_get_sandag_employment]([ownership_title], [industry_code])
 WHERE
     [area_fips] = '06073'
