@@ -1,17 +1,17 @@
 /*
-    This query provides a split of 2-digit NAICS 72 into 3-digit NAICS codes.
-    Point-level data is gotten from the confidential EDD dataset, assigned to
-    2020 Census Blocks and the percentage split of 2-digit NAICS 72 into the
-    3-digit NAICS codes of 721 and 722 is calculated within each block.
+This query provides a split of 2-digit NAICS 72 into 3-digit NAICS codes.
+Point-level data is gotten from the confidential EDD dataset, assigned to
+2020 Census Blocks and the percentage split of 2-digit NAICS 72 into the
+3-digit NAICS codes of 721 and 722 is calculated within each block.
 
-    Notes: 
-        1) This query assumes the connection is to the GIS server.
-        2) Data prior to year 2017 is not present in the EDD view and must be
-        queried directly from the source database table. Note there is no 2016
-        data available.
-        3) If no split is present for a block, the regional percentage split is
-        substituted. All 2020 Census blocks are represented, except three 
-        water-only slivers see: https://github.com/SANDAG/Estimates-Program/issues/193
+Notes: 
+    1) This query assumes the connection is to the GIS server.
+    2) Data prior to year 2017 is not present in the EDD view and must be
+    queried directly from the source database table. Note there is no 2016
+    data available.
+    3) If no split is present for a block, the regional percentage split is
+    substituted. All 2020 Census blocks are represented, except three 
+    water-only slivers see: https://github.com/SANDAG/Estimates-Program/issues/193
 */
 
 SET NOCOUNT ON;

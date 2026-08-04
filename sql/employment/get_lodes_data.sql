@@ -1,18 +1,18 @@
 /*
-    Get LEHD LODES data mapped to SANDAG employment categories.
+Get LEHD LODES data mapped to SANDAG employment categories.
 
-    The mapping below used for [CNS01] to [CNS20] to [niacs_code] (2-digit NAICS) in WAC 
-    section of the document linked below. The mapping for [SEG] and [TYPE] are included in 
-    the OD section of document linked below.
-        https://lehd.ces.census.gov/doc/help/onthemap/LODESTechDoc.pdf
-    For any other LEHD LODES data questions check: https://lehd.ces.census.gov/data/
+The mapping below used for [CNS01] to [CNS20] to [niacs_code] (2-digit NAICS) in WAC
+section of the document linked below. The mapping for [SEG] and [TYPE] are included in
+the OD section of document linked below.
+    https://lehd.ces.census.gov/doc/help/onthemap/LODESTechDoc.pdf
+For any other LEHD LODES data questions check: https://lehd.ces.census.gov/data/
 
-    SANDAG employment categories are defined here:
-        https://github.com/SANDAG/Estimates-Program/issues/281
+SANDAG employment categories are defined here:
+    https://github.com/SANDAG/Estimates-Program/issues/281
 
-    This result set cannot be used to determine raw employment counts or aggregated
-    across ownerships as data is purposefully duplicated with the State and Local
-    Government categories due to limitations of the LEHD LODES data.
+This result set cannot be used to determine raw employment counts or aggregated
+across ownerships as data is purposefully duplicated with the State and Local
+Government categories due to limitations of the LEHD LODES data.
 */
 
 SET NOCOUNT ON;

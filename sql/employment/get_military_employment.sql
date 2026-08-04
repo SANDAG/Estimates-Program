@@ -1,10 +1,10 @@
 /* 
-    This query grabs the Military Active Duty (Job) Data and assigns counts to MGRA15.
-    This will assign 0s to MGRAs where there are no military jobs.
+This query grabs the Military Active Duty (Job) Data and assigns counts to MGRA15.
+This will assign 0s to MGRAs where there are no military jobs.
 
-    Notes:
-        1) This is assuming a connection to the GIS server
-        2) currently only works using MGRA15
+Notes:
+    1) This is assuming a connection to the GIS server
+    2) currently only works using MGRA15
 */
 
 -- Initialize parameters -----------------------------------------------------

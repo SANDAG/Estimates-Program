@@ -1,36 +1,36 @@
 /*
-    This SQL query calculates annual employment averages for SANDAG employment
-    categories from the BLS QCEW for a given year. SANDAG employment categories
-    are built from a combination of ownership and 2-digit industry codes,
-    excepting for the exclusion of unclassified NAICS 99 and the split of NAICS 72
-    into 721 and 722. SANDAG employment categories are as follows:
+This SQL query calculates annual employment averages for SANDAG employment
+categories from the BLS QCEW for a given year. SANDAG employment categories
+are built from a combination of ownership and 2-digit industry codes,
+excepting for the exclusion of unclassified NAICS 99 and the split of NAICS 72
+into 721 and 722. SANDAG employment categories are as follows:
 
-        Total Covered - 61,62,71,721,722
-        Private - 11,21,22,23,31-33,42,44-45,48-49,51,52,53,54,55,56,81
-        Federal/State/Local Government - see Private industries above + NAICS 92
+    Total Covered - 61,62,71,721,722
+    Private - 11,21,22,23,31-33,42,44-45,48-49,51,52,53,54,55,56,81
+    Federal/State/Local Government - see Private industries above + NAICS 92
 
-    For SANDAG employment categories not directly derived from published
-    BLS QCEW annual averages we use summations of monthly employment totals
-    published quarterly to aggregate into SANDAG employment categories and perform
-    averaging and integerization at the final reporting step per guidance received
-    from BLS QCEW staff. See https://github.com/SANDAG/BLS/issues/55.
-    There are all the SANDAG employment categories that combine ownership
-    categories.
+For SANDAG employment categories not directly derived from published
+BLS QCEW annual averages we use summations of monthly employment totals
+published quarterly to aggregate into SANDAG employment categories and perform
+averaging and integerization at the final reporting step per guidance received
+from BLS QCEW staff. See https://github.com/SANDAG/BLS/issues/55.
 
-        Total Covered - 61,62,71,721,722
-        Federal/State/Local Government - see Private industries above + NAICS 92
+These are all the SANDAG employment categories that combine ownership categories.
 
-    For SANDAG employment categories that are directly derived from published BLS
-    QCEW annual averages we use those numbers directly as they are calculated by
-    the BLS using unreleased microdata that is more accurate than the rounded
-    quarterly monthly data. These are all the "Private" ownership only categories.
+    Total Covered - 61,62,71,721,722
+    Federal/State/Local Government - see Private industries above + NAICS 92
 
-        Private - 11,21,22,23,31-33,42,44-45,48-49,51,52,53,54,55,56,81
+For SANDAG employment categories that are directly derived from published BLS
+QCEW annual averages we use those numbers directly as they are calculated by
+the BLS using unreleased microdata that is more accurate than the rounded
+quarterly monthly data. These are all the "Private" ownership only categories.
 
-    This is able to be done for years 2022-2025 as no suppression exists at the 
-    aggregation levels required to create SANDAG employment categories. Data prior
-    to 2022 requires controlling at higher aggregation levels to fill in 
-    gaps created by data suppression.
+    Private - 11,21,22,23,31-33,42,44-45,48-49,51,52,53,54,55,56,81
+
+This is able to be done for years 2022-2025 as no suppression exists at the 
+aggregation levels required to create SANDAG employment categories. Data prior
+to 2022 requires controlling at higher aggregation levels to fill in  gaps
+created by data suppression.
 */
 
 SET NOCOUNT ON;
