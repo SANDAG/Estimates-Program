@@ -39,6 +39,7 @@ ESTIMATES_ENGINE = sql.create_engine(
 qa_qc_scripts = {
     "Check jurisdiction control totals": "check_controls_jurisdiction.sql",
     "Check region ASE controls": "check_controls_region_ase.sql",
+    "Check region job control totals": "check_controls_region_jobs.sql",
     "Check cross-table pop by type": "check_cross_table_pop_by_type.sql",
     "Check cross-table total hh": "check_cross_table_total_hh.sql",
     "Check MGRA restrictions": "check_mgra_restrictions.sql",
