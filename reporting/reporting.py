@@ -4,7 +4,7 @@
 # https://github.com/SANDAG/Series-15-Urban-Development-Model/blob/main/Other/Significant%20Change.xlsx
 
 # Main configuration, what run_id to operate on
-RUN_ID = 229
+RUN_ID = 231
 
 # We cannot import python.utils, as just importing will cause a new [run_id]` value and
 # new log file to be created. Instead, copy what we need for now :(
@@ -32,6 +32,23 @@ ESTIMATES_ENGINE = sql.create_engine(
     + "&TrustServerCertificate=yes",
     fast_executemany=True,
 )
+
+# Some helpful parameters
+with ESTIMATES_ENGINE.connect() as con:
+    start_year = con.execute(
+        sql.text("SELECT [start_year] FROM [metadata].[run] WHERE [run_id] = :run_id"),
+        {"run_id": RUN_ID},
+    ).scalar()
+
+    end_year = con.execute(
+        sql.text("SELECT [end_year] FROM [metadata].[run] WHERE [run_id] = :run_id"),
+        {"run_id": RUN_ID},
+    ).scalar()
+
+    series = con.execute(
+        sql.text("SELECT [series] FROM [metadata].[run] WHERE [run_id] = :run_id"),
+        {"run_id": RUN_ID},
+    ).scalar()
 
 # Store a list of the scripts to run. It is assumed that each script only takes in
 # a parameter for [run_id]. It is also assumed that rows of data will only be returned
@@ -66,68 +83,66 @@ with ESTIMATES_ENGINE.connect() as con:
                 print("\tNo error rows returned")
         print()
 
-# For the ASE script, there's not really a solid threshold for errors, so instead we
-# get all the rows and do some Python processing to pick out Geography/ASE combinations
-# which may be flagged
-with ESTIMATES_ENGINE.connect() as con:
-    print("Check large changes in ASE pop")
+# For all variables, we can also do some simple year over year analysis and flag
+# where there are large changes. Note, the geography below can be configured to any
+# column of [dim].[vi_mgra_denormalize]. Smaller geographies are more likely to include
+# spurious results, but larger geographies may hide some large changes
+geography = "jurisdiction"
 
-    # First, get the start/end year for this run_id
-    start_year = con.execute(
-        sql.text("SELECT [start_year] FROM [metadata].[run] WHERE [run_id] = :run_id"),
-        {"run_id": RUN_ID},
-    ).scalar()
+# Pulling all the data for each variable is not so simple, so we need to have this
+# configuration. Each SQL script should return a table with columns [year],
+# [jurisdiction], [metric], and [value]
+variable_config = {
+    "housing units by type": "check_yoy_hs_by_type.sql",
+    "households by type": "check_yoy_hh_by_type.sql",
+    "population by type": "check_yoy_pop_by_type.sql",
+    "population by ASE": "check_yoy_pop_by_ase.sql",
+    "jobs by ownership/industry": "check_yoy_jobs_by_sector.sql",
+}
 
-    end_year = con.execute(
-        sql.text("SELECT [end_year] FROM [metadata].[run] WHERE [run_id] = :run_id"),
-        {"run_id": RUN_ID},
-    ).scalar()
+# Do the large change threshold analysis
+for variable, path in variable_config.items():
+    print(f"Check large changes {variable} at the {geography} level")
 
     # Stop this check if there is only on year of data available
     if start_year == end_year:
         print("\tCannot run check, only one year of data available")
-    else:
 
-        # Then, pull the data. Because a certain someone hates dynamic SQL, we cannot
-        # pivot out the years in SQL and instead have to do it in Python
-        with open("check_ase_at_jurisdiction.sql") as file:
-            results = (
+    # Pull the data then pivot out the year
+    with ESTIMATES_ENGINE.connect() as con:
+        with open(path) as file:
+            data = (
                 pd.read_sql_query(
                     sql=sql.text(file.read()),
                     con=con,
-                    params={
-                        "run_id": RUN_ID,
-                        "pop_type": "Total",
-                    },
+                    params={"run_id": RUN_ID, "series": series, "geography": geography},
                 )
                 .pivot_table(
                     columns="year",
-                    index=["jurisdiction", "metric"],
+                    index=[geography, "metric"],
                     values="value",
                     aggfunc="sum",
                 )
                 .reset_index(drop=False)
             )
 
-        # For every pair of consecutive years, compute if there was a significant
-        # change. Note that to avoid log(0) or divide by zero errors, we replace all
-        # zeros with tiny values
-        results_no_zero = results.copy(deep=True).replace(0, 0.0001)
-        flagged_rows = np.full(results.shape[0], False)
-        for year in range(start_year, end_year):
-            abs_diff = (
-                (results_no_zero[year + 1] - results_no_zero[year])
-                .abs()
-                .replace(0, 0.0001)
-            )
-            scaled_pct = 100 * np.log(abs_diff) / results_no_zero[year]
-            measure = np.exp(5.9317 * (np.log(abs_diff) ** -0.596))
-            flagged_rows = flagged_rows | (measure < scaled_pct)
+    # For every pair of consecutive years, compute if there was a significant
+    # change. Note that to avoid log(0) or divide by zero errors, we replace all
+    # zeros with tiny values
+    results_no_zero = data.copy(deep=True).replace(0, 0.0001)
+    flagged_rows = np.full(data.shape[0], False)
+    for year in range(start_year, end_year):
+        abs_diff = (
+            (results_no_zero[year + 1] - results_no_zero[year]).abs().replace(0, 0.0001)
+        )
+        scaled_pct = 100 * np.log(abs_diff) / results_no_zero[year]
+        measure = np.exp(5.9317 * (np.log(abs_diff) ** -0.596))
+        flagged_rows = flagged_rows | (measure < scaled_pct)
 
-        # Print different error messages based on the number of flagged rows
-        if flagged_rows.sum() > 0:
-            print(f"\t{flagged_rows.sum()} warning rows returned")
-            print(textwrap.indent(results[flagged_rows].to_string(index=False), "\t"))
-        else:
-            print("\tNo error rows returned")
+    # Print different error messages based on the number of flagged rows
+    if flagged_rows.sum() > 0:
+        print(f"\t{flagged_rows.sum()} warning rows returned")
+        print(textwrap.indent(data[flagged_rows].to_string(index=False), "\t"))
+    else:
+        print("\tNo error rows returned")
     print()
