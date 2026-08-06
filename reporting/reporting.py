@@ -1,10 +1,9 @@
-# Python script to automatically run QA/QC scripts and report out the results.
-# Additionally, for ASE data, it flags rows which had a significant change, see
-# the below Excel sheet for additional details:
+# Python script to automatically run various QA/QC code and report out the results.
+# This is split into two sections, one which simply runs SQL scripts that return error
+# rows, and the second which does year-over-year analysis of all variables to find
+# geographies with "significant change". "Significant change" is pretty arbitrary, but
+# some experimentation was done to justify the magic formulas and numbers in:
 # https://github.com/SANDAG/Series-15-Urban-Development-Model/blob/main/Other/Significant%20Change.xlsx
-
-# Main configuration, what run_id to operate on
-RUN_ID = 231
 
 # We cannot import python.utils, as just importing will cause a new [run_id]` value and
 # new log file to be created. Instead, copy what we need for now :(
@@ -14,6 +13,23 @@ import textwrap
 import sqlalchemy as sql
 import pandas as pd
 import numpy as np
+
+#################
+# CONFIGURATION #
+#################
+
+# The run_id where all data will be pulled from
+RUN_ID = 231
+
+# For YOY analysis, we require data to be grouped at some geography for analysis. The
+# geography below can be configured to any column of [dim].[vi_mgra_denormalize].
+# Be aware that smaller geographies are more likely to include spurious results, but
+# larger geographies may hide some large changes
+geography = "jurisdiction"
+
+############
+# SETTINGS #
+############
 
 ROOT_FOLDER = pathlib.Path(__file__).parent.resolve().parent
 try:
@@ -33,7 +49,7 @@ ESTIMATES_ENGINE = sql.create_engine(
     fast_executemany=True,
 )
 
-# Some helpful parameters
+# Some helpful parameters directly derived from run_id
 with ESTIMATES_ENGINE.connect() as con:
     start_year = con.execute(
         sql.text("SELECT [start_year] FROM [metadata].[run] WHERE [run_id] = :run_id"),
@@ -52,7 +68,8 @@ with ESTIMATES_ENGINE.connect() as con:
 
 # Store a list of the scripts to run. It is assumed that each script only takes in
 # a parameter for [run_id]. It is also assumed that rows of data will only be returned
-# if there is an error, in which case it will be printed out
+# if there is an error. Naturally, that means if there is no error from the check, then
+# the SQL script should return zero rows of data
 qa_qc_scripts = {
     "Check jurisdiction control totals": "check_controls_jurisdiction.sql",
     "Check region ASE controls": "check_controls_region_ase.sql",
@@ -68,7 +85,24 @@ qa_qc_scripts = {
     "Check households by workers vs households by size": "check_hhworkers_hhsize.sql",
 }
 
-# Run each script, printing out status messages if necessary:
+# For YOY analysis, we need to coerce different structured tables all into the same
+# format. The following SQL scripts are used to pull data grouped at the configured
+# geography with the exact columns of [year], [{geography}], [metric], and [value]
+yoy_config = {
+    "housing units by type": "check_yoy_hs_by_type.sql",
+    "households by type": "check_yoy_hh_by_type.sql",
+    "population by type": "check_yoy_pop_by_type.sql",
+    "population by ASE": "check_yoy_pop_by_ase.sql",
+    "jobs by ownership/industry": "check_yoy_jobs_by_sector.sql",
+}
+
+##################
+# REPORTING CODE #
+##################
+
+# Run each SQL script. If the script returns rows, report out a custom error message
+# with every invalid row. If the script doesn't return anything, then there are no
+# errors
 with ESTIMATES_ENGINE.connect() as con:
     for script_name, file_path in qa_qc_scripts.items():
         print(script_name)
@@ -83,28 +117,12 @@ with ESTIMATES_ENGINE.connect() as con:
                 print("\tNo error rows returned")
         print()
 
-# For all variables, we can also do some simple year over year analysis and flag
-# where there are large changes. Note, the geography below can be configured to any
-# column of [dim].[vi_mgra_denormalize]. Smaller geographies are more likely to include
-# spurious results, but larger geographies may hide some large changes
-geography = "jurisdiction"
 
-# Pulling all the data for each variable is not so simple, so we need to have this
-# configuration. Each SQL script should return a table with columns [year],
-# [jurisdiction], [metric], and [value]
-variable_config = {
-    "housing units by type": "check_yoy_hs_by_type.sql",
-    "households by type": "check_yoy_hh_by_type.sql",
-    "population by type": "check_yoy_pop_by_type.sql",
-    "population by ASE": "check_yoy_pop_by_ase.sql",
-    "jobs by ownership/industry": "check_yoy_jobs_by_sector.sql",
-}
-
-# Do the large change threshold analysis
-for variable, path in variable_config.items():
+# Run the YOY threshold analysis
+for variable, path in yoy_config.items():
     print(f"Check large changes in {variable} at the {geography} level")
 
-    # Stop this check if there is only on year of data available
+    # Stop this check if there is only one year of data available
     if start_year == end_year:
         print("\tCannot run check, only one year of data available")
 
@@ -133,7 +151,10 @@ for variable, path in variable_config.items():
     flagged_rows = np.full(data.shape[0], False)
     for year in range(start_year, end_year):
         abs_diff = (
-            (results_no_zero[year + 1] - results_no_zero[year]).abs().replace(0, 0.0001)
+            (results_no_zero[year + 1] - results_no_zero[year]).abs()
+            # The replace() is to prevent the same log(0) or divide by zero error
+            # when the geography/metric has no change over the time period
+            .replace(0, 0.0001)
         )
         scaled_pct = 100 * np.log(abs_diff) / results_no_zero[year]
         measure = np.exp(5.9317 * (np.log(abs_diff) ** -0.596))
