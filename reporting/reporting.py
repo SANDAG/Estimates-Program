@@ -102,7 +102,7 @@ variable_config = {
 
 # Do the large change threshold analysis
 for variable, path in variable_config.items():
-    print(f"Check large changes {variable} at the {geography} level")
+    print(f"Check large changes in {variable} at the {geography} level")
 
     # Stop this check if there is only on year of data available
     if start_year == end_year:
