@@ -37,12 +37,9 @@ _DISTINCT_COUNTS = {
             2020: 736,
         },
         "jurisdiction": 19,
-        # The industry_code is a variable to group employment data into. Almost all
-        # codes are 2-digit naics codes. The 2-digit naics code 72 was split into 721
-        # and 722 3-digit naics code. Self employment and military active duty data do
-        # not natively have a naics code so it is therefore assigned to 'SE' and 'MIL'
-        # respectively, as the naics codes are being treated as strings.
-        "industry_code": 23,
+        # See https://github.com/SANDAG/Estimates-Program/issues/281
+        # For exhaustive list of SANDAG employment categories + Military
+        ("ownership_title", "industry_code"): 24,
     },
     "series": {
         15: {
@@ -169,14 +166,18 @@ def validate_data(table_name: str, data: pd.DataFrame, **kwargs) -> None:
 
 
 def _validate_row_count(
-    table_name: str, data: pd.DataFrame, key_columns: set[str], year: int = None
+    table_name: str,
+    data: pd.DataFrame,
+    key_columns: set,
+    year: int = None,
 ) -> None:
     """Verify that the provided data has the correct number of rows
 
     The correct number of rows is determined by the input 'key_columns', under the
     assumption that input data has functionally the SQL CROSS JOIN of 'key_columns'. The
     number of values in each key column is determined by the variable above labeled
-    '_DISTINCT_COUNTS'
+    '_DISTINCT_COUNTS'. We do allow for tuples to be passed as key columns with distinct
+    counts assigned to the tuple.
 
     Args:
         table_name: The name of the table. The only purpose of this is to make error
@@ -200,10 +201,20 @@ def _validate_row_count(
 
     # Verify that the provided key columns actually exist and we have data for them
     for column in key_columns:
-        if column not in data.columns:
-            raise ValueError(
-                f"'{table_name}' is missing the required key column '{column}'"
-            )
+        # If key column provided as a tuple, check each individual column in the tuple is in the dataset
+        if isinstance(column, tuple):
+            for sub_column in column:
+                if sub_column not in data.columns:
+                    raise ValueError(
+                        f"'{table_name}' is missing the required key column "
+                        f"'{sub_column}'"
+                    )
+        else:
+            if column not in data.columns:
+                raise ValueError(
+                    f"'{table_name}' is missing the required key column '{column}'"
+                )
+        # Both strings and tuples are allowed in the _DISTINCT_COUNTS dictionary, so we can check for both
         if column not in _DISTINCT_COUNTS.keys():
             raise ValueError(
                 f"'tests.py' is missing data for the key column '{column}'. Fill in the "
@@ -222,8 +233,9 @@ def _validate_row_count(
         else:
             unique_key_values[column] = _DISTINCT_COUNTS[column]
 
-    # Check that the total number of rows is correct, assuming that we do the CROSS JOIN
-    # of all keys columns
+    # For key columns defined as tuples, we consider these as combined columns
+    # with a single unique value count when calculating the total number of rows
+    # Check that the total number of rows is correct, using the CROSS JOIN of all key columns
     n_rows = math.prod(unique_key_values.values())
     if data.shape[0] != n_rows:
         row_count_explanation = " x ".join(

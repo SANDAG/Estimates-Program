@@ -1,10 +1,10 @@
 /* 
 This query grabs the Military Active Duty (Job) Data and assigns counts to MGRA15.
-This will assign 0 to MGRAs where there is no Military Jobs
+This will assign 0s to MGRAs where there are no military jobs.
 
 Notes:
     1) This is assuming a connection to the GIS server
-    2) currently only works using MGRA15 
+    2) currently only works using MGRA15
 */
 
 -- Initialize parameters -----------------------------------------------------
@@ -36,6 +36,7 @@ BEGIN
         @run_id AS [run_id],
         @year AS [year],
         [mgra],
+        'Federal Government' AS [ownership_title],
         'MIL' AS [industry_code],
         'jobs' AS [metric],
         COALESCE(SUM([site_active_duty]), 0) AS [value]

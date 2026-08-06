@@ -115,6 +115,7 @@ direction TB
     inputs_controls_jobs {
         run_id INT UK, FK
         year INT UK
+        ownership_title NVARCHAR(50) UK
         industry_code NVARCHAR(5) UK
         metric NVARCHAR(4) UK
         value INT
@@ -209,6 +210,7 @@ direction TB
         run_id INT UK, FK
         year INT UK
         mgra INT UK, FK
+        ownership_title NVARCHAR(50) UK
         industry_code NVARCHAR(5) UK
         value INT
     }
