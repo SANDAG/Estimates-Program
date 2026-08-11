@@ -436,6 +436,17 @@ def _create_controls_outputs(
 
         # Aggregate to SANDAG employment categories
 
+        # Remove NAICS 99 and Private ownership 92
+        result_set = result_set.loc[
+            ~(
+                (result_set["industry_code"] == "99")
+                | (
+                    (result_set["ownership_title"] == "Private")
+                    & (result_set["industry_code"] == "92")
+                )
+            )
+        ]
+
         # Following NAICS codes include all ownership categories
         result_set.loc[
             result_set["industry_code"].isin(["61", "62", "71", "721", "722"]),
@@ -450,17 +461,6 @@ def _create_controls_outputs(
             ),
             "industry_code",
         ] = "GOV"
-
-        # Remove NAICS 99 and Private ownership 92
-        result_set = result_set.loc[
-            ~(
-                (result_set["industry_code"] == "99")
-                | (
-                    (result_set["ownership_title"] == "Private")
-                    & (result_set["industry_code"] == "92")
-                )
-            )
-        ]
 
         result_set = (
             result_set.groupby(
