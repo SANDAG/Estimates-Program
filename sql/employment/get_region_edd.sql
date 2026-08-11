@@ -196,6 +196,11 @@ BEGIN
             AND [businesses].[emp_id] = [employment].[emp_id]
         INNER JOIN [EMPCORE].[ca_edd].[ownership]
             ON [businesses].[ownership_id] = [ownership].[ownership_id]
+        -- In 2010 there are 95k "Self Employed" records with [code] = NULL
+        -- Subsequent years assign codes to these records
+        -- They are removed here to avoid an enormous "99" code category
+        -- See https://github.com/SANDAG/BLS/issues/58#issuecomment-5246348671
+        WHERE ([dba] != 'Self Employed' AND [code] IS NOT NULL)
     ) AS [tt]
     WHERE
         [jobs] > 0
