@@ -229,7 +229,7 @@ def _create_controls_outputs(
     # For years prior to 2022, use methodology to account for BLS QCEW suppression
     if year < 2022:
         # This function is called multiple times, so in order to have consistent output it
-        # needs to use it's very own random number generator
+        # needs to use its own random number generator
         local_generator = np.random.default_rng(seed=utils.RANDOM_SEED)
 
         qcew_domain = controls_inputs["qcew_domain"].copy()
