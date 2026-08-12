@@ -12,6 +12,14 @@ the simplest shell table creation query in dynamic SQL.
 
 There is no EDD point-level data for 2016 in EMPCORE and 2014 data has no
 ownership values. Therefore, both return 'EDD point-level data does not exist'.
+
+For 2017 and later, the EDD data is available through a view that allows for
+the calculation of average jobs per month across the year, for the months
+where data is available. For 2010-2013, the "adjusted employment" value is
+used, which is a legacy calculation of unknown origin representing the only
+available employment data for those years. For 2014-2016, the average of three
+months of employment data is used, which we believe may be quarter 3 data, but
+this is not confirmed.
 */
 
 
@@ -93,7 +101,7 @@ BEGIN
                 WHEN [ownership].[description] = 'Federal government' THEN 'Federal Government'
                 WHEN [ownership].[description] = 'Private sector' THEN 'Private'
                 WHEN [ownership].[description] = 'State government' THEN 'State Government'
-                ELSE NULL
+                ELSE NULL  -- filters out "Unknown" ownership records
             END AS [ownership_title],
             CASE
                 WHEN LEFT([naics_code], 2) IN ('31','32','33') THEN '31-33'
@@ -163,7 +171,7 @@ BEGIN
                 WHEN [ownership].[description] = 'Federal government' THEN 'Federal Government'
                 WHEN [ownership].[description] = 'Private sector' THEN 'Private'
                 WHEN [ownership].[description] = 'State government' THEN 'State Government'
-                ELSE NULL
+                ELSE NULL  -- filters out "Unknown" ownership records
             END AS [ownership_title],
             CASE
                 WHEN LEFT([code], 2) IN ('31','32','33') THEN '31-33'
@@ -226,7 +234,7 @@ BEGIN
                 WHEN [ownership].[description] = 'Federal government' THEN 'Federal Government'
                 WHEN [ownership].[description] = 'Private sector' THEN 'Private'
                 WHEN [ownership].[description] = 'State government' THEN 'State Government'
-                ELSE NULL
+                ELSE NULL  -- filters out "Unknown" ownership records
             END AS [ownership_title],
             CASE
                 WHEN LEFT([code], 2) IN ('31','32','33') THEN '31-33'
