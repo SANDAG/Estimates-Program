@@ -115,18 +115,19 @@ BEGIN
                 -- Keep these records for total EDD jobs xref even if industry code is NULL
                 ELSE LEFT([naics_code], 2)
             END AS [industry_code],
-            CASE WHEN [emp_m1] IS NOT NULL THEN 1 ELSE 0 END 
-                + CASE WHEN [emp_m2] IS NOT NULL THEN 1 ELSE 0 END 
-                + CASE WHEN [emp_m3] IS NOT NULL THEN 1 ELSE 0 END 
-                + CASE WHEN [emp_m4] IS NOT NULL THEN 1 ELSE 0 END 
-                + CASE WHEN [emp_m5] IS NOT NULL THEN 1 ELSE 0 END 
-                + CASE WHEN [emp_m6] IS NOT NULL THEN 1 ELSE 0 END 
-                + CASE WHEN [emp_m7] IS NOT NULL THEN 1 ELSE 0 END 
-                + CASE WHEN [emp_m8] IS NOT NULL THEN 1 ELSE 0 END 
-                + CASE WHEN [emp_m9] IS NOT NULL THEN 1 ELSE 0 END 
-                + CASE WHEN [emp_m10] IS NOT NULL THEN 1 ELSE 0 END 
-                + CASE WHEN [emp_m11] IS NOT NULL THEN 1 ELSE 0 END 
-                + CASE WHEN [emp_m12] IS NOT NULL THEN 1 ELSE 0 END 
+            -- Do not consider NULL and 0 records in the dataset
+            CASE WHEN [emp_m1] > 0 THEN 1 ELSE 0 END 
+                + CASE WHEN [emp_m2] > 0 THEN 1 ELSE 0 END 
+                + CASE WHEN [emp_m3] > 0 THEN 1 ELSE 0 END 
+                + CASE WHEN [emp_m4] > 0 THEN 1 ELSE 0 END 
+                + CASE WHEN [emp_m5] > 0 THEN 1 ELSE 0 END 
+                + CASE WHEN [emp_m6] > 0 THEN 1 ELSE 0 END 
+                + CASE WHEN [emp_m7] > 0 THEN 1 ELSE 0 END 
+                + CASE WHEN [emp_m8] > 0 THEN 1 ELSE 0 END 
+                + CASE WHEN [emp_m9] > 0 THEN 1 ELSE 0 END 
+                + CASE WHEN [emp_m10] > 0 THEN 1 ELSE 0 END 
+                + CASE WHEN [emp_m11] > 0 THEN 1 ELSE 0 END 
+                + CASE WHEN [emp_m12] > 0 THEN 1 ELSE 0 END 
             AS [emp_valid],
             ISNULL([emp_m1], 0) 
                 + ISNULL([emp_m2], 0) 
