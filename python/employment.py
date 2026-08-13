@@ -195,14 +195,14 @@ def _validate_controls_inputs(controls_inputs: dict[str, pd.DataFrame]) -> None:
         },
     }
 
-    for data, params in datasets.items():
-        if data in controls_inputs:
+    for dataset, parameters in datasets.items():
+        if dataset in controls_inputs:
             tests.validate_data(
-                params["table_name"],
-                controls_inputs[data],
-                row_count=params["row_count"],
-                negative=params["negative"],
-                null=params["null"],
+                parameters["table_name"],
+                controls_inputs[dataset],
+                row_count=parameters["row_count"],
+                negative=parameters["negative"],
+                null=parameters["null"],
             )
 
 
