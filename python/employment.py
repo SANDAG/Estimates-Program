@@ -421,14 +421,13 @@ def _create_controls_outputs(
                 ],
                 ignore_index=True,
             )
-            .assign(run_id=utils.RUN_ID, year=year, metric="jobs")
+            .assign(run_id=utils.RUN_ID, year=year)
             .rename(columns={"jobs": "value"})[
                 [
                     "run_id",
                     "year",
                     "ownership_title",
                     "industry_code",
-                    "metric",
                     "value",
                 ]
             ]
@@ -463,9 +462,9 @@ def _create_controls_outputs(
         ] = "GOV"
 
         result_set = (
-            result_set.groupby(
-                ["run_id", "year", "ownership_title", "industry_code", "metric"]
-            )["value"]
+            result_set.groupby(["run_id", "year", "ownership_title", "industry_code"])[
+                "value"
+            ]
             .sum()
             .reset_index()
         )
@@ -477,9 +476,7 @@ def _create_controls_outputs(
     # Aggregate military employment to the regional level
     military = (
         controls_inputs["military"]
-        .groupby(["run_id", "year", "ownership_title", "industry_code", "metric"])[
-            "value"
-        ]
+        .groupby(["run_id", "year", "ownership_title", "industry_code"])["value"]
         .sum()
         .reset_index()
     )

@@ -51,7 +51,6 @@ SELECT
     @year AS [year],
     [fn_get_sandag_employment].[ownership_title],
     [fn_get_sandag_employment].[industry_code],
-    'jobs' AS [metric],
     ROUND(SUM([month1_emplvl] + [month2_emplvl] + [month3_emplvl])/12.0, 0) AS [value]
 FROM [socioec_data].[bls].[qcew_by_area_quarterly]
 INNER JOIN [socioec_data].[bls].[industry_code]
@@ -79,7 +78,6 @@ SELECT
     @year AS [year],
     [fn_get_sandag_employment].[ownership_title],
     [fn_get_sandag_employment].[industry_code],
-    'jobs' AS [metric],
     ROUND(SUM([annual_avg_emplvl]), 0) AS [value]
 FROM [socioec_data].[bls].[qcew_by_area_annual]
 INNER JOIN [socioec_data].[bls].[industry_code]

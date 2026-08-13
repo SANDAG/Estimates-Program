@@ -38,7 +38,6 @@ BEGIN
         [mgra],
         'Federal Government' AS [ownership_title],
         'MIL' AS [industry_code],
-        'jobs' AS [metric],
         COALESCE(SUM([site_active_duty]), 0) AS [value]
     FROM [GeoDepot].[sde].[MGRA15]
     LEFT OUTER JOIN (
