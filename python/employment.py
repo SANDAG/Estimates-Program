@@ -17,12 +17,12 @@ def run_employment(year: int, debug: bool):
     """Control function to create jobs data by industry_code at the MGRA level.
 
     Get the LEHD LODES data, aggregate to the MGRA level using the block to MGRA
-    crosswalk, then apply control totals from QCEW using integerization.
+    crosswalk, then apply control totals from the BLS QCEW using integerization.
 
     Functionality is split apart for code encapsulation (function inputs not included):
         _get_jobs_inputs - Get all input data related to jobs, including LODES data,
-            block to MGRA crosswalk, and control totals from QCEW. Then process the
-            LODES data to the MGRA level by industry_code.
+            block to MGRA crosswalk, and control totals from the BLSQCEW. Then process
+            the LODES data to the MGRA level by industry_code.
         _validate_jobs_inputs - Validate the input tables from the above function
         _create_jobs_output - Apply control totals to employment data using
             utils.integerize_1d() and create output table
@@ -65,7 +65,7 @@ def _get_controls_inputs(year: int) -> dict[str, pd.DataFrame]:
     # Initialize return dictionary
     controls_inputs = {}
 
-    # Years prior to 2022 use methodology to account for BLS QCEW suppression
+    # Years prior to 2022 use methodology to account for suppression
     # And cannot use the BLS QCEW data directly
     if year < 2022:
         queries = {
@@ -123,22 +123,22 @@ def _get_controls_inputs(year: int) -> dict[str, pd.DataFrame]:
             },
         }
 
-    for key, value in queries.items():
-        if value["server"] == utils.ESTIMATES_SERVER:
+    for dataset_name, query_config in queries.items():
+        if query_config["server"] == utils.ESTIMATES_SERVER:
             with utils.ESTIMATES_ENGINE.connect() as con:
-                with open(utils.SQL_FOLDER / value["query"]) as file:
-                    controls_inputs[key] = utils.read_sql_query_fallback(
+                with open(utils.SQL_FOLDER / query_config["query"]) as file:
+                    controls_inputs[dataset_name] = utils.read_sql_query_fallback(
                         sql=sql.text(file.read()),
                         con=con,
-                        params=value["params"],
+                        params=query_config["params"],
                     )
-        elif value["server"] == utils.GIS_SERVER:
+        elif query_config["server"] == utils.GIS_SERVER:
             with utils.GIS_ENGINE.connect() as con:
-                with open(utils.SQL_FOLDER / value["query"]) as file:
-                    controls_inputs[key] = utils.read_sql_query_fallback(
+                with open(utils.SQL_FOLDER / query_config["query"]) as file:
+                    controls_inputs[dataset_name] = utils.read_sql_query_fallback(
                         sql=sql.text(file.read()),
                         con=con,
-                        params=value["params"],
+                        params=query_config["params"],
                     )
 
     return controls_inputs
@@ -238,7 +238,7 @@ def _create_controls_outputs(
         qcew_naics_sector = controls_inputs["qcew_naics_sector"].copy()
         qcew_naics3 = controls_inputs["qcew_naics3"].copy()
 
-        # If any QCEW Supersector data is suppressed
+        # If any BLS QCEW Supersector data is suppressed
         if qcew_supersector["disclosure_code"].isin(["N"]).any():
 
             # Aggregate Supersector data to aggregation level 72 (Domain) by ownership
@@ -246,8 +246,8 @@ def _create_controls_outputs(
             # This provides the total number of jobs that are suppressed within each Domain by ownership
             domain_diff = (
                 qcew_domain.merge(
-                    qcew_supersector.groupby(["ownership_title", "domain"])
-                    .agg({"jobs": "sum"})
+                    qcew_supersector.groupby(["ownership_title", "domain"])["jobs"]
+                    .sum()
                     .reset_index(),
                     how="left",
                     on=["ownership_title", "domain"],
@@ -257,10 +257,10 @@ def _create_controls_outputs(
                 .drop(columns=["jobs", "jobs_supersector"])
             )
 
-            # Merge suppressed BLS Supersector data with aggregated EDD data
+            # Merge suppressed Supersector data with aggregated EDD data
             qcew_supersector = qcew_supersector.merge(
-                region_edd.groupby(["ownership_title", "supersector"])
-                .agg({"jobs": "sum"})
+                region_edd.groupby(["ownership_title", "supersector"])["jobs"]
+                .sum()
                 .reset_index(),
                 how="left",
                 on=["ownership_title", "supersector"],
@@ -268,10 +268,10 @@ def _create_controls_outputs(
             )
 
             # Scale the EDD data to match the differences
-            # Between the BLS Domain jobs and the aggregated BLS Supersector jobs
+            # Between the Domain jobs and the aggregated Supersector jobs
             for ownership in domain_diff["ownership_title"].unique():
                 for domain in domain_diff["domain"].unique():
-                    # Get the index values of the suppressed BLS Supersector data
+                    # Get the index values of the suppressed Supersector data
                     suppressed_idx = qcew_supersector[
                         (qcew_supersector["ownership_title"] == ownership)
                         & (qcew_supersector["domain"] == domain)
@@ -279,7 +279,7 @@ def _create_controls_outputs(
                     ].index
 
                     # Replace suppressed values with scaled EDD values
-                    # Such that aggregated BLS Supersector jobs match BLS Domain jobs
+                    # Such that aggregated Supersector jobs to match Domain jobs
                     if not suppressed_idx.empty:
                         qcew_supersector.loc[suppressed_idx, "jobs"] = (
                             utils.integerize_1d(
@@ -296,10 +296,10 @@ def _create_controls_outputs(
 
             qcew_supersector.drop(columns=["disclosure_code", "jobs_edd"], inplace=True)
 
-        # If any BLS NAICS Sector data is suppressed
+        # If any QCEW NAICS Sector data is suppressed
         if qcew_naics_sector["disclosure_code"].isin(["N"]).any():
 
-            # Aggregate BLS NAICS Sector data to aggregation level 73 (Supersector) by ownership
+            # Aggregate NAICS Sector data to aggregation level 73 (Supersector) by ownership
             # And subtract aggregated Supersector jobs from the aggregation level 73 (Supersector) jobs by ownership
             # This provides the total number of jobs that are suppressed within each Supersector by ownership
             supersector_diff = (
@@ -315,7 +315,7 @@ def _create_controls_outputs(
                 .drop(columns=["jobs", "jobs_naics_sector"])
             )
 
-            # Merge suppressed BLS NAICS Sector data with EDD data
+            # Merge suppressed NAICS Sector data with EDD data
             qcew_naics_sector = qcew_naics_sector.merge(
                 region_edd.groupby(["ownership_title", "naics_sector"])
                 .agg({"jobs": "sum"})
@@ -326,10 +326,10 @@ def _create_controls_outputs(
             )
 
             # Scale the EDD data to match the differences
-            # Between the BLS Supersector jobs and the aggregated BLS NAICS Sector jobs
+            # Between the Supersector jobs and the aggregated NAICS Sector jobs
             for ownership in supersector_diff["ownership_title"].unique():
                 for supersector in supersector_diff["supersector"].unique():
-                    # Get the index values of the suppressed BLS NAICS Sector data
+                    # Get the index values of the suppressed NAICS Sector data
                     suppressed_idx = qcew_naics_sector[
                         (qcew_naics_sector["ownership_title"] == ownership)
                         & (qcew_naics_sector["supersector"] == supersector)
@@ -337,7 +337,7 @@ def _create_controls_outputs(
                     ].index
 
                     # Replace suppressed values with scaled EDD values
-                    # Such that aggregated BLS NAICS Sector jobs match BLS Supersector jobs
+                    # Such that aggregated NAICS Sector jobs match Supersector jobs
                     if not suppressed_idx.empty:
                         qcew_naics_sector.loc[suppressed_idx, "jobs"] = (
                             utils.integerize_1d(
@@ -352,10 +352,10 @@ def _create_controls_outputs(
                             )
                         )
 
-        # This section only applied to NAICS Sector 72 and NAICS 3-digit 721 and 722
-        # If any BLS NAICS 3-digit data is suppressed
+        # This section only applies to NAICS Sector 72 and NAICS 3-digit 721 and 722
+        # If any NAICS 3-digit data is suppressed
         if qcew_naics3["disclosure_code"].isin(["N"]).any():
-            # Aggregate BLS NAICS 3-digit data to aggregation level 74 (NAICS Sector) by ownership
+            # Aggregate NAICS 3-digit data to aggregation level 74 (NAICS Sector) by ownership
             # And subtract aggregated NAICS Sector jobs from the aggregation level 74 (NAICS Sector) jobs by ownership
             # This provides the total number of jobs that are suppressed within each NAICS Sector by ownership
             naics_sector_diff = (
@@ -371,7 +371,7 @@ def _create_controls_outputs(
                 .drop(columns=["jobs", "jobs_naics3"])
             )
 
-            # Merge suppressed BLS NAICS 3-digit data with EDD data
+            # Merge suppressed NAICS 3-digit data with EDD data
             qcew_naics3 = qcew_naics3.merge(
                 region_edd.groupby(["ownership_title", "naics3"])
                 .agg({"jobs": "sum"})
@@ -382,10 +382,10 @@ def _create_controls_outputs(
             )
 
             # Scale the EDD data to match the differences
-            # Between the BLS NAICS Sector jobs and the aggregated BLS NAICS 3-digit jobs
+            # Between the NAICS Sector jobs and the aggregated NAICS 3-digit jobs
             for ownership in naics_sector_diff["ownership_title"].unique():
                 for naics_sector in naics_sector_diff["naics_sector"].unique():
-                    # Get the index values of the suppressed BLS NAICS Sector data
+                    # Get the index values of the suppressed NAICS Sector data
                     suppressed_idx = qcew_naics3[
                         (qcew_naics3["ownership_title"] == ownership)
                         & (qcew_naics3["naics_sector"] == naics_sector)
@@ -393,7 +393,7 @@ def _create_controls_outputs(
                     ].index
 
                     # Replace suppressed values with scaled EDD values
-                    # Such that aggregated BLS NAICS 3-digit jobs match BLS NAICS Sector jobs
+                    # Such that aggregated NAICS 3-digit jobs match NAICS Sector jobs
                     if not suppressed_idx.empty:
                         qcew_naics3.loc[suppressed_idx, "jobs"] = utils.integerize_1d(
                             data=qcew_naics3.loc[suppressed_idx, "jobs_edd"],
@@ -470,22 +470,24 @@ def _create_controls_outputs(
             .reset_index()
         )
 
-    # For years 2022 and later, use the BLS QCEW data directly
+    # For years 2022 and later, use the QCEW data directly
     else:
         result_set = controls_inputs["region_qcew"].copy()
+
+    # Aggregate military employment to the regional level
+    military = (
+        controls_inputs["military"]
+        .groupby(["run_id", "year", "ownership_title", "industry_code", "metric"])[
+            "value"
+        ]
+        .sum()
+        .reset_index()
+    )
 
     # Combine the regional jobs controls with military employment data and return
     return {
         "results": pd.concat(
-            [
-                result_set,
-                controls_inputs["military"]
-                .groupby(
-                    ["run_id", "year", "ownership_title", "industry_code", "metric"]
-                )["value"]
-                .sum()
-                .reset_index(),
-            ],
+            [result_set, military],
             ignore_index=True,
         )
     }

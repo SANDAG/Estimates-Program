@@ -48,7 +48,7 @@ _DISTINCT_COUNTS = {
         "naics_sector": 21,
         # SANDAG uses only 721/722
         "naics3": 2,
-        # Combined NAICS sectors used by SANDAG + "99"
+        # NAICS sectors with 72 split into 721 and 722
         ("naics3", "naics_sector"): 22,
     },
     "series": {
