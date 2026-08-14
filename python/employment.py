@@ -21,7 +21,7 @@ def run_employment(year: int, debug: bool):
 
     Functionality is split apart for code encapsulation (function inputs not included):
         _get_jobs_inputs - Get all input data related to jobs, including LODES data,
-            block to MGRA crosswalk, and control totals from the BLSQCEW. Then process
+            block to MGRA crosswalk, and control totals from the BLS QCEW. Then process
             the LODES data to the MGRA level by industry_code.
         _validate_jobs_inputs - Validate the input tables from the above function
         _create_jobs_output - Apply control totals to employment data using
