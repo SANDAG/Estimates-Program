@@ -49,6 +49,6 @@ Each row of this table contains the following information:
 | `[run_id]`         | Estimates run identifier                                                                                                                            |
 | `[year]`           | Year within estimates run                                                                                                                           |
 | `[mgra]`           | The Master Geographic Reference Area (MGRA)                                                                                                         |
-| `[ownership_category]` | Ownership categories (Total Covered, Private, Federal Government, Local Government, State Government)                                           |
+| `[ownership_title]` | Ownership categories (Total Covered, Private, Federal Government, Local Government, State Government)                                           |
 | `[industry_code]`  | Two-digit NAICS industry sector (excepting split of 72 into 721 and 722) with "MIL" and "GOV" added for military and aggregate government ownership |
 | `[value]`          | Number of jobs                                                                                                                                      |
