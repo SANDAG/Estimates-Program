@@ -40,6 +40,16 @@ _DISTINCT_COUNTS = {
         # See https://github.com/SANDAG/Estimates-Program/issues/281
         # For exhaustive list of SANDAG employment categories + Military
         ("ownership_title", "industry_code"): 24,
+        # SANDAG uses only four ownership titles
+        "ownership_title": 4,
+        # See https://www.bls.gov/cew/classifications/industry/high-level-industries.htm
+        "domain": 2,
+        "supersector": 12,
+        "naics_sector": 21,
+        # SANDAG uses only 721/722
+        "naics3": 2,
+        # NAICS sectors with 72 split into 721 and 722
+        ("naics3", "naics_sector"): 22,
     },
     "series": {
         15: {
@@ -106,6 +116,9 @@ def validate_data(table_name: str, data: pd.DataFrame, **kwargs) -> None:
             raise ValueError(
                 f"The test '{test_name}' was requested but cannot be found."
             )
+
+    # If test is passed as None, then it is not run and allows explicit disabling of tests
+    kwargs = {key: value for key, value in kwargs.items() if value is not None}
 
     # For each test, make sure that the correct input values are passed
     for test_name, test in all_tests.items():
@@ -248,7 +261,7 @@ def _validate_row_count(
 
 
 def _validate_negative(
-    table_name: str, data: pd.DataFrame, negative_ok: list[str] = None
+    table_name: str, data: pd.DataFrame, negative_ok: set = None
 ) -> None:
     """Verify that the provided data does not contain negative values
 
@@ -268,7 +281,7 @@ def _validate_negative(
     """
     # Avoid issues with mutable default parameter values
     if negative_ok is None:
-        negative_ok = []
+        negative_ok = set()
 
     # Check each column of the input data
     for column in data.columns:
@@ -294,9 +307,7 @@ def _validate_negative(
                 )
 
 
-def _validate_null(
-    table_name: str, data: pd.DataFrame, null_ok: list[str] = None
-) -> None:
+def _validate_null(table_name: str, data: pd.DataFrame, null_ok: set = None) -> None:
     """Verify that the provided data does not contain null values
 
     Checks will be performed on all columns unless they are explicitly passed into the
@@ -314,7 +325,7 @@ def _validate_null(
     """
     # Avoid issues with mutable default parameter values
     if null_ok is None:
-        null_ok = []
+        null_ok = set()
 
     # Check each column of the input data
     for column in data.columns:

@@ -37,32 +37,32 @@ The [Bureau of Labor Statistics (BLS) Quarterly Census of Employment and Wages (
 
 The SANDAG Economics' Team employment categories are custom-built from a combination of ownership and industry codes. Note the use of industry code "GOV" as the Government ownership categories include all NAICS codes excepting 61, 62, 71, 722, 723. The two-digit NAICS code category of "92" is not provided and is wrapped into the Government ownership categories. The two-digit NAICS code category of "99" is excluded altogether.
 
-ownership_title | industry_code
--- | --
-Private | 11
-Private | 21
-Private | 22
-Private | 23
-Private | 31-33
-Private | 42
-Private | 44-45
-Private | 48-49
-Private | 51
-Private | 52
-Private | 53
-Private | 54
-Private | 55
-Private | 56
-Total Covered | 61
-Total Covered | 62
-Total Covered | 71
-Total Covered | 721
-Total Covered | 722
-Private | 81
-Federal Government | GOV
-Federal Government | MIL
-State Government | GOV
-Local Government | GOV
+| ownership_title  | industry_code |
+|----------------- | ------------- |
+| Private | 11 |
+| Private | 21 |
+| Private | 22 |
+| Private | 23 |
+| Private | 31-33 |
+| Private | 42 |
+| Private | 44-45 |
+| Private | 48-49 |
+| Private | 51 |
+| Private | 52 |
+| Private | 53 |
+| Private | 54 |
+| Private | 55 |
+| Private | 56 |
+| Total Covered | 61 |
+| Total Covered | 62 |
+| Total Covered | 71 |
+| Total Covered | 721 |
+| Total Covered | 722 |
+| Private | 81 |
+| Federal Government | GOV |
+| Federal Government | MIL |
+| State Government | GOV |
+| Local Government | GOV |
 
 
 # Outputs

@@ -76,7 +76,8 @@ GIS_ENGINE = sql.create_engine(
     fast_executemany=True,
 )
 
-# Other SQL configuration
+# Other SQL configuration(s)
+ESTIMATES_SERVER = _secrets["sql"]["estimates"]["server"]
 GIS_SERVER = _secrets["sql"]["gis"]["server"]
 
 # Temporary file staging location for SQL BULK Inserts
