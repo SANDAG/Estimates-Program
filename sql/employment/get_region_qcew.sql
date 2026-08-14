@@ -29,7 +29,7 @@ quarterly monthly data. These are all the "Private" ownership only categories.
 
 This is able to be done for years 2022-2025 as no suppression exists at the 
 aggregation levels required to create SANDAG employment categories. Data prior
-to 2022 requires controlling at higher aggregation levels to fill in  gaps
+to 2022 requires controlling at higher aggregation levels to fill in gaps
 created by data suppression.
 */
 
