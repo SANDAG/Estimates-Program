@@ -4,7 +4,7 @@
 |------------------------------------------------------------------|-----------------------------------------|------------------------------------------------------------------------------|
 | BLS QCEW Quarterly and Annual Averages                           | External (BLS QCEW)                     | Used to create regional employment controls by SANDAG employment category    |
 | Point geometry active-duty military counts                       | SANDAG GIS EMPCORE                      | Aggregated regionally to create active-duty military employment control      |
-| Point geometry employment by ownership and industry              | External (CA EDD)                       | Used to create intial seed values in suppressed categories                   |
+| Point geometry employment by ownership and industry              | External (CA EDD)                       | Used to create initial seed values in suppressed categories                   |
 
 
 ## BLS QCEW Quarterly and Annual Averages (`[inputs].[controls_jobs]`)
