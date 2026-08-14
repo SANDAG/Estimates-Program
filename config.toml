@@ -9,7 +9,7 @@ enabled = true
 series = 15
 start_year = 2020
 end_year = 2025
-version = "1.2.1-dev"
+version = "1.2.2"
 comments = "Example comment"
 
 # The `debug` section contains configuration for running a single module for a single
@@ -18,6 +18,6 @@ comments = "Example comment"
 # "population_by_ase", "household_characteristics", "employment", or "staging"
 [debug]
 enabled = false
-run_id = 82 # The run_id for the released v24 Estimates
+run_id = 224 # The run_id for the released v25 Estimates
 year = 2020
 module = ""

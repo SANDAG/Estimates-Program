@@ -54,7 +54,7 @@ start_year = 2020
 end_year = 2025
 
 # The code version
-version = "1.2.1-dev"
+version = "1.2.2"
 
 # Additional notes on this run
 comments = "Example comment"
@@ -71,7 +71,7 @@ enabled = false
 
 # The [run_id] of a fully [complete] Estimates Program run. Input data for debugging
 # will be pulled from this [run_id]
-run_id = 82 # The run_id for the released v24 Estimates
+run_id = 224 # The run_id for the released v25 Estimates
 
 # The year of the Estimates Program to run. This year must be consistent with the stored
 # [start_year] and [end_year] associated with the above [run_id] in [metadata].[run]

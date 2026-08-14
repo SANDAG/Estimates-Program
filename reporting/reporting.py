@@ -19,7 +19,7 @@ import numpy as np
 #################
 
 # The run_id where all data will be pulled from
-RUN_ID = 231
+RUN_ID = 224
 
 # For YOY analysis, we require data to be grouped at some geography for analysis. The
 # geography below can be configured to any column of [dim].[vi_mgra_denormalize].
