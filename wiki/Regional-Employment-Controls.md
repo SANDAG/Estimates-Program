@@ -9,9 +9,7 @@
 
 ## BLS QCEW Quarterly and Annual Averages (`[inputs].[controls_jobs]`)
 The [Bureau of Labor Statistics (BLS) Quarterly Census of Employment and Wages (QCEW)](https://www.bls.gov/cew/additional-resources/open-data/) provides regional employment controls by ownership and industry that are aggregated to SANDAG employment categories. For additional documentation regarding how SANDAG loads and stores BLS QCEW data see the private SANDAG repository [here](https://github.com/SANDAG/BLS).
-
-The SANDAG Economics Team employment categories are custom-built from a combination of ownership and industry codes. Note the use of industry code "GOV" as the Government ownership categories include all NAICS codes excepting 61, 62, 71, 722, 723. The two-digit NAICS code category of 92 is not provided and is wrapped into the Government ownership categories. The two-digit NAICS code category of 99 is excluded altogether.
-
+The SANDAG Economics Team employment categories are custom-built from a combination of ownership and industry codes. Note the use of industry code "GOV" as the Government ownership categories include all NAICS codes excepting 61, 62, 71, 721, 722. The two-digit NAICS code category of 92 is not provided and is wrapped into the Government ownership categories. The two-digit NAICS code category of 99 is excluded altogether.
 | ownership_title  | industry_code |
 |----------------- | ------------- |
 | Private | 11 |
