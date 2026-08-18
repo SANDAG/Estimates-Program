@@ -5,7 +5,6 @@ SELECT
     [controls_jobs].[year],
     [controls_jobs].[ownership_title],
     [controls_jobs].[industry_code],
-    [controls_jobs].[metric],
     [controls_jobs].[value] AS [control],
     [aggregated_data].[value] AS [actual]
 FROM [inputs].[controls_jobs]
