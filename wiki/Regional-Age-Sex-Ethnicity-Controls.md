@@ -18,7 +18,7 @@ Group quarters population is identified as follows:
 | Estimates year(s) | Definition                  |
 |:-----------------:|-----------------------------|
 | 2012-2018         | `[RELP] IN ('16','17')`     |
-| 2016-2024         | `[RELSHIPP] IN ('37','38')` |
+| 2019-2024         | `[RELSHIPP] IN ('37','38')` |
 *Note: Estimates years 2010-2011 use the 2008-2012 ACS PUMS corresponding to estimates year 2012*
 
 Further filtering is done to identify specific GQ types:
