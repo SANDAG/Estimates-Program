@@ -10,7 +10,7 @@
 See [Population by Type](https://github.com/SANDAG/Estimates-Program/wiki/Population-by-Type).
 
 ## Regional age/sex/ethnicity distributions for group quarters by type
-The regional age/sex/ethnicity distributions for group quarters by type are calculated using the 5-year American Community Survey (ACS) Public Use Microdata Sample (PUMS) for the given estimates year (e.g., 2020 uses the 2016-2020 PUMS, 2021 the 2017-2021 PUMS, ...) excepting for years 2010 and 2011 which use the 2008-2012 PUMS (due to the lack of `[DIS]` field used to identify Institutional Correctional Facilities). For detailed documentation of the ACS PUMS, including field definitions, see the [PUMS Documentation](https://www.census.gov/programs-surveys/acs/microdata/documentation.html).
+The regional age/sex/ethnicity distributions for group quarters by type are calculated using the 5-year American Community Survey (ACS) Public Use Microdata Sample (PUMS) for the given estimates year (e.g., 2020 uses the 2016-2020 PUMS, 2021 the 2017-2021 PUMS, ...) except for years 2010 and 2011, which use the 2008-2012 PUMS (due to the lack of the `[DIS]` field used to identify Institutional Correctional Facilities). For detailed documentation of the ACS PUMS, including field definitions, see the [PUMS Documentation](https://www.census.gov/programs-surveys/acs/microdata/documentation.html).
 
 Age/sex/ethnicity is encoded using the fields `[AGEP]`, `[SEX]`, `[HISP]`, and `[RAC1P]`.
 
