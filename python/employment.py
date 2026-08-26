@@ -669,8 +669,10 @@ def _get_jobs_inputs(year: int) -> dict[str, pd.DataFrame]:
                 sql=sql.text(file.read()),
                 con=con,
                 params={
-                    "series": utils.SERIES,
+                    "run_id": utils.RUN_ID,
                     "year": year,
+                    "estimates_server": utils.ESTIMATES_SERVER,
+                    "estimates_database": utils.ESTIMATES_DATABASE,
                 },
             )
 

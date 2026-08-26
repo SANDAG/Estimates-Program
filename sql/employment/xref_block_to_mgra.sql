@@ -19,16 +19,34 @@ Notes:
 
 SET NOCOUNT ON;
 -- Initialize parameters and return table ------------------------------------
+DECLARE @run_id INTEGER = :run_id;
 DECLARE @year INTEGER = :year;
-DECLARE @series INTEGER = :series;
+DECLARE @estimates_server nvarchar(20) = :estimates_server;
+DECLARE @estimates_database nvarchar(20) = :estimates_database;
 DECLARE @msg nvarchar(45) = 'EDD point-level data does not exist';
 
 
--- Check for MGRA series and stop execution if not Series 15
-IF @series != 15
-BEGIN
-    THROW 50000, 'EDD xref only valid for Series 15 MGRAs',1;
-END
+-- Get MGRA geography and insert to temporary table
+-- Build the OPENQUERY to the Estimates database to get the MGRA geography
+-- Note the statement stores results in a temporary table for later use
+DROP TABLE IF EXISTS [#mgra];
+CREATE TABLE [#mgra] (
+    [mgra] INTEGER NOT NULL,
+    [shape] GEOMETRY NOT NULL,
+    CONSTRAINT [pk_tt_mgra] PRIMARY KEY ([mgra])
+)
+
+DECLARE @qry NVARCHAR(max) = '
+    INSERT INTO [#mgra]
+    SELECT [mgra], [shape]
+    FROM OPENQUERY([' + @estimates_server + '], ''
+        SELECT [mgra], [shape]
+        FROM ' + @estimates_database + '.[inputs].[mgra]
+        WHERE [run_id] = ' + CONVERT(NVARCHAR, @run_id) + '
+    '')
+'
+EXEC sp_executesql @qry;
+
 
 -- Create shell table of 2020 Census Block x Ownership Title x Industry Code
 DROP TABLE IF EXISTS [#tt_block_category];
@@ -306,33 +324,33 @@ BEGIN
             [CENSUSBLOCKS].[GEOID20] AS [block],
             [ownership_title],
             [industry_code],
-            [MGRA15].[MGRA] AS [mgra],
+            [#mgra].[mgra],
             SUM([jobs]) 
                 / SUM(SUM([jobs])) OVER (PARTITION BY [CENSUSBLOCKS].[GEOID20], [ownership_title], [industry_code])
             AS [pct_edd_category]
         FROM [#edd]
         INNER JOIN [GeoDepot].[sde].[CENSUSBLOCKS]
             ON [#edd].[Shape].STIntersects([CENSUSBLOCKS].[Shape]) = 1
-        INNER JOIN [GeoDepot].[sde].[MGRA15]
-            ON [#edd].[Shape].STIntersects([MGRA15].[Shape]) = 1
+        INNER JOIN [#mgra]
+            ON [#edd].[Shape].STIntersects([#mgra].[shape]) = 1
         GROUP BY 
-            [CENSUSBLOCKS].[GEOID20], [ownership_title], [industry_code], [MGRA15].[MGRA]
+            [CENSUSBLOCKS].[GEOID20], [ownership_title], [industry_code], [#mgra].[mgra]
     ),
     -- Calculate % allocation of Census 2020 Block jobs to MGRAs
     [xref_edd] AS (
         SELECT
             [CENSUSBLOCKS].[GEOID20] AS [block],
-            [MGRA15].[MGRA] AS [mgra],
-            SUM(SUM([jobs])) OVER (PARTITION BY [CENSUSBLOCKS].[GEOID20], [MGRA15].[MGRA]) 
+            [#mgra].[mgra],
+            SUM(SUM([jobs])) OVER (PARTITION BY [CENSUSBLOCKS].[GEOID20], [#mgra].[mgra]) 
                 / SUM(SUM([jobs])) OVER (PARTITION BY [CENSUSBLOCKS].[GEOID20])
             AS [pct_edd]
         FROM [#edd]
         INNER JOIN [GeoDepot].[sde].[CENSUSBLOCKS]
             ON [#edd].[Shape].STIntersects([CENSUSBLOCKS].[Shape]) = 1
-        INNER JOIN [GeoDepot].[sde].[MGRA15]
-            ON [#edd].[Shape].STIntersects([MGRA15].[Shape]) = 1
+        INNER JOIN [#mgra]
+            ON [#edd].[Shape].STIntersects([#mgra].[shape]) = 1
         GROUP BY 
-            [CENSUSBLOCKS].[GEOID20], [MGRA15].[MGRA]
+            [CENSUSBLOCKS].[GEOID20], [#mgra].[mgra]
     ),
     -- Get % area overlap of Census 2020 Block area and MGRAs
     [xref_area] AS (
@@ -344,14 +362,14 @@ BEGIN
         FROM (
             SELECT
                 [CENSUSBLOCKS].[GEOID20] AS [block],
-                [MGRA15].[MGRA] AS [mgra],
-                ([CENSUSBLOCKS].[Shape].STIntersection([MGRA15].[Shape]).STArea() 
+                [#mgra].[mgra],
+                ([CENSUSBLOCKS].[Shape].STIntersection([#mgra].[shape]).STArea() 
                     / [CENSUSBLOCKS].[Shape].STArea())
                 AS [pct_area]
             FROM [GeoDepot].[sde].[CENSUSBLOCKS]
-            LEFT OUTER JOIN [GeoDepot].[sde].[MGRA15] 
-                ON [CENSUSBLOCKS].[Shape].STIntersects([MGRA15].[Shape]) = 1
-            WHERE ([CENSUSBLOCKS].[Shape].STIntersection([MGRA15].[Shape]).STArea() 
+            LEFT OUTER JOIN [#mgra]
+                ON [CENSUSBLOCKS].[Shape].STIntersects([#mgra].[shape]) = 1
+            WHERE ([CENSUSBLOCKS].[Shape].STIntersection([#mgra].[shape]).STArea() 
                 / [CENSUSBLOCKS].[Shape].STArea()) > 0.01
         ) AS [raw_xref_area]
     )
@@ -386,5 +404,6 @@ BEGIN
         [#tt_block_category].[industry_code]
 END
 
+DROP TABLE IF EXISTS [#mgra];
 DROP TABLE IF EXISTS [#tt_block_category];
 DROP TABLE IF EXISTS [#edd];
