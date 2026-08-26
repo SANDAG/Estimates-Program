@@ -1,5 +1,5 @@
 /*
-This query provides a many-to-many cross reference mapping 2020 Census Blocks to Series 15 MGRAs
+This query provides a many-to-many cross reference mapping 2020 Census Blocks to MGRAs
 There are two cross references for separate use cases
   1) Cross reference based on EDD point-level jobs data within SANDAG employment categories
   2) Cross reference based on EDD point-level jobs data without considering SANDAG employment categories
