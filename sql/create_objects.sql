@@ -129,6 +129,25 @@ INSERT INTO [inputs].[special_mgras] (
         to the facility being majority male and all other facilities being male only.'),
     (15, 18741, 2010, 2025, 'Group Quarters - Institutional Correctional Facilities', 'Male', 18, NULL, 'Vista Detention Facility (VDF) operates as both a male and
         female facility intake facility but the majority of housed inmates are male as women are
+        transferred to the Las Colinas Detention Facility.'),
+    (16, 18232, 2017, 2025, 'Group Quarters - Institutional Correctional Facilities', 'Male', 18, NULL, 'CAI Boston Avenue'),
+    (16, 16362, 2010, 2025, 'Group Quarters - Institutional Correctional Facilities', NULL, 18, NULL, 'Metropolitan Correctional Center, San Diego (MCC San Diego)'),
+    (16, 16289, 2010, 2025, 'Group Quarters - Institutional Correctional Facilities', NULL, 18, NULL, 'Western Region Detention Facility'),
+    (16, 16290, 2010, 2025, 'Group Quarters - Institutional Correctional Facilities', 'Male', 18, NULL, 'San Diego Central Jail'),
+    (16, 14489, 2010, 2025, 'Group Quarters - Institutional Correctional Facilities', 'Female', 18, NULL, 'Las Colinas Detention Facility'),
+    (16, 23402, 2010, 2025, 'Group Quarters - Institutional Correctional Facilities', 'Male', 18, NULL, 'Richard J. Donovan Correctional Facility (RJD)'),
+    (16, 12166, 2010, 2025, 'Group Quarters - Institutional Correctional Facilities', NULL, 10, 18, 'Kearney Mesa Juvenile Detention Facility'),
+    (16, 20974, 2010, 2025, 'Group Quarters - Institutional Correctional Facilities', 'Male', 18, NULL, 'South Bay Detention Facility'),
+    (16, 23417, 2018, 2025, 'Group Quarters - Institutional Correctional Facilities', NULL, 18, NULL, 'Otay Mesa Detention Center'),
+    (16, 23409, 2010, 2025, 'Group Quarters - Institutional Correctional Facilities', 'Male', 18, NULL, 'Richard J. Donovan Correctional Facility (RJD)'),
+    (16, 23399, 2010, 2025, 'Group Quarters - Institutional Correctional Facilities', 'Male', 18, NULL, 'Richard J. Donovan Correctional Facility (RJD)'),
+    (16, 23400, 2010, 2025, 'Group Quarters - Institutional Correctional Facilities', 'Male', 10, NULL, 'Includes the Rock Mountain Detention Facility (RMDF), 
+        George Bailey Detention Facility (GBDF), East Mesa Reentry Facility (EMRF), and the East Mesa
+        Juvenile Detention Facility (EMJDF). Note that the EMJDF is a juvenile facility that allows women.
+        The determination was made that juveniles would be allowed in this MGRA but women would not due
+        to the facility being majority male and all other facilities being male only.'),
+    (16, 2438, 2010, 2025, 'Group Quarters - Institutional Correctional Facilities', 'Male', 18, NULL, 'Vista Detention Facility (VDF) operates as both a male and
+        female facility intake facility but the majority of housed inmates are male as women are
         transferred to the Las Colinas Detention Facility.')
 GO
 

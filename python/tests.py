@@ -52,9 +52,8 @@ _DISTINCT_COUNTS = {
         ("naics3", "naics_sector"): 22,
     },
     "series": {
-        15: {
-            "mgra": 24321,
-        },
+        15: {"mgra": 24321},
+        16: {"mgra": 24209},
     },
 }
 

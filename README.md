@@ -44,7 +44,7 @@ The default version of the runtime configuration file is copied here, with comme
 # Whether to use the 'run' section. Mutually exclusive with 'debug' mode
 enabled = true
 
-# The MGRA series to use for this run. Currently only '15' is valid
+# The MGRA series to use for this run. Currently only '15' and '16' are valid
 series = 15
 
 # The first year inclusive to start running from

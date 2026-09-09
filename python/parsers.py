@@ -142,7 +142,7 @@ class InputParser:
                 "type": "dict",
                 "schema": {
                     "enabled": {"type": "boolean"},
-                    "series": {"type": "integer", "allowed": [15]},
+                    "series": {"type": "integer", "allowed": [15, 16]},
                     "start_year": {"type": "integer", "min": min_max_years[0]},
                     "end_year": {"type": "integer", "max": min_max_years[1]},
                     "version": {"type": "string", "allowed": versions},
