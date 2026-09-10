@@ -489,6 +489,7 @@ def _create_hh_size(
                 0,
             ),
         )
+        .sort_values(by="mgra")
     )
 
     # The methodology to adjust each individual MGRA. Unfortunately, I don't believe
@@ -652,6 +653,7 @@ def _create_hh_workers(
                 0,
             ),
         )
+        .sort_values(by="mgra")
     )
 
     # The methodology to adjust each individual MGRA for minimum implied workers
@@ -702,14 +704,16 @@ def _create_hh_workers(
     # For every MGRA, compute the difference between households by number of workers
     # and the households by size categories to determine necessary adjustments
     # Note that the household size categories are collapsed to 2+ and 3+
-    hh_workers = hh_workers.merge(
-        mgra_hhs, on=["run_id", "year", "mgra"], how="left"
-    ).assign(
-        # Expect to see differences >= 0 for Household Sizes - Household Workers
-        # Household Worker category 2 should be <= Household Size 2+
-        diff2=lambda df: df["2"] - df[2],
-        # Household Worker category 3+ should be <= Household Size 3+
-        diff3=lambda df: df["3"] - df[3],
+    hh_workers = (
+        hh_workers.merge(mgra_hhs, on=["run_id", "year", "mgra"], how="left")
+        .assign(
+            # Expect to see differences >= 0 for Household Sizes - Household Workers
+            # Household Worker category 2 should be <= Household Size 2+
+            diff2=lambda df: df["2"] - df[2],
+            # Household Worker category 3+ should be <= Household Size 3+
+            diff3=lambda df: df["3"] - df[3],
+        )
+        .sort_values(by="mgra")
     )
 
     # The methodology to adjust each individual MGRA to not violate household size

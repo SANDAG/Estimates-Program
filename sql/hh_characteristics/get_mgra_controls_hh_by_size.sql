@@ -21,3 +21,4 @@ FROM [outputs].[hhp]
 WHERE
     [run_id] = @run_id
     AND [year] = @year
+ORDER BY [mgra]
