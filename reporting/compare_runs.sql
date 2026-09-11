@@ -13,7 +13,7 @@ DECLARE @comparison INTEGER = 233;
 
 -- Check comparison is valid -------------------------------------------------
 -- Both runs are complete
-IF EXISTS (SELECT [run_id] FROM [metadata].[run] WHERE [complete] = 0)
+IF EXISTS (SELECT [run_id] FROM [metadata].[run] WHERE [complete] = 0 AND [run_id] IN (@baseline, @comparison))
 BEGIN
 	THROW 50000, 'Both provided [run_id]s must be complete', 1;
 END
