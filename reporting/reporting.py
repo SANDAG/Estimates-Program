@@ -5,6 +5,10 @@
 # some experimentation was done to justify the magic formulas and numbers in:
 # https://github.com/SANDAG/Series-15-Urban-Development-Model/blob/main/Other/Significant%20Change.xlsx
 
+# This does not include the compare_runs.sql file that is used for comparing different runs
+# That file needs to be run separately from this script
+
+
 # We cannot import python.utils, as just importing will cause a new [run_id]` value and
 # new log file to be created. Instead, copy what we need for now :(
 import tomllib
