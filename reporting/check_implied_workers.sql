@@ -44,4 +44,7 @@ FROM [Household Size]
 LEFT OUTER JOIN [Population Aged 18+]
 	ON [Household Size].[year] = [Population Aged 18+].[year]
 	AND [Household Size].[mgra] = [Population Aged 18+].[mgra]
-WHERE [min_workers] > ISNULL([Population Aged 18+].[persons_18plus], 0);
+WHERE [min_workers] > ISNULL([Population Aged 18+].[persons_18plus], 0)
+ORDER BY
+	[Household Size].[year],
+	[Household Size].[mgra]

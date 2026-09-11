@@ -128,4 +128,6 @@ LEFT JOIN [dof_controls]
 WHERE [aggregated_data].[household_population] != [dof_controls].[household_population]
     OR [aggregated_data].[group_quarters] != [dof_controls].[group_quarters]
     OR ABS([aggregated_data].[occupancy_rate] - [dof_controls].[occupancy_rate]) > @threshold
-ORDER BY [aggregated_data].[jurisdiction], [aggregated_data].[year]
+ORDER BY
+    [aggregated_data].[year],
+    [aggregated_data].[jurisdiction]

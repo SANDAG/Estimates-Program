@@ -34,5 +34,6 @@ DECLARE @query NVARCHAR(MAX) = '
         WHERE [gq].[run_id] = ' + @run_id + '
         GROUP BY [year], [' + @geography + '], [gq_type]
     ) AS [table]
+    
     ORDER BY [year], [' + @geography + '], [metric]'
 EXEC sp_executesql @query;

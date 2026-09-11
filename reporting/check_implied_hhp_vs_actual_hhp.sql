@@ -71,3 +71,6 @@ WHERE [hhp].[run_id] = @run_id
         [value] < [implied_min_hhp]
         OR [value] > [implied_max_hhp]
     )
+ORDER BY
+    [hhp].[year],
+    [hhp].[mgra]
