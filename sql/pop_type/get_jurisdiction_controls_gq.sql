@@ -45,3 +45,4 @@ SELECT
     [group_quarters] AS [value]
 FROM [dof]
 WHERE [year] = @year
+ORDER BY [jurisdiction]

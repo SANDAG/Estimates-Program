@@ -210,4 +210,9 @@ BEGIN
         ON [b01001b-i].[sex] = [#allocation_tbl].[sex]
         AND [b01001b-i].[split_age_group] = [#allocation_tbl].[split_age_group]
     WHERE [tract] != '06073990100'  -- Exclude shoreline/water tract
+    ORDER BY
+        [tract],
+        [b01001b-i].[sex],
+        [b01001b-i].[ethnicity],
+        [age_group]
 END

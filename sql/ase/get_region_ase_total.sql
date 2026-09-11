@@ -125,4 +125,9 @@ BEGIN
         [age_group],
         [sex],
         [ethnicity]
+    ORDER BY
+        [year],
+        [age_group],
+        [sex],
+        [ethnicity]
 END
