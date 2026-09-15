@@ -27,3 +27,7 @@ LEFT OUTER JOIN (
 WHERE
     [run_id] = @run_id
     AND [controls_jobs].[value] != [aggregated_data].[value]
+ORDER BY
+    [controls_jobs].[year],
+    [controls_jobs].[ownership_title],
+    [controls_jobs].[industry_code]

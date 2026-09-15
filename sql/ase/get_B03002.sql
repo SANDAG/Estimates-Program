@@ -61,4 +61,7 @@ BEGIN
     GROUP BY
         [tract],
         [ethnicity]
+    ORDER BY
+        [tract],
+        [ethnicity]
 END

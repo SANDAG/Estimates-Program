@@ -237,4 +237,9 @@ BEGIN
         [ethnicity],
         1.0 * [population] / SUM([population]) OVER (PARTITION BY [gq_type]) AS [distribution]
     FROM [population]
+    ORDER BY
+        [gq_type],
+        [age_group],
+        [sex],
+        [ethnicity]
 END

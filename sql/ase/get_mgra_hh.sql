@@ -12,3 +12,4 @@ WHERE
     [run_id] = @run_id
     AND [year] = @year
 GROUP BY [mgra]
+ORDER BY [mgra]

@@ -401,6 +401,7 @@ BEGIN
     ORDER BY
         [#tt_block_category].[block],
         [xref_area].[mgra],
+        [#tt_block_category].[ownership_title],
         [#tt_block_category].[industry_code]
 END
 

@@ -14,3 +14,9 @@ FROM [inputs].[special_mgras]
 WHERE
     @year BETWEEN [start_year] AND [end_year]
     AND [series] = @series
+ORDER BY
+    [mgra],
+    [pop_type],
+    [sex],
+    [min_age],
+    [max_age]

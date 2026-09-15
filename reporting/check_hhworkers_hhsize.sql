@@ -37,3 +37,6 @@ INNER JOIN [Household Workers]
 WHERE
 	[Household Size].[2+ size] < [Household Workers].[2 workers]
 	OR [Household Size].[3+ size] < [Household Workers].[3+ workers]
+ORDER BY
+	[Household Size].[year],
+	[Household Size].[mgra]

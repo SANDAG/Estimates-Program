@@ -58,4 +58,6 @@ LEFT JOIN [#aggregated_data]
     AND [#mgra_hh].[mgra] = [#aggregated_data].[mgra]
 WHERE [#mgra_hh].[hh] != [#aggregated_data].[hh_income]
     OR [#mgra_hh].[hh] != [#aggregated_data].[hh_size]
-ORDER BY [#mgra_hh].[mgra], [#mgra_hh].[year]
+ORDER BY
+    [#mgra_hh].[year],
+    [#mgra_hh].[mgra]

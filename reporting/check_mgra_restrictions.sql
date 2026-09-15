@@ -77,4 +77,9 @@ FROM (
         AND [special_mgras].[series] = @series
     GROUP BY [ase].[year], [ase].[mgra], [ase].[pop_type], [max_age]
 ) AS [error_rows]
-ORDER BY [mgra], [metric], [pop_type], [year]
+
+ORDER BY 
+    [year],
+    [mgra],
+    [pop_type],
+    [metric]

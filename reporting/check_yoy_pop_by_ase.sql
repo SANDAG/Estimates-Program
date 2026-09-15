@@ -49,5 +49,6 @@ DECLARE @query NVARCHAR(MAX) = '
         WHERE [ase].[run_id] = ' + @run_id + '
         GROUP BY [year], [' + @geography + '], [ethnicity]
     ) AS [table]
+    
     ORDER BY [year], [' + @geography + '], [metric]'
 EXEC sp_executesql @query;

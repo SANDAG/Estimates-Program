@@ -84,4 +84,8 @@ BEGIN
         [tract],
         [sex],
         [age_group]
+    ORDER BY
+        [tract],
+        [sex],
+        [age_group]
 END

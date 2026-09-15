@@ -32,3 +32,6 @@ LEFT JOIN (
     ON [householder_aged_hhp].[year] = [hh].[year]
     AND [householder_aged_hhp].[mgra] = [hh].[mgra]
 WHERE [householder_aged_hhp] < [hh]
+ORDER BY
+    [householder_aged_hhp].[year],
+    [householder_aged_hhp].[mgra]

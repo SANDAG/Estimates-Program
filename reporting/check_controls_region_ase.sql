@@ -29,3 +29,9 @@ LEFT JOIN (
     AND [aggregated_data].[ethnicity] = [controls_ase].[ethnicity]
 WHERE [run_id] = @run_id
     AND [controls_ase].[value] != [aggregated_data].[value]
+ORDER BY
+    [controls_ase].[year],
+    [controls_ase].[pop_type],
+    [controls_ase].[age_group],
+    [controls_ase].[sex],
+    [controls_ase].[ethnicity]

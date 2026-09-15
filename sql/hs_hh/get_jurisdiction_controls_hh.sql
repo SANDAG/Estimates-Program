@@ -45,3 +45,4 @@ SELECT
     1 - [vacancy_rate] AS [value]
 FROM [dof]
 WHERE [year] = @year
+ORDER BY [jurisdiction]

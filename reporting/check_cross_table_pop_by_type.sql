@@ -88,4 +88,6 @@ WHERE [#mgra_controls].[hhp] != [#aggregated_data].[hhp]
     OR [#mgra_controls].[gq_miltary] != [#aggregated_data].[gq_miltary]
     OR [#mgra_controls].[gq_prison] != [#aggregated_data].[gq_prison]
     OR [#mgra_controls].[gq_other] != [#aggregated_data].[gq_other]
-ORDER BY [#mgra_controls].[mgra], [#mgra_controls].[year]
+ORDER BY
+    [#mgra_controls].[year],
+    [#mgra_controls].[mgra]

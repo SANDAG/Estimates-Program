@@ -45,3 +45,4 @@ SELECT
     [household_population] AS [value]
 FROM [dof]
 WHERE [year] = @year
+ORDER BY [jurisdiction]
