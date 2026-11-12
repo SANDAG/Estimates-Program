@@ -2,6 +2,10 @@
 This query takes SANDAGs GIS team Land Use and Dwelling Unit (LUDU) point layer
 and aggregates dwelling units to the MGRA level by structure type. Note that 
 the choice of LUDU layer is determined by the input @year parameter.
+
+Note: We force Series 16 year 2025 estimates to maintain alignment with the
+Series 16 Regional Growth Forecast by using the GIS-team's pre-built LUDU to
+MGRA xref as opposed to a point-in-polygon lookup.
 */
 
 SET NOCOUNT ON;
@@ -36,6 +40,7 @@ WHERE [run_id] = @run_id
 DECLARE @tbl NVARCHAR(25) = 
     CASE WHEN @year = 2010 THEN 'LUDU2010_CENPOINTS'
          WHEN @year = 2020 THEN 'LUDU2020_CENSUSPOINTS'
+         WHEN @year = 2025 THEN 'LUDU2025_FORECASTPOINTS'
          ELSE CONCAT('LUDU', @year, 'POINTS')
          END
 
@@ -46,6 +51,7 @@ CREATE TABLE [#ludu] (
     [id] INTEGER IDENTITY(1,1) NOT NULL,
     [lu] INTEGER NOT NULL,
     [du] INTEGER NOT NULL,
+    [mgra] INTEGER NOT NULL,
     [Shape] GEOMETRY NOT NULL,
     CONSTRAINT [pk_tt_ludu] PRIMARY KEY ([id])
 )
@@ -70,6 +76,10 @@ DECLARE @qry NVARCHAR(max) = '
         SELECT
             ISNULL([overrides].[lu], [ludu].[lu]) AS [lu],
             ISNULL([overrides].[du], [ludu].[du]) AS [du],
+            CASE
+                WHEN ' + CONVERT(NVARCHAR, @year) + ' = 2025 AND ' + CONVERT(NVARCHAR, @series) + ' = 16 THEN [MGRA]
+                ELSE 0  -- Avoid NULL values for non-2025 Series 16 cases
+            END AS [mgra],
             [Shape]
         FROM [GeoDepot].[sde].[' + @tbl +'] AS [ludu]
         LEFT OUTER JOIN (
@@ -92,7 +102,12 @@ EXEC sp_executesql @qry;
 -- Aggregate LUDU dwelling units to MGRAs by structure type ------------------
 with [hs] AS (
     SELECT
-        [mgra],
+        -- Use the point-in-polygon join unless it is year 2025 Series 16
+        -- This maintains alignment with the Series 16 Regional Growth Forecast
+        CASE
+            WHEN @year = 2025 AND @series = 16 THEN [#ludu].[mgra]
+            ELSE [mgra].[mgra]
+        END AS [mgra],
         CASE
             WHEN [lu] BETWEEN 1000 AND 1119
                 OR [lu] BETWEEN 2201 AND 2301
@@ -118,8 +133,9 @@ with [hs] AS (
             ELSE CONVERT(nvarchar, [lu])
         END AS [structure_type],
         [du]
-    FROM [inputs].[mgra]
-    INNER JOIN [#ludu]
+    FROM [#ludu]
+    -- Any NULLS potentially introduced here are removed by the join to the shell table
+    LEFT OUTER JOIN [inputs].[mgra]
         ON [mgra].[Shape].STIntersects([#ludu].[Shape]) = 1
     WHERE [run_id] = @run_id
 )
