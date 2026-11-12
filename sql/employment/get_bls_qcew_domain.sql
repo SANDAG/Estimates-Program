@@ -25,6 +25,15 @@ IF NOT EXISTS (
 SELECT @msg AS [msg]
 ELSE
 BEGIN
+    -- Determine if "final" data exists otherwise use "pre-revision"
+    DECLARE @status NVARCHAR(15) = 'pre-revision'
+    IF EXISTS (
+        SELECT TOP(1) *
+        FROM [socioec_data].[bls].[qcew_by_area_annual]
+        WHERE [year] = @year AND [status] = 'final'
+    ) SET @status = 'final'
+
+
     -- Ensure no records are suppressed
     IF EXISTS (
         SELECT TOP(1) *
@@ -34,6 +43,7 @@ BEGIN
             AND [area_fips] = '06073'  -- San Diego County
             AND [agglvl_code] = 72 -- Aggregation level 72 (Domain)
             AND [disclosure_code] = 'N'  -- https://www.bls.gov/cew/questions-and-answers.htm#Q13
+            AND [status] = @status
     ) THROW 50000, 'Control totals using [agglvl_code]=72 are suppressed', 1;
 
 
@@ -69,6 +79,7 @@ BEGIN
             [year] = @year
             AND [area_fips] = '06073'  -- San Diego County
             AND [agglvl_code] = 72  -- Aggregation level 72 (Domain)
+            AND [status] = @status
 )
     SELECT
         [#tt_shell].[ownership_title],

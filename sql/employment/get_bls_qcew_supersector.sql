@@ -18,6 +18,15 @@ IF NOT EXISTS (
 SELECT @msg AS [msg]
 ELSE
 BEGIN
+    -- Determine if "final" data exists otherwise use "pre-revision"
+    DECLARE @status NVARCHAR(15) = 'pre-revision'
+    IF EXISTS (
+        SELECT TOP(1) *
+        FROM [socioec_data].[bls].[qcew_by_area_annual]
+        WHERE [year] = @year AND [status] = 'final'
+    ) SET @status = 'final'
+
+
     -- Create shell table of all ownership and supersector combinations
     DROP TABLE IF EXISTS [#tt_shell]
     SELECT [ownership_title], [supersector], [domain]
@@ -51,6 +60,7 @@ BEGIN
             [year] = @year
             AND [area_fips] = '06073'  -- San Diego County
             AND [agglvl_code] = 73  -- Aggregation level 73 (Supersector)
+            AND [status] = @status
     )
     SELECT
         [#tt_shell].[ownership_title],
