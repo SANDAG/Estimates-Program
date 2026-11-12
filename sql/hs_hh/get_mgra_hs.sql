@@ -135,9 +135,12 @@ with [hs] AS (
         [du]
     FROM [#ludu]
     -- Any NULLS potentially introduced here are removed by the join to the shell table
-    LEFT OUTER JOIN [inputs].[mgra]
+    LEFT OUTER JOIN (
+        SELECT [mgra], [Shape]
+        FROM [inputs].[mgra]
+        WHERE [run_id] = @run_id
+    ) AS [mgra]
         ON [mgra].[Shape].STIntersects([#ludu].[Shape]) = 1
-    WHERE [run_id] = @run_id
 )
 
 -- Get results into Python
