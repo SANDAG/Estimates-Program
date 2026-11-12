@@ -15,6 +15,7 @@ DECLARE @year INTEGER = :year;
 DECLARE @gis_server NVARCHAR(20) = :gis_server;
 DECLARE @series INTEGER = (SELECT [series] FROM [metadata].[run] WHERE [run_id] = @run_id);
 DECLARE @override_date DATE = (SELECT CONVERT(DATE, [start_date]) FROM [metadata].[run] WHERE [run_id] = @run_id);
+DECLARE @qry NVARCHAR(max);
 
 -- Build the expected return table MGRA x Structure Type
 DROP TABLE IF EXISTS [#tt_shell];
@@ -42,7 +43,7 @@ DECLARE @tbl NVARCHAR(25) =
          WHEN @year = 2020 THEN 'LUDU2020_CENSUSPOINTS'
          WHEN @year = 2025 THEN 'LUDU2025_FORECASTPOINTS'
          ELSE CONCAT('LUDU', @year, 'POINTS')
-         END
+     END
 
 -- Build the OPENQUERY to the GIS server to get the LUDU point table of interest
 -- Note the statement stores results in a temporary table for later use
@@ -69,7 +70,7 @@ WITH (BOUNDING_BOX = (
     CELLS_PER_OBJECT = 8
 )
 
-DECLARE @qry NVARCHAR(max) = '
+SET @qry = '
     INSERT INTO [#ludu]
     SELECT *
     FROM OPENQUERY([' + @gis_server + '], ''
@@ -99,80 +100,149 @@ DECLARE @qry NVARCHAR(max) = '
 EXEC sp_executesql @qry;
 
 
--- Aggregate LUDU dwelling units to MGRAs by structure type ------------------
-with [hs] AS (
-    SELECT
-        -- Use the point-in-polygon join unless it is year 2025 Series 16
-        -- This maintains alignment with the Series 16 Regional Growth Forecast
-        CASE
-            WHEN @year = 2025 AND @series = 16 THEN [#ludu].[mgra]
-            ELSE [mgra].[mgra]
-        END AS [mgra],
-        CASE
-            WHEN [lu] BETWEEN 1000 AND 1119
-                OR [lu] BETWEEN 2201 AND 2301
-                OR [lu] BETWEEN 4101 AND 4120
-                OR [lu] BETWEEN 6101 AND 6109
-                OR [lu] BETWEEN 6701 AND 6703
-                OR [lu] BETWEEN 7200 AND 7211
-                OR [lu] BETWEEN 7601 AND 7609
-                OR [lu] BETWEEN 8000 AND 8003
-                THEN 'Single Family - Detached'
-            WHEN [lu] BETWEEN 1120 AND 1199
-                OR [lu] BETWEEN 2000 AND 2105
-                OR [lu] BETWEEN 5000 AND 6003
-                OR [lu] BETWEEN 6501 AND 6509
-                OR [lu] BETWEEN 6805 AND 6809
-                THEN 'Single Family - Multiple Unit'
-            WHEN [lu] BETWEEN 1200 AND 1299
-                OR [lu] BETWEEN 1401 AND 1409
-                OR [lu] BETWEEN 1501 AND 1503
-                OR [lu] BETWEEN 9700 AND 9709
-                THEN 'Multifamily'
-            WHEN [lu] = 1300 THEN 'Mobile Home'
-            ELSE CONVERT(nvarchar, [lu])
-        END AS [structure_type],
-        [du]
-    FROM [#ludu]
-    -- Any NULLS potentially introduced here are removed by the join to the shell table
-    LEFT OUTER JOIN (
-        SELECT [mgra], [Shape]
-        FROM [inputs].[mgra]
-        WHERE [run_id] = @run_id
-    ) AS [mgra]
-        ON [mgra].[Shape].STIntersects([#ludu].[Shape]) = 1
-)
 
--- Get results into Python
-SELECT
-    @run_id AS [run_id],
-    @year AS [year],
-    [#tt_shell].[mgra],
-    [tract],
-    [jurisdiction],
-    [#tt_shell].[structure_type],
-    ISNULL(SUM([du]), 0) AS [value]
-FROM [#tt_shell]
-LEFT OUTER JOIN [hs]
-    ON [#tt_shell].[mgra] = [hs].[mgra]
-    AND [#tt_shell].[structure_type] = [hs].[structure_type]
-LEFT OUTER JOIN (
+-- Year 2025 Series 16 -------------------------------------------------------
+-- Use the point-in-polygon join unless it is year 2025 Series 16
+-- This maintains alignment with the Series 16 Regional Growth Forecast
+IF @year = 2025 AND @series = 16
+BEGIN
+    -- Aggregate LUDU dwelling units to MGRAs by structure type ------------------
+    with [hs] AS (
+        SELECT
+            [mgra],
+            CASE
+                WHEN [lu] BETWEEN 1000 AND 1119
+                    OR [lu] BETWEEN 2201 AND 2301
+                    OR [lu] BETWEEN 4101 AND 4120
+                    OR [lu] BETWEEN 6101 AND 6109
+                    OR [lu] BETWEEN 6701 AND 6703
+                    OR [lu] BETWEEN 7200 AND 7211
+                    OR [lu] BETWEEN 7601 AND 7609
+                    OR [lu] BETWEEN 8000 AND 8003
+                    THEN 'Single Family - Detached'
+                WHEN [lu] BETWEEN 1120 AND 1199
+                    OR [lu] BETWEEN 2000 AND 2105
+                    OR [lu] BETWEEN 5000 AND 6003
+                    OR [lu] BETWEEN 6501 AND 6509
+                    OR [lu] BETWEEN 6805 AND 6809
+                    THEN 'Single Family - Multiple Unit'
+                WHEN [lu] BETWEEN 1200 AND 1299
+                    OR [lu] BETWEEN 1401 AND 1409
+                    OR [lu] BETWEEN 1501 AND 1503
+                    OR [lu] BETWEEN 9700 AND 9709
+                    THEN 'Multifamily'
+                WHEN [lu] = 1300 THEN 'Mobile Home'
+                ELSE CONVERT(nvarchar, [lu])
+            END AS [structure_type],
+            [du]
+        FROM [#ludu]
+    )
+
+    -- Get results into Python
     SELECT
-        [mgra].[mgra],
+        @run_id AS [run_id],
+        @year AS [year],
+        [#tt_shell].[mgra],
         [tract],
-        [jurisdiction]
-    FROM [demographic_warehouse].[dim].[mgra]
-    INNER JOIN [demographic_warehouse].[dim].[mgra_xref]
-        ON [mgra].[mgra_id] = [mgra_xref].[mgra_id]
-        AND [mgra_xref].[xref_year] = @year
-    WHERE [mgra].[series] = @series
-) AS [mgra_xref]
-    ON [#tt_shell].[mgra] = [mgra_xref].[mgra]
-GROUP BY
-    [#tt_shell].[mgra],
-    [tract],
-    [jurisdiction],
-    [#tt_shell].[structure_type]
-ORDER BY
-    [#tt_shell].[mgra],
-    [#tt_shell].[structure_type];
+        [jurisdiction],
+        [#tt_shell].[structure_type],
+        ISNULL(SUM([du]), 0) AS [value]
+    FROM [#tt_shell]
+    LEFT OUTER JOIN [hs]
+        ON [#tt_shell].[mgra] = [hs].[mgra]
+        AND [#tt_shell].[structure_type] = [hs].[structure_type]
+    LEFT OUTER JOIN (
+        SELECT
+            [mgra].[mgra],
+            [tract],
+            [jurisdiction]
+        FROM [demographic_warehouse].[dim].[mgra]
+        INNER JOIN [demographic_warehouse].[dim].[mgra_xref]
+            ON [mgra].[mgra_id] = [mgra_xref].[mgra_id]
+            AND [mgra_xref].[xref_year] = @year
+        WHERE [mgra].[series] = @series
+    ) AS [mgra_xref]
+        ON [#tt_shell].[mgra] = [mgra_xref].[mgra]
+    GROUP BY
+        [#tt_shell].[mgra],
+        [tract],
+        [jurisdiction],
+        [#tt_shell].[structure_type]
+    ORDER BY
+        [#tt_shell].[mgra],
+        [#tt_shell].[structure_type];
+END
+-- All other years and series ------------------------------------------------
+-- Use the point-in-polygon join unless it is year 2025 Series 16
+-- This maintains alignment with the Series 16 Regional Growth Forecast
+ELSE
+BEGIN
+    -- Aggregate LUDU dwelling units to MGRAs by structure type ------------------
+    with [hs] AS (
+        SELECT
+            [mgra].[mgra],
+            CASE
+                WHEN [lu] BETWEEN 1000 AND 1119
+                    OR [lu] BETWEEN 2201 AND 2301
+                    OR [lu] BETWEEN 4101 AND 4120
+                    OR [lu] BETWEEN 6101 AND 6109
+                    OR [lu] BETWEEN 6701 AND 6703
+                    OR [lu] BETWEEN 7200 AND 7211
+                    OR [lu] BETWEEN 7601 AND 7609
+                    OR [lu] BETWEEN 8000 AND 8003
+                    THEN 'Single Family - Detached'
+                WHEN [lu] BETWEEN 1120 AND 1199
+                    OR [lu] BETWEEN 2000 AND 2105
+                    OR [lu] BETWEEN 5000 AND 6003
+                    OR [lu] BETWEEN 6501 AND 6509
+                    OR [lu] BETWEEN 6805 AND 6809
+                    THEN 'Single Family - Multiple Unit'
+                WHEN [lu] BETWEEN 1200 AND 1299
+                    OR [lu] BETWEEN 1401 AND 1409
+                    OR [lu] BETWEEN 1501 AND 1503
+                    OR [lu] BETWEEN 9700 AND 9709
+                    THEN 'Multifamily'
+                WHEN [lu] = 1300 THEN 'Mobile Home'
+                ELSE CONVERT(nvarchar, [lu])
+            END AS [structure_type],
+            [du]
+        FROM [inputs].[mgra]
+        INNER JOIN [#ludu]
+            ON [mgra].[Shape].STIntersects([#ludu].[Shape]) = 1
+        WHERE [run_id] = @run_id
+    )
+
+    -- Get results into Python
+    SELECT
+        @run_id AS [run_id],
+        @year AS [year],
+        [#tt_shell].[mgra],
+        [tract],
+        [jurisdiction],
+        [#tt_shell].[structure_type],
+        ISNULL(SUM([du]), 0) AS [value]
+    FROM [#tt_shell]
+    LEFT OUTER JOIN [hs]
+        ON [#tt_shell].[mgra] = [hs].[mgra]
+        AND [#tt_shell].[structure_type] = [hs].[structure_type]
+    LEFT OUTER JOIN (
+        SELECT
+            [mgra].[mgra],
+            [tract],
+            [jurisdiction]
+        FROM [demographic_warehouse].[dim].[mgra]
+        INNER JOIN [demographic_warehouse].[dim].[mgra_xref]
+            ON [mgra].[mgra_id] = [mgra_xref].[mgra_id]
+            AND [mgra_xref].[xref_year] = @year
+        WHERE [mgra].[series] = @series
+    ) AS [mgra_xref]
+        ON [#tt_shell].[mgra] = [mgra_xref].[mgra]
+    GROUP BY
+        [#tt_shell].[mgra],
+        [tract],
+        [jurisdiction],
+        [#tt_shell].[structure_type]
+    ORDER BY
+        [#tt_shell].[mgra],
+        [#tt_shell].[structure_type];
+END
