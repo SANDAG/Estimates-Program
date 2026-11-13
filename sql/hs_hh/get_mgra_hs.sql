@@ -2,6 +2,10 @@
 This query takes SANDAGs GIS team Land Use and Dwelling Unit (LUDU) point layer
 and aggregates dwelling units to the MGRA level by structure type. Note that 
 the choice of LUDU layer is determined by the input @year parameter.
+
+Note: We force Series 16 year 2025 estimates to maintain alignment with the
+Series 16 Regional Growth Forecast by using the GIS-team's pre-built LUDU to
+MGRA xref as opposed to a point-in-polygon lookup.
 */
 
 SET NOCOUNT ON;
@@ -36,16 +40,18 @@ WHERE [run_id] = @run_id
 DECLARE @tbl NVARCHAR(25) = 
     CASE WHEN @year = 2010 THEN 'LUDU2010_CENPOINTS'
          WHEN @year = 2020 THEN 'LUDU2020_CENSUSPOINTS'
+         WHEN @year = 2025 THEN 'LUDU2025_FORECASTPOINTS'
          ELSE CONCAT('LUDU', @year, 'POINTS')
-         END
+     END
 
 -- Build the OPENQUERY to the GIS server to get the LUDU point table of interest
 -- Note the statement stores results in a temporary table for later use
 DROP TABLE IF EXISTS [#ludu];
 CREATE TABLE [#ludu] (
     [id] INTEGER IDENTITY(1,1) NOT NULL,
-    [lu] INTEGER NOT NULL,
+    [structure_type] NVARCHAR(35) NOT NULL,
     [du] INTEGER NOT NULL,
+    [mgra] INTEGER NOT NULL,
     [Shape] GEOMETRY NOT NULL,
     CONSTRAINT [pk_tt_ludu] PRIMARY KEY ([id])
 )
@@ -65,11 +71,42 @@ WITH (BOUNDING_BOX = (
 
 DECLARE @qry NVARCHAR(max) = '
     INSERT INTO [#ludu]
-    SELECT *
+    SELECT
+        CASE
+            WHEN [lu] BETWEEN 1000 AND 1119
+                OR [lu] BETWEEN 2201 AND 2301
+                OR [lu] BETWEEN 4101 AND 4120
+                OR [lu] BETWEEN 6101 AND 6109
+                OR [lu] BETWEEN 6701 AND 6703
+                OR [lu] BETWEEN 7200 AND 7211
+                OR [lu] BETWEEN 7601 AND 7609
+                OR [lu] BETWEEN 8000 AND 8003
+                THEN ''Single Family - Detached''
+            WHEN [lu] BETWEEN 1120 AND 1199
+                OR [lu] BETWEEN 2000 AND 2105
+                OR [lu] BETWEEN 5000 AND 6003
+                OR [lu] BETWEEN 6501 AND 6509
+                OR [lu] BETWEEN 6805 AND 6809
+                THEN ''Single Family - Multiple Unit''
+            WHEN [lu] BETWEEN 1200 AND 1299
+                OR [lu] BETWEEN 1401 AND 1409
+                OR [lu] BETWEEN 1501 AND 1503
+                OR [lu] BETWEEN 9700 AND 9709
+                THEN ''Multifamily''
+            WHEN [lu] = 1300 THEN ''Mobile Home''
+            ELSE CONVERT(nvarchar, [lu])
+        END AS [structure_type],
+        [du],
+        [mgra],
+        [Shape]
     FROM OPENQUERY([' + @gis_server + '], ''
         SELECT
             ISNULL([overrides].[lu], [ludu].[lu]) AS [lu],
             ISNULL([overrides].[du], [ludu].[du]) AS [du],
+            CASE
+                WHEN ' + CONVERT(NVARCHAR, @year) + ' = 2025 AND ' + CONVERT(NVARCHAR, @series) + ' = 16 THEN [MGRA]
+                ELSE 0  -- Avoid NULL values for non-2025 Series 16 cases
+            END AS [mgra],
             [Shape]
         FROM [GeoDepot].[sde].[' + @tbl +'] AS [ludu]
         LEFT OUTER JOIN (
@@ -89,71 +126,89 @@ DECLARE @qry NVARCHAR(max) = '
 EXEC sp_executesql @qry;
 
 
--- Aggregate LUDU dwelling units to MGRAs by structure type ------------------
-with [hs] AS (
-    SELECT
-        [mgra],
-        CASE
-            WHEN [lu] BETWEEN 1000 AND 1119
-                OR [lu] BETWEEN 2201 AND 2301
-                OR [lu] BETWEEN 4101 AND 4120
-                OR [lu] BETWEEN 6101 AND 6109
-                OR [lu] BETWEEN 6701 AND 6703
-                OR [lu] BETWEEN 7200 AND 7211
-                OR [lu] BETWEEN 7601 AND 7609
-                OR [lu] BETWEEN 8000 AND 8003
-                THEN 'Single Family - Detached'
-            WHEN [lu] BETWEEN 1120 AND 1199
-                OR [lu] BETWEEN 2000 AND 2105
-                OR [lu] BETWEEN 5000 AND 6003
-                OR [lu] BETWEEN 6501 AND 6509
-                OR [lu] BETWEEN 6805 AND 6809
-                THEN 'Single Family - Multiple Unit'
-            WHEN [lu] BETWEEN 1200 AND 1299
-                OR [lu] BETWEEN 1401 AND 1409
-                OR [lu] BETWEEN 1501 AND 1503
-                OR [lu] BETWEEN 9700 AND 9709
-                THEN 'Multifamily'
-            WHEN [lu] = 1300 THEN 'Mobile Home'
-            ELSE CONVERT(nvarchar, [lu])
-        END AS [structure_type],
-        [du]
-    FROM [inputs].[mgra]
-    INNER JOIN [#ludu]
-        ON [mgra].[Shape].STIntersects([#ludu].[Shape]) = 1
-    WHERE [run_id] = @run_id
-)
 
--- Get results into Python
-SELECT
-    @run_id AS [run_id],
-    @year AS [year],
-    [#tt_shell].[mgra],
-    [tract],
-    [jurisdiction],
-    [#tt_shell].[structure_type],
-    ISNULL(SUM([du]), 0) AS [value]
-FROM [#tt_shell]
-LEFT OUTER JOIN [hs]
-    ON [#tt_shell].[mgra] = [hs].[mgra]
-    AND [#tt_shell].[structure_type] = [hs].[structure_type]
-LEFT OUTER JOIN (
+-- Year 2025 Series 16 -------------------------------------------------------
+IF @year = 2025 AND @series = 16
+BEGIN
+    -- Aggregate LUDU dwelling units to MGRAs by structure type ------------------
     SELECT
-        [mgra].[mgra],
+        @run_id AS [run_id],
+        @year AS [year],
+        [#tt_shell].[mgra],
         [tract],
-        [jurisdiction]
-    FROM [demographic_warehouse].[dim].[mgra]
-    INNER JOIN [demographic_warehouse].[dim].[mgra_xref]
-        ON [mgra].[mgra_id] = [mgra_xref].[mgra_id]
-        AND [mgra_xref].[xref_year] = @year
-    WHERE [mgra].[series] = @series
-) AS [mgra_xref]
-    ON [#tt_shell].[mgra] = [mgra_xref].[mgra]
-GROUP BY
-    [#tt_shell].[mgra],
-    [tract],
-    [jurisdiction],
-    [#tt_shell].[structure_type]
-ORDER BY
-    [#tt_shell].[mgra],
-    [#tt_shell].[structure_type];
+        [jurisdiction],
+        [#tt_shell].[structure_type],
+        ISNULL(SUM([du]), 0) AS [value]
+    FROM [#tt_shell]
+    -- Use manually populated LCKey to MGRA xref
+    LEFT OUTER JOIN [#ludu]
+        ON [#tt_shell].[mgra] = [#ludu].[mgra]
+        AND [#tt_shell].[structure_type] = [#ludu].[structure_type]
+    LEFT OUTER JOIN (
+        SELECT
+            [mgra].[mgra],
+            [tract],
+            [jurisdiction]
+        FROM [demographic_warehouse].[dim].[mgra]
+        INNER JOIN [demographic_warehouse].[dim].[mgra_xref]
+            ON [mgra].[mgra_id] = [mgra_xref].[mgra_id]
+            AND [mgra_xref].[xref_year] = @year
+        WHERE [mgra].[series] = @series
+    ) AS [mgra_xref]
+        ON [#tt_shell].[mgra] = [mgra_xref].[mgra]
+    GROUP BY
+        [#tt_shell].[mgra],
+        [tract],
+        [jurisdiction],
+        [#tt_shell].[structure_type]
+    ORDER BY
+        [#tt_shell].[mgra],
+        [#tt_shell].[structure_type];
+END
+-- All other years and series ------------------------------------------------
+ELSE
+BEGIN
+    -- Aggregate LUDU dwelling units to MGRAs by structure type ------------------
+    SELECT
+        @run_id AS [run_id],
+        @year AS [year],
+        [#tt_shell].[mgra],
+        [tract],
+        [jurisdiction],
+        [#tt_shell].[structure_type],
+        ISNULL(SUM([du]), 0) AS [value]
+    FROM [#tt_shell]
+    -- Use the point-in-polygon join
+    LEFT OUTER JOIN (
+        SELECT
+            [mgra].[mgra],
+            [structure_type],
+            [du]
+        FROM [inputs].[mgra]
+        INNER JOIN [#ludu]
+            ON [mgra].[Shape].STIntersects([#ludu].[Shape]) = 1
+        WHERE [run_id] = @run_id
+    ) AS [hs]
+        ON [#tt_shell].[mgra] = [hs].[mgra]
+        AND [#tt_shell].[structure_type] = [hs].[structure_type]
+    LEFT OUTER JOIN (
+        SELECT
+            [mgra].[mgra],
+            [tract],
+            [jurisdiction]
+        FROM [demographic_warehouse].[dim].[mgra]
+        INNER JOIN [demographic_warehouse].[dim].[mgra_xref]
+            ON [mgra].[mgra_id] = [mgra_xref].[mgra_id]
+            AND [mgra_xref].[xref_year] = @year
+        WHERE [mgra].[series] = @series
+    ) AS [mgra_xref]
+        ON [#tt_shell].[mgra] = [mgra_xref].[mgra]
+    GROUP BY
+        [#tt_shell].[mgra],
+        [tract],
+        [jurisdiction],
+        [#tt_shell].[structure_type]
+    ORDER BY
+        [#tt_shell].[mgra],
+        [#tt_shell].[structure_type];
+END
