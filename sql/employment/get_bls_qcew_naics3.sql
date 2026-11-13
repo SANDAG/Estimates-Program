@@ -15,11 +15,20 @@ DECLARE @msg nvarchar(25) = 'QCEW data does not exist';
 IF NOT EXISTS (
     SELECT TOP (1) *
     FROM [socioec_data].[bls].[qcew_by_area_annual]
-    WHERE [year] = @year
+    WHERE [year] = @year AND [area_fips] = '06073'  -- San Diego County
 )
 SELECT @msg AS [msg]
 ELSE
 BEGIN
+    -- Determine if "final" data exists otherwise use "pre-revision"
+    DECLARE @status NVARCHAR(15) = 'pre-revision'
+    IF EXISTS (
+        SELECT TOP(1) *
+        FROM [socioec_data].[bls].[qcew_by_area_annual]
+        WHERE [year] = @year AND [area_fips] = '06073' AND [status] = 'final'
+    ) SET @status = 'final'
+
+
     -- Create shell table of all ownership and NAICS 3-digit combinations
     -- Only 721 and 722 are of interest
     DROP TABLE IF EXISTS [#tt_shell]
@@ -60,6 +69,7 @@ BEGIN
             [year] = @year
             AND [area_fips] = '06073'  -- San Diego County
             AND [agglvl_code] = 75  -- Aggregation level 75 (NAICS 3-digit)
+            AND [status] = @status
             AND [industry_code] IN ('721', '722')  -- SANDAG only uses 721/722 for NAICS 3-digit
     )
     SELECT

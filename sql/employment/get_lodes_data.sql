@@ -19,7 +19,7 @@ SET NOCOUNT ON;
 -- Initialize parameters -----------------------------------------------------
 DECLARE @year INTEGER = :year;  
 DECLARE @msg NVARCHAR(25) = 'LODES data does not exist';
-DECLARE @lodes_version INTEGER = 2 -- lodes v8.4
+DECLARE @lodes_version INTEGER = 3 -- lodes v8.5
 
 -- Send error message if no data exists --------------------------------------
 IF NOT EXISTS (

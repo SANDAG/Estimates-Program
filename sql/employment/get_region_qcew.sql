@@ -44,6 +44,14 @@ DECLARE @year INTEGER = :year;
 IF @year < 2022 OR @year > 2025
     THROW 50000, 'Data suppression prevents calculation outside 2022-2025', 1;
 
+-- Determine if "final" data exists otherwise use "pre-revision"
+DECLARE @status NVARCHAR(15) = 'pre-revision'
+IF EXISTS (
+    SELECT TOP(1) *
+    FROM [socioec_data].[bls].[qcew_by_area_annual]
+    WHERE [year] = @year AND [area_fips] = '06073'AND [status] = 'final'
+) SET @status = 'final'
+
 
 -- Calculate custom SANDAG employment categories using quarterly data --------
 SELECT
@@ -61,6 +69,7 @@ CROSS APPLY [socioec_data].[bls].[fn_get_sandag_employment]([ownership_title], [
 WHERE
     [area_fips] = '06073'
     AND [year] = @year
+    AND [status] = @status
     AND [fn_get_sandag_employment].[ownership_title] IS NOT NULL
     AND [fn_get_sandag_employment].[industry_code] IS NOT NULL
     -- Remove the "Private" ownership only categories
@@ -88,6 +97,7 @@ CROSS APPLY [socioec_data].[bls].[fn_get_sandag_employment]([ownership_title], [
 WHERE
     [area_fips] = '06073'
     AND [year] = @year
+    AND [status] = @status
     AND [fn_get_sandag_employment].[ownership_title] IS NOT NULL
     AND [fn_get_sandag_employment].[industry_code] IS NOT NULL
     -- "Private" ownership only categories
