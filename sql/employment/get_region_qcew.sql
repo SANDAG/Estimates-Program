@@ -49,7 +49,7 @@ DECLARE @status NVARCHAR(15) = 'pre-revision'
 IF EXISTS (
     SELECT TOP(1) *
     FROM [socioec_data].[bls].[qcew_by_area_annual]
-    WHERE [year] = @year AND [status] = 'final'
+    WHERE [year] = @year AND [area_fips] = '06073'AND [status] = 'final'
 ) SET @status = 'final'
 
 

@@ -20,7 +20,7 @@ DECLARE @msg nvarchar(25) = 'QCEW data does not exist';
 IF NOT EXISTS (
     SELECT TOP (1) *
     FROM [socioec_data].[bls].[qcew_by_area_annual]
-    WHERE [year] = @year
+    WHERE [year] = @year AND [area_fips] = '06073'  -- San Diego County
 )
 SELECT @msg AS [msg]
 ELSE
@@ -30,7 +30,7 @@ BEGIN
     IF EXISTS (
         SELECT TOP(1) *
         FROM [socioec_data].[bls].[qcew_by_area_annual]
-        WHERE [year] = @year AND [status] = 'final'
+        WHERE [year] = @year AND [area_fips] = '06073' AND [status] = 'final'
     ) SET @status = 'final'
 
 
