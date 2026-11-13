@@ -15,7 +15,6 @@ DECLARE @year INTEGER = :year;
 DECLARE @gis_server NVARCHAR(20) = :gis_server;
 DECLARE @series INTEGER = (SELECT [series] FROM [metadata].[run] WHERE [run_id] = @run_id);
 DECLARE @override_date DATE = (SELECT CONVERT(DATE, [start_date]) FROM [metadata].[run] WHERE [run_id] = @run_id);
-DECLARE @qry NVARCHAR(max);
 
 -- Build the expected return table MGRA x Structure Type
 DROP TABLE IF EXISTS [#tt_shell];
@@ -50,7 +49,7 @@ DECLARE @tbl NVARCHAR(25) =
 DROP TABLE IF EXISTS [#ludu];
 CREATE TABLE [#ludu] (
     [id] INTEGER IDENTITY(1,1) NOT NULL,
-    [lu] INTEGER NOT NULL,
+    [structure_type] NVARCHAR(35) NOT NULL,
     [du] INTEGER NOT NULL,
     [mgra] INTEGER NOT NULL,
     [Shape] GEOMETRY NOT NULL,
@@ -70,9 +69,36 @@ WITH (BOUNDING_BOX = (
     CELLS_PER_OBJECT = 8
 )
 
-SET @qry = '
+DECLARE @qry NVARCHAR(max) = '
     INSERT INTO [#ludu]
-    SELECT *
+    SELECT
+        CASE
+            WHEN [lu] BETWEEN 1000 AND 1119
+                OR [lu] BETWEEN 2201 AND 2301
+                OR [lu] BETWEEN 4101 AND 4120
+                OR [lu] BETWEEN 6101 AND 6109
+                OR [lu] BETWEEN 6701 AND 6703
+                OR [lu] BETWEEN 7200 AND 7211
+                OR [lu] BETWEEN 7601 AND 7609
+                OR [lu] BETWEEN 8000 AND 8003
+                THEN ''Single Family - Detached''
+            WHEN [lu] BETWEEN 1120 AND 1199
+                OR [lu] BETWEEN 2000 AND 2105
+                OR [lu] BETWEEN 5000 AND 6003
+                OR [lu] BETWEEN 6501 AND 6509
+                OR [lu] BETWEEN 6805 AND 6809
+                THEN ''Single Family - Multiple Unit''
+            WHEN [lu] BETWEEN 1200 AND 1299
+                OR [lu] BETWEEN 1401 AND 1409
+                OR [lu] BETWEEN 1501 AND 1503
+                OR [lu] BETWEEN 9700 AND 9709
+                THEN ''Multifamily''
+            WHEN [lu] = 1300 THEN ''Mobile Home''
+            ELSE CONVERT(nvarchar, [lu])
+        END AS [structure_type],
+        [du],
+        [mgra],
+        [Shape]
     FROM OPENQUERY([' + @gis_server + '], ''
         SELECT
             ISNULL([overrides].[lu], [ludu].[lu]) AS [lu],
@@ -102,43 +128,9 @@ EXEC sp_executesql @qry;
 
 
 -- Year 2025 Series 16 -------------------------------------------------------
--- Use the point-in-polygon join unless it is year 2025 Series 16
--- This maintains alignment with the Series 16 Regional Growth Forecast
 IF @year = 2025 AND @series = 16
 BEGIN
     -- Aggregate LUDU dwelling units to MGRAs by structure type ------------------
-    with [hs] AS (
-        SELECT
-            [mgra],
-            CASE
-                WHEN [lu] BETWEEN 1000 AND 1119
-                    OR [lu] BETWEEN 2201 AND 2301
-                    OR [lu] BETWEEN 4101 AND 4120
-                    OR [lu] BETWEEN 6101 AND 6109
-                    OR [lu] BETWEEN 6701 AND 6703
-                    OR [lu] BETWEEN 7200 AND 7211
-                    OR [lu] BETWEEN 7601 AND 7609
-                    OR [lu] BETWEEN 8000 AND 8003
-                    THEN 'Single Family - Detached'
-                WHEN [lu] BETWEEN 1120 AND 1199
-                    OR [lu] BETWEEN 2000 AND 2105
-                    OR [lu] BETWEEN 5000 AND 6003
-                    OR [lu] BETWEEN 6501 AND 6509
-                    OR [lu] BETWEEN 6805 AND 6809
-                    THEN 'Single Family - Multiple Unit'
-                WHEN [lu] BETWEEN 1200 AND 1299
-                    OR [lu] BETWEEN 1401 AND 1409
-                    OR [lu] BETWEEN 1501 AND 1503
-                    OR [lu] BETWEEN 9700 AND 9709
-                    THEN 'Multifamily'
-                WHEN [lu] = 1300 THEN 'Mobile Home'
-                ELSE CONVERT(nvarchar, [lu])
-            END AS [structure_type],
-            [du]
-        FROM [#ludu]
-    )
-
-    -- Get results into Python
     SELECT
         @run_id AS [run_id],
         @year AS [year],
@@ -148,9 +140,10 @@ BEGIN
         [#tt_shell].[structure_type],
         ISNULL(SUM([du]), 0) AS [value]
     FROM [#tt_shell]
-    LEFT OUTER JOIN [hs]
-        ON [#tt_shell].[mgra] = [hs].[mgra]
-        AND [#tt_shell].[structure_type] = [hs].[structure_type]
+    -- Use manually populated LCKey to MGRA xref
+    LEFT OUTER JOIN [#ludu]
+        ON [#tt_shell].[mgra] = [#ludu].[mgra]
+        AND [#tt_shell].[structure_type] = [#ludu].[structure_type]
     LEFT OUTER JOIN (
         SELECT
             [mgra].[mgra],
@@ -173,46 +166,9 @@ BEGIN
         [#tt_shell].[structure_type];
 END
 -- All other years and series ------------------------------------------------
--- Use the point-in-polygon join unless it is year 2025 Series 16
--- This maintains alignment with the Series 16 Regional Growth Forecast
 ELSE
 BEGIN
     -- Aggregate LUDU dwelling units to MGRAs by structure type ------------------
-    with [hs] AS (
-        SELECT
-            [mgra].[mgra],
-            CASE
-                WHEN [lu] BETWEEN 1000 AND 1119
-                    OR [lu] BETWEEN 2201 AND 2301
-                    OR [lu] BETWEEN 4101 AND 4120
-                    OR [lu] BETWEEN 6101 AND 6109
-                    OR [lu] BETWEEN 6701 AND 6703
-                    OR [lu] BETWEEN 7200 AND 7211
-                    OR [lu] BETWEEN 7601 AND 7609
-                    OR [lu] BETWEEN 8000 AND 8003
-                    THEN 'Single Family - Detached'
-                WHEN [lu] BETWEEN 1120 AND 1199
-                    OR [lu] BETWEEN 2000 AND 2105
-                    OR [lu] BETWEEN 5000 AND 6003
-                    OR [lu] BETWEEN 6501 AND 6509
-                    OR [lu] BETWEEN 6805 AND 6809
-                    THEN 'Single Family - Multiple Unit'
-                WHEN [lu] BETWEEN 1200 AND 1299
-                    OR [lu] BETWEEN 1401 AND 1409
-                    OR [lu] BETWEEN 1501 AND 1503
-                    OR [lu] BETWEEN 9700 AND 9709
-                    THEN 'Multifamily'
-                WHEN [lu] = 1300 THEN 'Mobile Home'
-                ELSE CONVERT(nvarchar, [lu])
-            END AS [structure_type],
-            [du]
-        FROM [inputs].[mgra]
-        INNER JOIN [#ludu]
-            ON [mgra].[Shape].STIntersects([#ludu].[Shape]) = 1
-        WHERE [run_id] = @run_id
-    )
-
-    -- Get results into Python
     SELECT
         @run_id AS [run_id],
         @year AS [year],
@@ -222,7 +178,17 @@ BEGIN
         [#tt_shell].[structure_type],
         ISNULL(SUM([du]), 0) AS [value]
     FROM [#tt_shell]
-    LEFT OUTER JOIN [hs]
+    -- Use the point-in-polygon join
+    LEFT OUTER JOIN (
+        SELECT
+            [mgra].[mgra],
+            [structure_type],
+            [du]
+        FROM [inputs].[mgra]
+        INNER JOIN [#ludu]
+            ON [mgra].[Shape].STIntersects([#ludu].[Shape]) = 1
+        WHERE [run_id] = @run_id
+    ) AS [hs]
         ON [#tt_shell].[mgra] = [hs].[mgra]
         AND [#tt_shell].[structure_type] = [hs].[structure_type]
     LEFT OUTER JOIN (
