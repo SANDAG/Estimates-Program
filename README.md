@@ -54,7 +54,7 @@ start_year = 2020
 end_year = 2025
 
 # The code version
-version = "1.2.4"
+version = "1.2.4-dev"
 
 # Additional notes on this run
 comments = "Example comment"
