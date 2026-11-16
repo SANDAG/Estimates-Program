@@ -45,7 +45,7 @@ The default version of the runtime configuration file is copied here, with comme
 enabled = true
 
 # The MGRA series to use for this run. Currently only '15' and '16' are valid
-series = 15
+series = 16
 
 # The first year inclusive to start running from
 start_year = 2020
@@ -54,7 +54,7 @@ start_year = 2020
 end_year = 2025
 
 # The code version
-version = "1.2.3-dev"
+version = "1.2.4"
 
 # Additional notes on this run
 comments = "Example comment"
@@ -243,14 +243,14 @@ Estimates Program follows a non-standard release schedule. Rather than doing a n
 
 ## Release Format
 
-Releases follow a standard format which can be seen on any release on the [Releases page](https://github.com/SANDAG/Estimates-Program/releases). Each release is associated with a newly created Git tag for the released version in the format `vX.X.X` (also see [Semantic Versioning](https://semver.org/)). The release title matches the tagged version in this format: `Estimates Program vX.X.X`. Release notes begin with metadata describing the purpose of the release and the production database `[run_id]`(s) for external consumption associated with that release. An optional `Major Update(s)` section follows, summarizing the automatically generated release notes listed below it. The automatically generated release notes are created by clicking the "Generate release notes" button
+Releases follow a standard format which can be seen on any release on the [Releases page](https://github.com/SANDAG/Estimates-Program/releases). Each release is associated with a newly created Git tag for the released version in the format `vX.X.X` (also see [Semantic Versioning](https://semver.org/)). The release title matches the tagged version in this format: `Estimates Program X.X.X`. Release notes begin with metadata describing the purpose of the release and the production database `[run_id]`(s) for external consumption associated with that release. An optional `Major Update(s)` section follows, summarizing the automatically generated release notes listed below it. The automatically generated release notes are created by clicking the "Generate release notes" button
 
 ## How to Release
 
 Once a production run is ready for external consumption, the following manual steps are performed. Note, these changes can be made directly to the `main` branch
-1. Set the `config.toml` default version to the new release version `vX.X.X` 
-2. Add the new release version `vX.X.X` to the list of allowable versions in `InputParser:_validate_config()` in the file `python/parsers.py`
-3. Update the default configuration example in `README.md` to show `vX.X.X`
+1. Set the `config.toml` default version to the new release version `X.X.X` 
+2. Add the new release version `X.X.X` to the list of allowable versions in `InputParser:_validate_config()` in the file `python/parsers.py`
+3. Update the default configuration example in `README.md` to show `X.X.X`
 4. A tag and release is made following the release format described above.
-5. Any associated `[run_id]`(s) in the production database identified in the release notes have the `[version]` field in the `[metadata].[run]` table manually updated to reflect the release version `vX.X.X`.
-6. Repeat steps 1-3 but with version `vX.X.X-dev`
+5. Any associated `[run_id]`(s) in the production database identified in the release notes have the `[version]` field in the `[metadata].[run]` table manually updated to reflect the release version `X.X.X`.
+6. Repeat steps 1-3 but with version `X.X.X-dev`
